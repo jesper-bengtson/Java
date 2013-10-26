@@ -1,6 +1,6 @@
 Require Import DecidableType DecidableTypeEx.
 Require Import ZArith String.
-Require Import Stack Open Util.
+Require Import Stack Open Util Pure.
 
 Module string_DT' <: MiniDecidableType.
   Definition t := string.
@@ -82,6 +82,8 @@ Fixpoint eval_aux (s : stack) (e : dexpr) : val :=
   end.
 
 Program Definition eval e : expr := fun s => eval_aux s e.
+
+Definition pure_eval (e : dexpr) : pure := `eq (`val_to_bool (eval e)) (`true).
 
 Definition eval_exprs (s : stack) (es : list dexpr) :=
   map (fun e => eval_aux s e) es.

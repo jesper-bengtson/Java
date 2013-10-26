@@ -194,6 +194,9 @@ Section Commands.
     etransitivity; eassumption.
   Qed.
 
+End Commands.
+
+
   Local Transparent ILPre_Ops.
   Local Transparent ILFun_Ops.
 
@@ -221,7 +224,8 @@ Section Commands.
     + rewrite <- H, <- H0; reflexivity.
   Qed.
 
-End Commands.
+
+Implicit Arguments Build_semCmd [].
 
 Notation "{{ p }} c {{ q }}" := (sem_triple p q c) (at level 89,
   format "{{ p }} '/ '  c '/ '  {{ q }}").
