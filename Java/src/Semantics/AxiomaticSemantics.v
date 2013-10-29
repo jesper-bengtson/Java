@@ -1,8 +1,9 @@
 Require Import Morphisms Setoid Rel.
-Require Import ILogic ILEmbedTac ILQuantTac ILInsts ILEmbed Later SepAlgMap.
-Require Import SpecLogic Pure AssertionLogic Program Open Stack Subst.
-Require Import OperationalSemantics Lang.
+Require Import ILogic ILEmbedTac ILQuantTac ILInsts BILInsts ILEmbed Later SepAlgMap BILogic.
+Require Import SpecLogic Pure OpenILogic AssertionLogic Program Open Stack Subst.
+Require Import OperationalSemantics Lang IBILogic.
 Require Import MapInterface MapFacts SemCmd SemCmdRules.
+Require Import String List.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -61,7 +62,6 @@ Local Transparent ILLaterPreOps.
 
 Opaque ILPre_Ops.
 
-
   Lemma roc (P P' Q Q' : sasn) c (G : spec)
     (HPre  : P  |-- P')
     (HPost : Q' |-- Q)
@@ -88,13 +88,143 @@ Opaque ILPre_Ops.
   Proof.
     eapply roc; eassumption || reflexivity.
   Qed.
+  
+  Lemma rule_frame_ax_list P Q R c (xs: list var)
+    (HMod : forall x, ~ In x xs -> c_not_modifies c x) :
+    {[ P ]} c {[ Q ]} |--
+    {[ P ** R ]} c {[ Q ** Exists vs, apply_subst R (subst_fresh vs xs) ]}.
+  Proof.
+    unfold triple. lforallR sc; apply lpropimplR; intro Hsc. lforallL sc. apply lpropimplL; [assumption|].
+    apply frame_rule. unfold c_not_modifies in HMod. intros. apply HMod; auto.
+  Qed.
 
+  Definition subst_mod_asn (R: sasn) (c: cmd) : sasn :=
+    Exists vs, apply_subst R (subst_fresh vs (SS.elements (modifies c))).
+
+  Lemma rule_frame_ax P Q R c : 
+    {[ P ]} c {[ Q ]} |--
+    {[ P ** R ]} c {[ Q ** subst_mod_asn R c ]}.
+  Proof.
+    apply rule_frame_ax_list. intros x HnotIn. apply modifies_syn_sem.
+    rewrite SS'.In_elements_iff. assumption.
+  Qed.
+
+  Lemma rule_frame P Q R c G 
+    (HPre : G |-- {[P]} c {[Q]}) :
+    G |-- {[ P ** R ]} c {[ Q ** subst_mod_asn R c ]}.
+  Proof.
+    intros; rewrite <- rule_frame_ax; assumption.
+  Qed.
+  Implicit Arguments rule_frame [[P] [Q] [R] [c] [G]].
+
+  Lemma rule_seq_ax c1 c2 (P Q R : sasn) :
+  ({[P]} c1 {[Q]} //\\ {[Q]} c2 {[R]}) |-- {[P]} cseq c1 c2 {[R]}.
+  Proof.
+  	unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
+  	inversion Hsem; subst.
+  	lforallL sc1 sc2. lpropimplL; [apply HL | apply HR|].
+  	apply @seq_rule.
+  Qed.
+
+  Lemma rule_seq c1 c2 (P Q R : sasn) G
+    (Hc1 : G |-- {[P]} c1 {[Q]})
+    (Hc2 : G |-- {[Q]} c2 {[R]}) :
+    G |-- {[P]} cseq c1 c2 {[R]}.
+  Proof.
+    intros; rewrite <- rule_seq_ax; apply landR; eassumption.
+  Qed.
+
+  Lemma rule_if_ax (e : dexpr) c1 c2 (P Q : sasn) :
+    @lentails spec _
+     (@land spec _ ({[@lembedand pure sasn _ _ (pure_eval e) P]} c1 {[Q]})
+     ({[@lembedand pure sasn _ _ (pure_eval (E_not e)) P]} c2 {[Q]}))
+    ({[P]} cif e c1 c2 {[Q]}).
+  Proof.
+    unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
+    inversion Hsem; subst. 
+    lforallL scl scr. lpropimplL; [apply HL | apply HR|].
+    rewrite <- @nondet_rule, <- @seq_rule, <- @seq_rule, <- @assume_rule, <- @assume_rule.
+    repeat (apply landR); [apply ltrueR | apply landL1 | apply ltrueR | apply landL2];
+      reflexivity.
+  Qed.
+
+  Lemma rule_if (e : dexpr) c1 c2 (P Q : sasn) G
+    (Hc1 : G |-- {[@lembedand pure sasn _ _ (pure_eval e) P]} c1 {[Q]})
+    (Hc2 : G |-- {[@lembedand pure sasn _ _ (pure_eval (E_not e)) P]} c2 {[Q]}) :
+    G |-- {[P]} cif e c1 c2 {[Q]}.
+  Proof.
+    intros; rewrite <- rule_if_ax; apply landR; assumption.
+  Qed.
+
+  Lemma rule_while_ax (e : dexpr) c (P : sasn) :
+    {[@lembedand pure sasn _ _ (pure_eval e) P]} c {[P]} |--
+    {[P]} cwhile e c {[@lembedand pure sasn _ _ (pure_eval (E_not e)) P]}.
+  Proof.
+  	unfold triple. lforallR sc. apply lpropimplR. intro Hsem.
+  	inversion Hsem; subst.
+  	lforallL sc0. lpropimplL; [assumption|].
+  	rewrite <- @seq_rule; apply landR; [
+  	   rewrite <- @kleene_rule, <- @seq_rule, <- @assume_rule; apply landR;
+  	      [apply ltrueR | reflexivity] |
+  	   etransitivity; [apply ltrueR | apply @assume_rule]
+  	].
+  Qed.
+  
+  Lemma rule_while (e : dexpr) c (P : sasn) G
+    (Hc : G |-- {[@lembedand pure sasn _ _ (pure_eval e) P]} c {[P]}) :
+    G |-- {[P]} cwhile e c {[@lembedand pure sasn _ _ (pure_eval (E_not e)) P]}.
+  Proof.
+    intros; rewrite <- rule_while_ax; assumption.
+  Qed.
+
+  Lemma rule_assert (e : dexpr) P G
+    (HPe : P |-- embed(pure_eval e)) :
+    G |-- {[ P ]} cassert e {[ P ]}.
+  Proof.
+  	unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
+  	inversion Hsem; subst.
+  	rewrite <- assert_rule; [apply ltrueR | apply HPe]. 
+  Qed.
+
+  Lemma rule_skip_ax P : |-- {[P]} cskip {[P]}.
+  Proof.
+  	unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
+  	inversion Hsem; subst. apply @skip_rule.
+  Qed.
+
+  Lemma rule_skip P G : G |-- {[P]} cskip {[P]}.
+  Proof.
+    etransitivity.
+    + apply ltrueR.
+    + apply rule_skip_ax.
+  Qed.
+
+  Lemma exists_into_precond2 {A} (P: A -> sasn) c q :
+    (Forall x, {[P x]} c {[q]}) -|- {[Exists x, P x]} c {[q]}.
+  Proof.
+    unfold triple; setoid_rewrite <- exists_into_precond; split.
+  	+ lforallR sc. apply lpropimplR; intro Hsc; lforallR x.
+  	  lforallL x sc. apply lpropimplL; [assumption | reflexivity].
+  	+ lforallR x sc. apply lpropimplR; intro Hsc.
+  	  lforallL sc. apply lpropimplL; [assumption | lforallL x; reflexivity].
+  Qed.
+
+Lemma existentialise_triple (x : var) (P Q : sasn) c (G : spec) 
+	(H : forall (v : val), G |-- {[@lembedand pure sasn _ _ (open_eq (x/V) (`v)) P]} c {[Q]}) :
+	G |-- {[P]} c {[Q]}.
+Proof.
+	eapply roc_pre; [apply existentialise_var with (x0 := x)|].
+	rewrite <- exists_into_precond2. lforallR y. apply H.
+Qed.
+	
 Transparent ILPre_Ops.
-Local Transparent EmbedAsnPureOp.
+Local Transparent EmbedSasnPureOp.
 Local Transparent EmbedILFunOp.
 Local Transparent EmbedAsnPropOp.
 Local Transparent EmbedILPreDropOpEq.
 Local Transparent ILPre_Ops.
+Local Transparent BILPre_Ops.
+Local Transparent BILFun_Ops.
 Local Transparent EmbedILPreDropOpEq.
 Local Transparent EmbedILPreOp.
 Local Transparent EmbedILPreDropOpNeq.
@@ -115,7 +245,7 @@ Local Transparent EmbedILFunOp.
         simpl in HPT; destruct HPT as [Hnull [h' HPT]].
         specialize (HPT (ref, f)). unfold var_expr in HPT. rewrite Sref in HPT.
         unfold liftn, lift in HPT; simpl in HPT.
-        remember (@find (ptr * field) _ _ sval (ref, f) h) as o.
+        remember (@MapInterface.find (ptr * field) _ _ sval (ref, f) h) as o.
 	    destruct o; [destruct HPT as [[HPT HIn] | [Hm HPT]] | destruct HPT as [HPT _]].
         * rewrite in_find_iff. unfold val; simpl. rewrite <- Heqo.
            (* TODO : Unification fails because it can't figure out the coercion to val. This must currently be done manually, which is unintuitive as implicit arguments hide these completely. *)
@@ -135,7 +265,7 @@ Local Transparent EmbedILFunOp.
         unfold var_expr; rewrite stack_lookup_add.
         unfold var_expr, liftn, lift in HPT; simpl in HPT.
         apply stack_add_val_eq in H6. subst. 
-        specialize (HPT (ref, f)). remember (find (ref, f) h') as o.
+        specialize (HPT (ref, f)). remember (MapInterface.find (ref, f) h') as o.
 	    destruct o; [destruct HPT as [[HPT HIn] | [Hm HPT]] | destruct HPT as [HPT _]].
         - rewrite add_mapsto_iff in HPT. destruct HPT as [[Heq HPT] | [Hneq HPT]]. 
           rewrite Rref0 in Heq. simpl in Heq.
@@ -149,8 +279,6 @@ Local Transparent EmbedILFunOp.
           	by (apply HPT; left; rewrite Rref; reflexivity); destruct HFalse.
       * solve_model H3.
   Qed.
-
-Require Import String List.
 
   Lemma substl_trunc_add x x' v (xs : list var) ys (s: stack) :
     ~ List.In x xs ->
@@ -251,11 +379,12 @@ Qed.
     (HLen : length ps = length es) :
     |> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |-- @lforall spec _ _ (fun v : val => 
       {{@lembedand pure sasn _ _ (open_eq (x/V) (`v)) (P //! zip ps (map (fun e s => eval e s) es) //\\ T)}}
-      (call_cmd x (liftn C) m es c sc)
+      (call_cmd x CC m es c sc)
       {{Q //! zip (r :: ps) (((x/V):expr) :: map (fun e => e[{`v // x}]) (map (fun e s => eval e s) es))}}).
   Proof.
   	lforallR v.
-  	intros p n H p2 m' k s h Hsub Hm'n Hkm' [Hh HP].
+  	intros p n H p2 m' k s h Hsub Hm'n Hkm' [Hh [HP HT]].
+  	specialize (HEnt _ _ _ _ HT). unfold open_eq, liftn, lift in HEnt. simpl in HEnt.
   	destruct n; simpl in *.
   	
   	(* No fuel *) {
@@ -278,12 +407,12 @@ Qed.
         (s := (create_stack ps0 (eval_exprs s es))) as [HSafe _]; 
         	[eassumption | omega | assumption | reflexivity | reflexivity | omega | |
         	 apply HSafe; apply HFail0].
-	    destruct HP. unfold apply_subst in *.
-	    solve_model H.
+	     unfold apply_subst in *.
+	    solve_model HP.
         erewrite <- substl_trunc_subst; [reflexivity|..]. 
         apply prog_wf in HML. apply HML.
         assumption. assumption. 
-      * assert (HT := method_lookup_function HML HLookup); injection HT; intros;
+      * assert (HT' := method_lookup_function HML HLookup); injection HT'; intros;
         subst; congruence.
     +  
     (* correctness *)
@@ -293,8 +422,8 @@ Qed.
     edestruct HOK with (x := sc) (x2:=m'-1) (k:=n0) (h:=h) 
     (s := (create_stack args (eval_exprs s es))) as [_ HC];
     	clear HOK; [eassumption | omega | assumption | reflexivity | reflexivity | omega | ..].
-    destruct HP. unfold apply_subst in *.
-    solve_model H.
+    unfold apply_subst in *.
+    solve_model HP.
     unfold apply_subst. erewrite substl_trunc_subst.
     reflexivity.
     apply prog_wf in HML. apply HML. omega. omega. 
@@ -326,8 +455,8 @@ Qed.
           unfold lift. subst. admit. intros.
           rewrite stack_lookup_add2. reflexivity. intuition.
         * do 2 (case (dec_eq z p); [congruence|intro]). 
-          rewrite substl_trunc_add. apply IHps. simpl in *. omega. simpl in *.
-          inversion HML. assumption. simpl in *. omega. inversion HML. assumption.
+          rewrite substl_trunc_add. apply IHps. simpl in *. omega. simpl in *. omega.
+          inversion HML. assumption. inversion HML. assumption.
           simpl in *. omega.
       }
     - intros p' HIn. pose modifies_syn_sem as Hmod.
@@ -335,442 +464,186 @@ Qed.
       auto. apply HSem0.
  Qed.
 
-  Lemma rule_call_static : forall PP C m ps (es : list expr) (x r : var) P Q
-    (HLen : length ps = length es),
-    (|> (C :.: m |-> ps {{ P }}-{{ r, Q }}) |= [A] v:val,
-      {[ x /V == `v </\> P //! zip ps es ]} cscall x C m es
-      {[Q //! zip (r :: ps) ((x:expr) :: map (\e, e[{`v//x}]) es)]} @ PP)
-    %asn%spec.
+  Lemma rule_call_static C m ps (es : list dexpr) (x r : var) P Q
+    (HLen : length ps = length es) :
+    |> (C :.: m |-> ps {{ P }}-{{ r, Q }}) |-- @lforall spec _ _ (fun v : val =>
+      {[ @lembedand pure sasn _ _ (open_eq (x /V) (`v)) (P //! zip ps (map (fun e s => eval e s) es)) ]} cscall x C m es
+      {[Q //! zip (r :: ps) ((x/V) :: map (fun e => e[{`v//x}]) (map (fun e s => eval e s) es))]}).
   Proof.
-    intros; unfold c_triple; spec_all v; spec_all sc.
-    apply pure_impl_specR; intros HSem; inversion HSem; subst.
-    (sl_rewritel and_upI); [reflexivity | sl_apply true_upR|].
-    sl_rewritel and_upA.
-    revert v; apply -> all_specEIR.
-    apply rule_call_sem; [assumption | reflexivity| assumption].
+  	unfold triple. lforallR v sc. apply lpropimplR; intro HSem.
+  	inversion HSem; subst. clear HSem.
+  	rewrite rule_call_sem with (T := ltrue) (x := x); [|eassumption | reflexivity | eassumption].
+  	lforallL v. apply rule_of_consequence. 
+  	+ unfold lembedand. rewrite <- landA. apply landR; [reflexivity|apply ltrueR].
+  	+ reflexivity.
   Qed.
 
-  Lemma rule_call_dynamic : forall PP C m ps (es : list expr) (x y r : var) P Q
-    (HLen : length ps = length ((y:expr) :: es)),
-    (|> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |= [A] v:val,
-      {[ x /V == `v </\> <pure> y ::: C </\> P //! zip ps ((y:expr) :: es) ]}
+  Lemma rule_call_dynamic C m ps (es : list dexpr) (x y r : var) P Q
+    (HLen : length ps = length ((E_var y) :: es)) :
+    (|> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |-- @lforall spec _ _ (fun v:val =>
+      {[ @lembedand pure sasn _ _ (@land pure _ (open_eq (x /V) (`v)) (`typeof `C y/V)) (P //! zip ps (map (fun e s => eval e s) ((E_var y) ::es))) ]}
       cdcall x y m es
       {[Q //! zip (r :: ps)
-        ((x:expr) :: (y:expr) [{`v // x}] :: map (\e, e[{`v//x}]) es) ]} @ PP)
-    %asn%spec.
+        ((x/V) :: (y/V) [{`v // x}] :: map (fun e => e[{`v//x}]) (map (fun e s => eval e s) es)) ]})).
   Proof.
-    intros; unfold c_triple; spec_all v; spec_all sc.
-    apply pure_impl_specR; intros HSem; inversion HSem; subst.
-    sl_rewritel and_upC with (p := (<pure> y ::: C)).
-    revert v; apply -> all_specEIR.
-    apply rule_call_sem; [assumption | | assumption].
-    intros s; simpl; trivial.
+  	unfold triple. lforallR v sc. apply lpropimplR; intro HSem.
+  	inversion HSem; subst. clear HSem.
+  	rewrite rule_call_sem with (x := x) (CC := `val_class (y/V)) (T := @embed pure _ _ (`typeof `C y/V));
+  		 [|eassumption | | eassumption].
+    + lforallL v. apply rule_of_consequence. 
+      * unfold lembedand. rewrite <- embedland.
+        rewrite landA, (landC _ (@embed pure _ _ (`typeof `C y/V))); reflexivity.
+      * reflexivity.
+    + intros. unfold liftn, lift, var_expr, typeof, open_eq, val_class in *; simpl in *.
+      destruct H as [p [H1 H2]]; rewrite H1; simpl; intuition.
   Qed.
 
-  Lemma xist_from_post PP U P c (Q : U -> hasn) :
-    (([E] x:U, {[ P ]} c {[ Q x ]}) |= {[ P ]} c {[ <E> x, Q x ]} @ PP)%spec.
+  Lemma xist_from_post U P c (Q : U -> sasn) :
+    (Exists x:U, {[ P ]} c {[ Q x ]}) |-- {[ P ]} c {[ Exists x, Q x ]}.
   Proof.
-    apply xist_specEIL; intros x n PP' HPP HP; simpl in *; intros.
-    specialize (HP _ _ _ H H0 H1 _ _ _ _ _ H2 H3 H4 H5); intuition eauto.
+  	lexistsL x. eapply roc_post; [|lexistsR x]; reflexivity.
   Qed.
 
-(*Implicit Arguments existentialize [V S].*)
+Ltac existentialise y v :=
+	rewrite existentialise_triple with (x := y); intro v; [reflexivity|].
 
-  Lemma rule_call_old : forall C m ps (es : list expr) (x y r : var) (P Q : hasn)
-    (HLen : length ps = length ((y:expr) :: es)) PP,
-    (|> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |=
-      c_triple (<pure> y ::: C </\> P //! zip ps ((y:expr) :: es))
-        (<E> v:val, Q //! zip (r :: ps)
-          ( (x:expr) :: (y:expr)[{`v // x}] ::
-            map (\e, e[{`v//x}]) es))
-        (cdcall x y m es) @ PP)%asn%spec.
+  Lemma rule_call_old C m ps (es : list dexpr) (x y r : var) (P Q : sasn)
+    (HLen : length ps = length ((E_var y) :: es)) :
+    |> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |--
+      {[@lembedand pure sasn _ _ (`typeof `C y/V) (P //! zip ps ((y/V) :: (map (fun e s => eval e s) es)))]}
+      cdcall x y m es
+      {[Exists v:val, Q //! zip (r :: ps)
+          ( (x/V) :: (y/V)[{`v // x}] ::
+            map (fun e => e[{`v//x}]) (map (fun e s => eval e s) es))]}.      
   Proof.
-    intros.
-    sl_rewritel existentialize with (x := (vvar_expr x)).
-    rewrite <- exists_into_precond_c; spec_all v.
-    rewrite <- xist_from_post; apply xist_specIR; exists v.
-    revert v; apply -> all_specEIR; apply rule_call_dynamic; assumption.
+    intros. existentialise x v. 
+    rewrite rule_call_dynamic; [|eapply HLen].
+    rewrite <- xist_from_post. lforallL v. lexistsR v.
+    unfold lembedand. rewrite <- embedland, landA. reflexivity.
   Qed.
 
-  (* TODO: needed? *)
-  Lemma rule_frame_ax_list : forall P Q R c (xs: list var) PP
-    (HMod : forall x, ~ In x xs -> c_not_modifies c x), (
-    {[ P ]} c {[ Q ]} |=
-    {[ P <*> R ]} c {[ Q <*> <E>vs, open_subst R (subst_fresh vs xs) ]} @ PP
-  )%spec%asn.
+  Lemma rule_assign x (e : dexpr) (P : sasn) (G : spec) :
+    G |-- {[P [{(eval e) // x}]]} cassign x e {[P]}.
   Proof.
-    unfold c_triple in *; intros.
-    apply all_specEIR. intro sc. apply all_specEL with sc.
-    apply pure_impl_specR. intro Hsem. apply pure_impl_specL; [assumption|].
-    apply frame_rule. unfold c_not_modifies in HMod. auto.
+  	unfold triple; lforallR sc; apply lpropimplR; intro Hsem.
+  	inversion Hsem; subst. simpl; split; intros.
+  	+ intro HFail. inversion HFail.
+  	+ inversion H4; subst.
+  	  unfold apply_subst in H3. solve_model H3.
+  	  rewrite subst1_stack. reflexivity.
   Qed.
 
-  Definition subst_mod_asn (R: hasn) (c: cmd) : hasn :=
-    <E>vs, open_subst R (subst_fresh vs (SS.elements (modifies c))).
-
-  Lemma rule_frame_ax P Q R c PP : (
-    {[ P ]} c {[ Q ]} |=
-    {[ P <*> R ]} c {[ Q <*> subst_mod_asn R c ]} @ PP
-  )%spec%asn.
+  Lemma rule_assign_fwd G P Q x (e : dexpr) 
+    (H : Exists v:val, @lembedand pure sasn _ _ (open_eq (x /V) ((eval e) [{`v // x}])) (P [{`v // x}]) |-- Q) :
+    G |-- {[ P ]} cassign x e {[ Q ]}.
   Proof.
-    apply rule_frame_ax_list. intros x HnotIn. apply modifies_syn_sem.
-    rewrite SS'.In_elements_iff. assumption.
+  	eapply roc_pre; [|eapply rule_assign].
+  	intros s Pr n h HP.
+  	specialize (H (stack_add x (eval e s) s) Pr n h).
+  	simpl in *. assert ((((Q (stack_add x (eval e s) s)) Pr) n) h).
+  	+ apply H. exists (s x). split.
+  	  * unfold open_eq, var_expr. rewrite stack_lookup_add. 
+  	    unfold apply_subst. rewrite subst1_stack, stack_add_overwrite.
+  	    unfold liftn, lift; simpl. rewrite stack_add_same. reflexivity.
+  	  * unfold apply_subst. solve_model HP.
+  	    rewrite subst1_stack, stack_add_overwrite.
+  	    unfold liftn, lift; simpl. rewrite stack_add_same. reflexivity.
+  	+ unfold apply_subst. solve_model H0. rewrite subst1_stack. reflexivity.
   Qed.
 
-  (* TODO: needed? *)
-  Lemma rule_frame_list P Q R c G (xs: list var) PP
-    (HMod : forall x, ~ In x xs -> c_not_modifies c x)
-    (HPre : (G |= c_triple P Q c @ PP)%spec) : (
-    (G |= c_triple (P <*> R) (Q <*> <E>vs, open_subst R (subst_fresh vs xs)) c @ PP)
-  )%asn%spec.
+  Lemma rule_dcall_forward C m ps (es : list dexpr) (x y r : var) G
+  (P Q F Pm Qm : sasn) 
+    (Hspec : G |-- |> C :.: m |-> ps {{ Pm }}-{{ r, Qm }})
+    (HPre : P |-- (@lembedand pure sasn _ _ (`typeof (`C) (y/V)) (Pm //! zip ps (map (fun e s => eval e s) ((E_var y)::es)))
+      ** F))
+    (HLen : length ps = length (E_var y :: es))
+    (HPost : Exists v:val, @lembedand pure sasn _ _ ((`typeof (`C) (y/V))[{`v//x}])
+     (Qm //! (zip (r :: ps) ((x/V) :: (y/V)[{`v//x}] ::
+        map (fun e => e[{`v//x}]) (map (fun e s => eval e s) es))) ** F[{`v//x}]) |-- Q) :
+    G |-- {[ P ]} cdcall x y m es {[ Q ]}.
   Proof.
-    intros; rewrite <- rule_frame_ax_list; assumption.
+  	existentialise x v.
+  	rewrite HPre.
+  	eapply roc_pre with (P' := 
+  	    (@lembedand pure sasn _ _ (@land pure _ (open_eq x/V `v) (`typeof `C y/V))
+         (Pm //! zip ps (map (fun (e : dexpr) (s : Stack.stack var) => eval e s) ((E_var y) :: es)))) **
+        (@lembedand pure sasn _ _ (open_eq x/V `v) 
+        (@lembedand pure sasn _ _ (`typeof `C y/V) F))).
+     clear Hspec HPre HLen HPost.
+     intros s Pr n h [H1 [h1 [h2 [Hh [[H3 H4] H5]]]]].
+     simpl in *. exists h1, h2, Hh; (repeat split); assumption.
+     eapply roc_post; [eapply rule_frame|].
+     revert v. apply lforallR2.
+     rewrite Hspec. apply rule_call_dynamic.
+     assumption. rewrite <- HPost. lexistsR v.
+     unfold subst_mod_asn. rewrite bilexistsscR. lexistsL vs.
+     simpl.      unfold SS.MSet.Raw.singleton, apply_subst, subst_fresh,
+                   open_eq, liftn, lift, var_expr, substl_trunc, subst1; simpl.
+     clear HPre HLen HPost Hspec.
+     intros s pr n h [h1 [h2 [Hh [H1 [H2 [H3 H4]]]]]].
+     unfold stack_subst in *; simpl in *.
+     destruct (@dec_eq SS.elt DecString x x); [|congruence].
+     destruct (@dec_eq SS.elt DecString x y).
+     destruct (@dec_eq string DecString y x); [|congruence].
+     split; [intuition congruence|].
+     exists h1, h2, Hh. split.
+     solve_model H1. solve_model H4.
+     apply functional_extensionality. intros; simpl.
+     destruct (@dec_eq string DecString x0 x).
+     destruct (@dec_eq SS.elt DecString x x0); congruence.
+     destruct (@dec_eq SS.elt DecString x x0); [congruence | reflexivity].
+     destruct (@dec_eq string DecString y x); [congruence|].
+     split. apply H3.
+     exists h1, h2, Hh. split.
+     solve_model H1. solve_model H4.
+     apply functional_extensionality. intros.
+     destruct (@dec_eq SS.elt DecString x x0);
+     destruct (@dec_eq string DecString x0 x); unfold var_expr; simpl;
+     intuition congruence.
   Qed.
 
-  Lemma rule_frame P Q R c G PP
-    (HPre : (G |= {[P]} c {[Q]} @ PP)%spec) : (
-    G |= {[ P <*> R ]} c {[ Q <*> subst_mod_asn R c ]} @ PP
-  )%asn%spec.
+  Lemma rule_static_complete C m ps (es : list dexpr) (x r : var) G
+    (P Q F Pm Qm : sasn)
+    (HSpec : G |-- |> C :.: m |-> ps {{ Pm }}-{{ r, Qm }})
+    (HPre: P |-- (Pm //! zip ps (map (fun e s => eval e s) es)) ** F)
+    (HLen: length ps = length es)
+    (HPost : Exists v:val, Qm //! zip (r :: ps) ((x/V) ::
+                                      map (fun e => e[{`v//x}]) 
+                                          (map (fun e s => eval e s) es)) ** 
+                           F[{`v//x}] |-- Q) :
+          G |-- {[ P ]} cscall x C m es {[ Q ]}.
   Proof.
-    intros; rewrite <- rule_frame_ax; assumption.
+  	existentialise x v.
+  	rewrite HPre.
+  	eapply roc_pre with (P' := 
+  	    (@lembedand pure sasn _ _ (open_eq x/V `v)
+         (Pm //! zip ps (map (fun (e : dexpr) (s : Stack.stack var) => eval e s) es))) **
+        (@lembedand pure sasn _ _ (open_eq x/V `v) F)).
+     clear HSpec HPre HLen HPost.
+     intros s Pr n h [H1 [h1 [h2 [Hh [H3 H4]]]]].
+     simpl in *. exists h1, h2, Hh; (repeat split); assumption.
+     eapply roc_post; [eapply rule_frame|].
+     revert v. apply lforallR2.
+     rewrite HSpec. apply rule_call_static.
+     assumption. rewrite <- HPost. lexistsR v.
+     unfold subst_mod_asn. rewrite bilexistsscR. lexistsL vs.
+     simpl.      unfold SS.MSet.Raw.singleton, apply_subst, subst_fresh,
+                   open_eq, liftn, lift, var_expr, substl_trunc, subst1; simpl.
+     clear HPre HLen HPost HSpec.
+     intros s pr n h [h1 [h2 [Hh [H1 [H2 H3]]]]].
+     unfold stack_subst in *; simpl in *.
+     destruct (@dec_eq SS.elt DecString x x); [|congruence].
+     exists h1, h2, Hh. split.
+     solve_model H1. solve_model H3.
+     apply functional_extensionality. intros.
+     destruct (@dec_eq SS.elt DecString x x0);
+     destruct (@dec_eq string DecString x0 x); unfold var_expr; simpl;
+     intuition congruence.
   Qed.
-  Implicit Arguments rule_frame [[P] [Q] [R] [c] [G]].
-
-  Lemma rule_seq_ax : forall c1 c2 (P Q R : hasn) PP,
-    ((c_triple P Q c1 [/\] c_triple Q R c2) |= c_triple P R (cseq c1 c2) @ PP)%spec.
-  Proof.
-    unfold c_triple in *; intros.
-    apply all_specEIR. intro sc.
-    apply pure_impl_specR. intro Hsem. inversion Hsem. subst.
-    rewrite distr_all_and_specL. eapply all_specEL. rewrite and_specC.
-    rewrite distr_all_and_specL. eapply all_specEL.
-    rewrite distr_impl_and_L. apply pure_impl_specL; [eassumption|].
-    rewrite and_specC.
-    rewrite distr_impl_and_L. apply pure_impl_specL; [eassumption|].
-    apply seq_rule.
-  Qed.
-
-  Lemma rule_seq : forall c1 c2 (P Q R : hasn) G PP
-    (Hc1 : (G |= c_triple P Q c1 @ PP)%spec)
-    (Hc2 : (G |= c_triple Q R c2 @ PP)%spec),
-    (G |= c_triple P R (cseq c1 c2) @ PP)%spec.
-  Proof.
-    intros; rewrite <- rule_seq_ax; apply and_specI; eassumption.
-  Qed.
-
-  Lemma rule_if_ax : forall (e : expr) c1 c2 (P Q : hasn) PP,
-    ((c_triple (P </\> <pure> expr_pure e) Q c1 [/\] c_triple (P </\> <pure> expr_pure (enot e)) Q c2)
-    |= c_triple P Q (cif e c1 c2) @ PP)%asn%spec.
-  Proof.
-    unfold c_triple in *; intros.
-    apply all_specEIR. intro sc.
-    apply pure_impl_specR. intro Hsem. inversion Hsem. subst.
-    rewrite distr_all_and_specL. eapply all_specEL. rewrite and_specC.
-    rewrite distr_all_and_specL. eapply all_specEL.
-    rewrite distr_impl_and_L. apply pure_impl_specL; [eassumption|].
-    rewrite and_specC.
-    rewrite distr_impl_and_L. apply pure_impl_specL; [eassumption|].
-    rewrite and_specC.
-    rewrite <- nondet_rule; apply and_specI; rewrite <- seq_rule;
-      [apply and_specER | apply and_specEL]; (apply and_specI;
-        [rewrite true_specR | reflexivity]; apply assume_rule).
-  Qed.
-
-  Lemma rule_if : forall (e : expr) c1 c2 (P Q : hasn) G PP
-    (Hc1 : (G |= c_triple (P </\> <pure> (expr_pure e))%asn Q c1 @ PP)%spec)
-    (Hc2 : (G |= c_triple (P </\> <pure> (expr_pure (enot e)))%asn Q c2 @ PP)%spec),
-    (G |= c_triple P Q (cif e c1 c2) @ PP)%spec.
-  Proof.
-    intros; rewrite <- rule_if_ax; apply and_specI; assumption.
-  Qed.
-
-  Lemma rule_while_ax : forall (e : expr) c (P : hasn) PP,
-    ((c_triple (P </\> <pure> (expr_pure e)) P c) |=
-      c_triple P (P </\> <pure> (expr_pure (enot e))) (cwhile e c) @ PP)%asn%spec.
-  Proof.
-    unfold c_triple in *; intros.
-    apply all_specEIR. intro sc.
-    apply pure_impl_specR. intro Hsem. inversion Hsem. subst.
-    eapply all_specEL. apply pure_impl_specL; [eassumption|].
-    rewrite <- seq_rule; apply and_specI;
-      [| rewrite true_specR; apply assume_rule].
-    rewrite <- kleene_rule, <- seq_rule; apply and_specI; [| reflexivity].
-    rewrite true_specR; apply assume_rule.
-  Qed.
-
-  Lemma rule_while : forall (e : expr) c (P : hasn) G PP
-    (Hc : (G |= {[P </\> <pure> (expr_pure e)]} c {[P]} @ PP)%spec),
-    (G |= {[P]} cwhile e c {[P </\> <pure> (expr_pure (enot e))]} @ PP)%spec.
-  Proof.
-    intros; rewrite <- rule_while_ax; assumption.
-  Qed.
-
-  Lemma rule_assert : forall (e : expr) P G PP
-    (HPe : (P |- <pure> (expr_pure e))%asn),
-    (G |= {[ P ]} cassert e {[ P ]} @ PP)%spec.
-  Proof.
-    unfold c_triple; intros; spec_all sc.
-    apply pure_impl_specR; intro HSem; inversion HSem; subst.
-    rewrite true_specR; apply assert_rule.
-    rewrite HPe; intros s; simpl.
-    destruct (e s); simpl; intros h n; simpl; congruence.
-  Qed.
-
-  Lemma rule_skip_ax P PP :
-    (|= {[P]} cskip {[P]} @ PP)%spec.
-  Proof.
-    unfold c_triple. apply all_specEIR. intro sc.
-    apply pure_impl_specR. intro Hsem.
-    inversion Hsem. subst. apply skip_rule.
-  Qed.
-
-  Lemma rule_skip P G PP :
-    (G |= {[P]} cskip {[P]} @ PP)%spec.
-  Proof.
-    etransitivity.
-    > apply true_specR.
-    > apply rule_skip_ax.
-  Qed.
-
-  Lemma rule_skip_fwd P Q G PP
-    (HPQ: P |- Q)
-  : (G |= {[P]} cskip {[Q]} @ PP)%spec.
-  Proof.
-    eapply roc_post; [|eassumption].
-    etransitivity.
-    > apply true_specR.
-    > apply rule_skip_ax.
-  Qed.
-
-  Lemma rule_assign : forall x e (Q : hasn) (G : spec) PP,
-    (G |= c_triple (Q [{e // x}]) Q (cassign x e) @ PP)%spec.
-  Proof.
-    unfold c_triple in *; intros. apply all_specEIR. intro sc.
-    apply pure_impl_specR. intro Hsem. inversion Hsem. subst.
-    unfold entails_spec, triple; simpl; split; intros.
-    intro HFail; inversion HFail. autorewrite with stack in H4.
-    inversion H5; subst; apply up_mono with P'0 h' m; [reflexivity | reflexivity | omega | assumption].
-  Qed.
-
-  Lemma rule_assign_fwd G P Q x e PP :
-    (<E>v:val, P [{`v // x}] </\> x /V == (e [{`v // x}]) |- Q)%asn ->
-    (G |= {[ P ]} cassign x e {[ Q ]} @ PP)%spec.
-  Proof.
-    intros HEnt; rewrite true_specR.
-    eapply roc_pre; [| eapply rule_assign].
-    unfold entails_asn, open_rel in HEnt.
-    simpl in HEnt.
-    setoid_rewrite xist_upEIL in HEnt.
-    intro s.
-    specialize (HEnt (stack_add x (e s) s) (s x)); simpl in *.
-    autorewrite with stack. rewrite <- HEnt; clear HEnt.
-    apply and_upI.
-    > autorewrite with stack. simpl. autorewrite with stack. reflexivity.
-    rewrite true_upR.
-    intros PP' h n _. simpl. autorewrite with stack.
-    simpl. autorewrite with stack. reflexivity.
-  Qed.
-
-  Lemma rule_read_fwd : forall (x y : var) f e (P : hasn) PP
-    (HPT : (P |- (vvar_expr y) · `f >> e)%asn),
-    (|= {[ P ]} cread x y f
-      {[ <E> v:val, x /V == e [{`v//x}] </\> P[{`v//x}]]} @ PP)%asn%spec.
-  Proof.
-    unfold c_triple in *; intros. apply all_specEIR. intro sc.
-    apply pure_impl_specR. intro Hsem. inversion Hsem. subst.
-    unfold entails_spec, triple; simpl; split; intros.
-    > intro HFail; inversion HFail; subst; apply Snotin; clear Snotin HFail.
-      specialize (HPT _ _ _ _ H4); unfold pointsto_up in HPT;
-        simpl in HPT; destruct HPT as [[h' HPT] HNN].
-      rewrite sa_mulC in HPT; eapply heap_In_dot; eauto.
-      unfold PSM'.singleton; rewrite PSM'.add_in_iff; auto.
-    inversion H5; subst; clear H5.
-    specialize (HPT _ _ _ _ H4); simpl in HPT; destruct HPT as [[ht HPT] HNN].
-    exists (s x); split.
-    > autorewrite with stack. simpl.  autorewrite with stack.
-    > unfold sa_mul in HPT; simpl in HPT; unfold dot, PSM'.singleton in HPT; simpl in HPT.
-      rewrite PSM'.fold_add with (eqA := lift_option_rel _) in HPT; simpl in HPT;
-        auto using trneq_monAdd with typeclass_instances.
-      destruct (PSM.find (elt := sval) (val_to_ptr (s y), f) ht);
-        [contradiction|]; simpl in HPT;
-          rewrite <- HPT, PSM'.find_mapsto_iff, PSM'.add_eq_o in Rmaps;
-            [ injection Rmaps; auto | reflexivity ].
-      rewrite PSM'.empty_in_iff; intros HC; contradiction.
-    autorewrite with stack. simpl. autorewrite with stack.
-    erewrite open_prop;
-      [eapply up_mono; [reflexivity | reflexivity | | eassumption]; omega |]; eauto.
-  Qed.
-
-  Lemma rule_read_fwd2 : forall (x y : var) f e (P Q : hasn) G PP
-    (HPT : P |- (vvar_expr y) · `f >> e)
-    (HQT: <E> v:val, P [{`v//x}] </\> x /V == e[{`v//x}] |- Q),
-    (G |= {[ P ]} cread x y f {[ Q ]} @ PP)%asn%spec.
-  Proof.
-    intros. etransitivity; [apply true_specR|].
-    eapply roc_post; [apply rule_read_fwd; eassumption |].
-    sl_tac (setoid_rewrite and_upC); apply HQT.
-  Qed.
-
-  (* No built-in frame rule *)
-  Lemma rule_call_fwd : forall C m ps (es : list expr) (x y r : var) G PP
-  (P Q Pm Qm : hasn), (
-    G |= |> C :.: m |-> ps {{ Pm }}-{{ r, Qm }} @ PP ->
-    P |- <pure> y ::: C </\> Pm //! zip ps ((y:expr) :: es) ->
-    length ps = length ((y:expr) :: es) ->
-    (<E> v:val, Qm //! zip (r :: ps)
-          ((x:expr) :: (y:expr)[{`v // x}] ::
-            map (\e, e[{`v//x}]) es)) |- Q ->
-    G |= c_triple P Q (cdcall x y m es) @ PP
-  )%asn%spec.
-  Proof.
-    introv HLen Hmspec HP HQ. eapply roc; try eassumption; [].
-    etransitivity; [eassumption|]. apply rule_call_old; assumption.
-  Qed.
-
-  Lemma subst_fresh1 (vs: var -> val) (x: var) :
-    subst_fresh vs (x::nil) =X= subst1 (V_expr (vs x)) x.
-  Proof.
-    rewrite subst_fresh_alt. intro x'. unfold subst1. reflexivity.
-  Qed.
-  Hint Rewrite subst_fresh1 : open.
-
-  Lemma subst1_twice A v (p: open A) e x :
-    open_eq p[{V_expr v//x}][{e//x}] p[{V_expr v//x}].
-  Proof.
-    intro s. simpl. autorewrite with stack. simpl. reflexivity.
-  Qed.
-  Hint Rewrite subst1_twice : open.
-
-(* TODO: find a place for these lemmas (AbstractAsn?) *)
-Section LemmasSubst.
-  Context {V: ValNull} {Σ} `{sa : sep_alg Σ}.
-
- Lemma var_eq_substL (P : asn) (x : var) exp :
-  var_expr x == exp </\> P |- P [{exp // x}].
- Proof.
-   intros s. rewrite open_subst_stack. rewrite subst1_stack. simpl.
-   apply pure_upEL; intros Heq. rewrite <-Heq. autorewrite with stack.
-   reflexivity.
- Qed.
-
-Lemma var_eq_substR (P Q : asn) (x : var) exp :
-  (P |- Q [{exp // x}]) -> var_expr x == exp </\> P |- Q.
-Proof.
-  intros HS s; specialize (HS s); simpl in *; apply pure_upEL; intros HEq.
-  rewrite HS. rewrite subst1_stack. simpl.
-  erewrite <- HEq. autorewrite with stack. reflexivity.
-Qed.
-
-Lemma var_eq_subst (P Q : asn) (x : var) (exp : expr):
-  (P [{exp // x}] |- Q [{exp // x}]) -> var_expr x == exp </\> P |- Q.
-Proof.
-  intro HS.
-  sl_rewrite and_upI with (p := (<pure> (x/V ·=· exp)));
-    [|reflexivity | reflexivity].
-  sl_rewrite and_upA. apply var_eq_substR.
-  rewrite var_eq_substL. exact HS.
-Qed.
-End LemmasSubst.
-
-Ltac existentialize y v :=
-  (let t := constr:(@existentialize SVal) in
-    sl_rewritel t with (x := y));
-  (inst; rewrite <- exists_into_precond_c; spec_all v).
-
-Ltac sl_existE v :=
-  let s := fresh "s" in
-    intro s; simpl; rewrite xist_upEIL; intro v; sl_restore s.
-
-
-  Ltac frame_left_aux p :=
-    let s := fresh "s" in
-      intro s; simpl;
-      let p := eval simpl in (p s) in 
-        extract_pures(*; up_frame_left p; restore_pures; sl_restore s*).
-
-Ltac frame_left p :=
-  match goal with
-    | |- (_ |- _)%upred => up_frame_left p
-    | |- _ |- _ => frame_left_aux p
-    | |- _ |= c_triple _ _ _ @ _ => eapply roc_pre; [frame_left_aux p(*; reflexivity*)|]
-  end.
-
-
-  Lemma rule_call_complete : forall C m ps (es : list expr) (x y r : var) G
-  (P Q F Pm Qm : hasn) PP, (
-    G |= |> C :.: m |-> ps {{ Pm }}-{{ r, Qm }} @ PP ->
-    P |- (<pure> y ::: C </\> Pm //! zip ps ((y:expr) :: es))
-      <*> F ->
-    length ps = length ((y:expr) :: es) ->
-    <E> v:val, (<pure> y ::: C)[{`v//x}] </\>
-      Qm //! zip (r :: ps) ((x:expr) :: (y:expr)[{`v//x}] ::
-        map (\e, e[{`v//x}]) es) <*> F[{`v//x}] |- Q ->
-    G |= {[ P ]} cdcall x y m es {[ Q ]} @ PP
-  )%asn%spec.
-  Proof.
-    introv HC HP HLen HQ; rewrite <- HQ, HP, HC.
-    existentialize (vvar_expr x) v.
-    rewrite <- xist_from_post; apply xist_specIR; exists v.
-
-    eapply roc_pre with (P' := ( x/V == `v </\> (<pure> y ::: C </\> 
-              Pm //! zip ps (((vvar_expr y) :: es)))) <*> 
-      (<pure> y ::: C </\> ((x/V == `v </\> F)))).
-    unfold_stack s; ent_nf; sl_simpl.
-
-    eapply roc_post. eapply rule_frame.
-    revert v. apply all_specEIR. apply rule_call_dynamic; assumption.
-    unfold_stack s; ent_nf.
-    unfold SS.MSet.Raw.singleton in *.
-    rewrite subst_fresh_alt.
-    unfold stack_subst, subst_fresh in H, H0.
-    simpl in H, H0.
-    destruct (string_dec x x); [|congruence].
-    simpl in H0. subst. simpl.
-    sl_simpl.
-    destruct (string_dec x y).
-    simpl in H. subst.
-    unfold stack_subst, subst1.
-    destruct (string_dec y y); [sl_simpl |congruence].
-    simpl in H.
-    unfold stack_subst, subst1.
-    destruct (string_dec y x); [congruence| sl_simpl].
-  Qed.
-
-  Lemma rule_static_complete : forall C m ps (es : list expr) (x r : var) G
-    (P Q F Pm Qm : hasn) PP, (
-      G |= |> C :.: m |-> ps {{ Pm }}-{{ r, Qm }} @ PP->
-        P |- (Pm //! zip ps es) <*> F ->
-          length ps = length es ->
-          <E> v:val, Qm //! zip (r :: ps) ((x:expr) ::
-            map (\e, e[{`v//x}]) es) <*> F[{`v//x}] |- Q ->
-          G |= {[ P ]} cscall x C m es {[ Q ]} @ PP
-    )%asn%spec.
-  Proof.
-    introv HC HP HLen HQ; rewrite <- HQ, HP, HC; clear HC HP HQ P Q G.
-    existentialize (vvar_expr x) v.
-    rewrite <- xist_from_post; apply xist_specIR; exists v.
-    eapply roc_pre with 
-    (P' := (((<pure> (x /V ·=· `v)) </\> 
-                Pm //! zip ps es) <*> ((<pure> (x /V ·=· `v)) </\> 
-                F))).
-    unfold_stack s; ent_nf; rewrite true_and_eq_unitR; sl_simpl.
-    eapply roc_post; [eapply rule_frame |].
-    > revert v. apply all_specEIR. apply rule_call_static; assumption.
-    unfold_stack s; ent_nf; sl_simpl.
-    unfold SS.MSet.Raw.singleton.
-    unfold stack_subst, subst_fresh in H; simpl in H.
-    destruct (string_dec x x); [|congruence]; simpl in H.
-    rewrite <- H.
-    rewrite subst_fresh1; sl_simpl.
-  Qed.
-
-Ltac sl_exists x := 
-  let s := fresh "s" in 
-    intro s; simpl; apply xist_upIR; exists x; sl_restore s.
 
 (* TODO: move to Pwf *)
 Lemma ext_fields_same PP PP' C fields
-  (HPP : PP ⊑ PP')
+  (HPP : Prog_wf_sub PP PP')
   (HF  : field_lookup PP C fields) :
   exists fields', SS.Equal fields fields' /\ field_lookup PP' C fields'.
 Proof.
@@ -780,88 +653,66 @@ Proof.
 Qed.
 Lemma equiv_alloc_same fields fields' P p
   (HEq : SS.Equal fields fields') :
-  (SS.fold (fun f Q => `(vptr p) · `f >> `null <*> Q) fields P -|- SS.fold (fun f Q => `(vptr p) · `f >> `null <*> Q) fields' P)%asn.
+  (SS.fold (fun f Q => `pointsto `(vptr p) `f `null ** Q) fields P -|- SS.fold (fun f Q => `pointsto `(vptr p) `f `null ** Q) fields' P).
 Proof.
-  apply SS'.fold_equal; [apply bientails_asn_equiv | | | assumption].
-  > intros f f' EQf Q Q' HQ; subst f'; intros s; simpl; rewrite (HQ s); reflexivity.
-  intros f f' Q; split; sl_simpl.
+  apply SS'.fold_equal; [apply _ | | | assumption].
+  + intros f f' EQf Q Q' HQ; subst f'. rewrite HQ; reflexivity.
+  + intros f f' Q. repeat rewrite <- sepSPA. rewrite (sepSPC (`pointsto `p `f `null)).
+    reflexivity.
 Qed.
 
-  Lemma rule_alloc_ax : forall (x : var) C fields (PP : Prog_wf),
-    field_lookup PP C fields ->
-    (|= {[ <true> ]} calloc x C {[ <E> p:ptr,
-      SS.fold (fun f Q => `(vptr p) · `f >> `null <*> Q) fields
-        <true> </\> <pure> x ::: C </\> x /V == `(vptr p)]} @ PP)%spec%asn.
+  Lemma rule_alloc_ax (x : var) C fields :
+    [prog](fun Pr => field_lookup Pr C fields) |-- {[ ltrue ]} calloc x C {[ Exists p:ptr,
+      @lembedand pure sasn _ _ (@land pure _ (`typeof `C (x/V)) (open_eq x /V `(vptr p)))
+      (SS.fold (fun f Q => `pointsto `(vptr p) `f `null ** Q) fields ltrue)]}.
   Proof.
-    intros ? ? ? ? HLU.
-    unfold c_triple; spec_all sc.
-    apply pure_impl_specR; intros HSem; inversion HSem; subst; clear HSem.
-    intros n PP' HPP _; unfold triple; simpl; introv Hm Hk _; split.
-    > intro HS; inversion HS.
-    intros h0 s0 HSem; inversion HSem; subst; clear HSem; exists ref.
-    rewrite stack_lookup_add; split; [| split; reflexivity].
-    edestruct ext_fields_same as [fields' [HEQ HLU']]; [etransitivity; [apply HPP | apply Hm] | eassumption |].
-    assert (fields0 = fields') by (eapply field_lookup_function; eauto); subst.
-    eapply (equiv_alloc_same _ _ HEQ); clear dependent fields; clear Sfields.
-    strengthen (forall f, PSM.In (ref, f) h0 -> In f (SS.elements fields')).
-    rewrite SS.fold_1 in *; assert (HDup := SS.elements_3w fields').
-    remember (SS.elements fields') as l; clear Heql.
-    generalize dependent h0; induction l as [|f fs] using rev_ind; intros.
-    > rewrite sa_mulC in Sh0; simpl in *; setoid_rewrite <- Sh0 in Sfresh_h;
-      intuition.
-    apply NoDupA_swap in HDup; [| auto]; rewrite <- app_nil_end in HDup.
-    rewrite fold_left_app in *; simpl fold_left in *.
-    remember (fold_left (\a:PSM.t val, \e:SS.elt, PSM.add (ref, e) (null:val) a)
-      fs (PSM.empty val)) as hh.
-    unfold sa_mul in Sh0; simpl in Sh0; unfold dot in Sh0.
-    rewrite <- NIn_monAdd_Some in Sh0.
-    rewrite PSM'.fold_commutes with (eqA := lift_option_rel _) in Sh0;
-      auto using trneq_monAdd with typeclass_instances.
-    replace (PSM.fold monAdd h (Some hh)) with (sa_mul h hh) in Sh0 by reflexivity.
-    symmetry in Sh0; apply monAddSome in Sh0; destruct Sh0 as [hr [HEq1 HEq2]].
-    inversion_clear HDup; symmetry in HEq1.
-    specialize (IHfs H0 _ HEq1).
-    simpl; destruct IHfs as [HHeap HIn]; split.
-    > exists (PSM'.singleton (ref, f) (null:val)) hr; repeat split.
-      assert (sa_mul (PSM'.singleton (ref, f) (null:val)) hr =^= Some h0) as HQ; [| rewrite HQ; eexists; apply sa_unitI].
-        unfold PSM'.singleton, sa_mul; simpl; unfold dot; simpl.
-        rewrite PSM'.fold_add with (eqA := lift_option_rel _); simpl;
-          auto using trneq_monAdd with typeclass_instances; [|].
-        > destruct (PSM'.In_dec hr (ref, f)).
-          > apply HIn in i; contradiction H; apply In_InA; [|assumption].
-            split; [intro; reflexivity | intros ? ? ?; symmetry; assumption
-              | intros ? ? ? ? ?; etransitivity; eassumption].
-          simpl in *; rewrite PSM'.not_find_in_iff in n0; rewrite n0, HEq2; reflexivity.
-        rewrite PSM'.empty_in_iff; tauto.
-      > exists sa_unit; apply sa_unitI.
-      > assumption.
-      assumption.
-    intros ff HffIn.
-    rewrite <- HEq2 in HffIn.
-    rewrite PSM'.add_in_iff in HffIn.
-    apply in_or_app; destruct HffIn; [| left; apply HIn; assumption].
-    inversion H1; subst; right; intuition.
-    > inversion_clear HDup; subst hh; intro HIn.
-      apply H; apply In_InA; [auto with typeclass_instances |].
-      clear H H0 IHfs Sh0.
-      induction fs using rev_ind; simpl in *.
-      > rewrite PSM'.empty_in_iff in HIn; assumption.
-      rewrite fold_left_app in HIn; simpl in *; rewrite PSM'.add_in_iff in HIn;
-        destruct HIn as [HL | HIn]; [inversion HL; subst |]; apply in_or_app.
-      > simpl; auto.
-      left; apply IHfs; exact HIn.
-  Qed.
-
-Ltac sl_unify :=
-  let s := fresh "s" in
-    intro s; simpl; extract_pures; inst;
-    (repeat progress match goal with
-      | H : context [s _ = _] |- _ => 
-        rewrite H in *; clear H
-    end);
-    restore_pures; sl_simpl; sl_restore s.
-
-    
+  	unfold triple. lforallR sc. apply lpropimplR; intro HSem.
+  	inversion HSem; subst; clear HSem.
+  	intros Pr n HLookup Pr' m k s h HPr Hm Hk _; split; [intro H; inversion H|].
+  	intros h' s' HSem; inversion HSem. subst; clear HSem. exists (n0, C).
+    split. unfold var_expr, liftn, lift, open_eq, typeof; simpl. rewrite stack_lookup_add.
+    	split; [exists (n0, C); intuition congruence |reflexivity]. 
+    specialize (HLookup _ HPr); simpl in HLookup.
+    assert (fields0 = fields) by (eapply field_lookup_function; eauto); subst.
+    clear Sfields. 
+    generalize dependent h'. generalize dependent h.
+    apply (@SS'.set_induction) with (s := fields); intros.
+    rewrite SS'.fold_1b; [simpl; intuition |assumption].
+    assert (SS.fold (fun (f : SS.elt) (Q : sasn) => 
+                     `pointsto `(vptr(n0, C)) `f `null ** Q) s' ltrue -|-
+           `pointsto `(vptr(n0, C)) `x0 `null **
+            (SS.fold (fun (f : SS.elt) (Q : sasn) => 
+                     `pointsto `(vptr(n0, C)) `f `null ** Q) s0 ltrue)). {
+    rewrite SS'.fold_2; [reflexivity | apply _| | | assumption | assumption].
+    + unfold compat_op. intros a b c d e f. subst. rewrite f. reflexivity.
+    + unfold transpose. intros. repeat rewrite <- sepSPA. rewrite (sepSPC (`pointsto `(vptr(n0, C)) `x1 `null)).
+      reflexivity.
+    }
+    apply H2; clear H2.
+    rewrite (@SS'.fold_2 s0 s' x0 heap rel) in Sh0; [| apply _ | | | eassumption | assumption].
+    + exists (add (n0, C, x0) null heap_unit). 
+      exists ((SS.fold
+              (fun (f : SS.elt) (h' : heap) =>
+               add (n0, C, f) null h') s0 heap_unit)). eexists. admit.
+      split. unfold liftn, lift, pointsto; simpl.
+      split. unfold null. intuition congruence.
+      unfold SepAlg.subheap. exists heap_unit.
+      simpl. admit.
+      apply (H heap_unit). intros f H3. unfold heap_unit, map_unit in H3.
+      SearchAbout MapInterface.In empty. rewrite empty_in_iff in H3. destruct H3.
+      admit.
+    + unfold compat_op; intros a b Hab c d Hcd; subst. rewrite Hcd. reflexivity.
+    + unfold transpose. intros a b Hmap. intros d.
+      destruct (eq_dec (n0, C, a) d);
+      destruct (eq_dec (n0, C, b) d).
+      do 2 (rewrite add_eq_o; [|assumption]); reflexivity.
+      rewrite add_eq_o; [|assumption]; rewrite add_neq_o; [|assumption].
+      rewrite add_eq_o; [|assumption]. reflexivity.
+      rewrite add_neq_o; [|assumption]; rewrite add_eq_o; [|assumption].
+      rewrite add_eq_o; [|assumption]. reflexivity.
+      do 4 (rewrite add_neq_o; [|assumption]). reflexivity.
+Qed.
+    (*
   Lemma rule_alloc : forall (x : var) C fields (PP : Prog_wf),
     field_lookup PP C fields ->
     (|= {[ <true> ]} calloc x C {[
@@ -897,132 +748,4 @@ Ltac sl_unify :=
     sl_exists (vs x); reflexivity.
   Qed.
   Implicit Arguments rule_alloc_fwd [[x] [C] [fields] [P] [G]].
-
-  Lemma rule_write : forall (x : var) f e e' PP,
-    (|= {[ (var_expr x) · `f >> e ]} cwrite x f e' {[ (x:expr) · `f >> e']} @ PP)%spec.
-  Proof.
-    intros. unfold c_triple. apply all_specEIR. intro sc.
-    apply pure_impl_specR. intro Hsemantics.
-    inversion Hsemantics. subst. clear Hsemantics.
-    intros n PP' HPP _. unfold triple; simpl. introv HPP' Hm Hk [HSub Hnotnull].
-    assert (PSM.MapsTo (val_to_ptr (s x), f) (e s) h) as Hh.
-    > apply heap_sub_alt in HSub. red in HSub. apply HSub. PSM'.simp. auto.
-    clear HSub.
-    split.
-    > intro Hfail. inversion Hfail. subst. firstorder.
-    > introv Hsem. inversion Hsem. subst. split; [|assumption].
-      apply heap_sub_alt. unfold PSM'.Sub. PSM'.simp. firstorder.
-  Qed.
-
-  Lemma subst_fresh0 (vs: var -> val) :
-    subst_fresh vs nil =X= subst0.
-  Proof. reflexivity. Qed.
-  Hint Rewrite subst_fresh0 : open.
-
-  Lemma rule_write_frame G P Q (x : var) f e e' PP :
-    (P |- Q <*> (x:expr) · `f >> e)%asn ->
-    (G |= {[ P ]} cwrite x f e' {[ Q <*> (x:expr) · `f >> e']} @ PP)%spec%asn.
-  Proof.
-    intros HP; rewrite HP.
-    sl_rewritel sc_upC. sl_rewriter sc_upC.
-    eapply roc_post. eapply rule_frame. rewrite true_specR. apply rule_write.
-    sl_tac (apply sc_upME); [reflexivity|].
-    unfold subst_mod_asn. simpl. sl_existE vs. 
-    unfold SS.MSet.Raw.empty. autorewrite with open.
-    unfold_stack s; reflexivity.
-  Qed.
-  Implicit Arguments rule_write_frame [[G] [P] [Q] [x] [f] [e] [e']].
-
-  Lemma roc_mspec G C m ps P P' Q Q' r PP : (
-    P  |- P' ->
-    Q' |- Q  ->
-    G  |= C :.: m |-> ps {{ P' }}-{{ r, Q' }} @ PP ->
-    G  |= C :.: m |-> ps {{ P  }}-{{ r, Q  }} @ PP)%asn%spec.
-  Proof.
-    intros HPre HPost HMS; rewrite HMS, HPre, HPost; reflexivity.
-  Qed.
-
-  (* TODO: fixme (haven't looked, cause it's boring)
-  Lemma I_postcond P Q SC c :
-    ((|>SC [/\] {[ P ]} c {[ Q ]}) |= {[ P ]} c {[ lift0 (FunI _ SC) </\> Q ]})%asn%spec.
-  Proof.
-    unfold entails_spec; simpl; intros n [HSC HT]; intros;
-      edestruct HT; intuition eauto.
-    destruct n.
-    > inversion H; subst; inversion H1; subst; inversion H2; subst; clear H H1 H2; simpl in *.
-      contradiction (cmd_zero H6).
-    eapply spec_dc; [| eassumption].
-    destruct k; [contradiction (cmd_zero H6) |].
-    omega.
-  Qed.
-  *)
-
-Lemma triple_exists_elim {A} (P: A -> hasn) c q S PP
-  (H: forall x, S |= c_triple (P x) q c @ PP) :
-  S |= c_triple (<E>x, P x) q c @ PP.
-Proof.
-  rewrite <- exists_into_precond_c. spec_all x. apply H.
-Qed.
-
-Lemma triple_extract_prop_base p q c (P : pure) S PP
-  (H: forall s, P s -> S |= c_triple p q c @ PP) :
-  S |= c_triple (p </\> <pure>P) q c @ PP.
-Proof.
-  intros i PP' HPP HS sc n PQ HPQ Hni Hsem m k PR s h HPR Hmn Hmk [Hp HP]; simpl in *.
-  specialize (H s HP i _ HPP HS sc n _ HPQ Hni Hsem m k _ s h HPR Hmn Hmk Hp).
-  destruct H as [HSafe HStep].
-  split; [assumption | intros h' s'].
-  apply HStep.
-Qed.
-
-Lemma triple_extract_prop p q c (P Q : pure) S PP
-  (H: forall s, P s -> S |= c_triple (p </\> <pure>Q) q c @ PP) :
-  S |= c_triple (p </\> <pure>(lift2 and P Q)) q c @ PP.
-Proof.
-  unfold entails_spec in *; simpl in *; intros.
-  eapply H; try eassumption; simpl; intuition; eassumption.
-Qed.
-
-(* TODO: figure out how to fix
-Definition AsnExtractSpec {S} (G : spec) (p q : asn S) :=  (p </\> lift0 (FunI _ G) -|- q).
-
-Lemma asn_merge_spec {V S} (G H : spec) :
-  lift0 (FunI _ G) </\> lift0 (FunI _ H) -|- @lift0 V _ (FunI S (G [/\] H)).
-Proof.
-  split; intros n; simpl; intros; assumption.
-Qed.
-
-Definition SpecCombine G1 G2 := G1 =|= G2. 
-
-Lemma SpecCombineTrueRight G : SpecCombine (G [/\] [true]) G.
-Proof.
-  unfold SpecCombine. rewrite spec_and_unit_trueL. reflexivity.
-Qed.
-
-Lemma SpecCombineTrueLeft G : SpecCombine ([true] [/\] G) G.
-Proof.
-  unfold SpecCombine. rewrite and_specC, spec_and_unit_trueL. reflexivity.
-Qed.
-
-Lemma SpecCombineRefl G : SpecCombine G G.
-Proof.
-  unfold SpecCombine; reflexivity.
-Qed.
-
-Hint Extern 0 (SpecCombine (_ [/\] [true]) _) => simple apply SpecCombineTrueRight : spec_combine_db.
-Hint Extern 0 (SpecCombine ([true] [/\] _) _) => simple apply SpecCombineTrueLeft : spec_combine_db.
-Hint Extern 10 (SpecCombine _ _) => simple apply SpecCombineRefl : spec_combine_db.
 *)
-(*End SemRules.
-
-Module Type RULES (P: PROGRAM).
-  Include SemRules P.
-End RULES.
-
-Module Rules (P: PROGRAM) : RULES P.
-  Include SemRules P.
-End Rules.*)
-
-Close Scope open_scope.
-Close Scope asn_scope.
-Close Scope spec_scope.

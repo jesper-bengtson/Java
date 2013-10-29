@@ -1,6 +1,6 @@
 Require Import DecidableType DecidableTypeEx.
 Require Import ZArith String.
-Require Import Stack Open Util Pure.
+Require Import Stack Open Util OpenILogic.
 
 Module string_DT' <: MiniDecidableType.
   Definition t := string.

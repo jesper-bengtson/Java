@@ -12,10 +12,7 @@ Section Commands.
   Inductive assign_sem (x : var) (e : dexpr) : semCmdType :=
   | assign_ok : forall P s h v
                        (He: eval e s = v),
-      assign_sem x e P 1 s h (Some (stack_add x v s, h))
-  | assign_fail : forall P s h
-                    (He: eval e s = nothing),
-    assign_sem x e P 1 s h None.
+      assign_sem x e P 1 s h (Some (stack_add x v s, h)).
   Program Definition assign_cmd x e := Build_semCmd (assign_sem x e) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -50,7 +47,6 @@ Section Commands.
   Inductive alloc_sem (x : var) (C : class) : semCmdType :=
   | alloc_ok : forall (P : Prog_wf) (s s0 : stack) (h h0 : heap) n fields
       (Snotnull : (n, C) <> pnull)
-(*      (Seq      : val_class ref = C)*)
       (Sfresh_h : forall f, ~ In ((n, C), f) h)
       (Sfields  : field_lookup P C fields)
       (Sh0      : sa_mul h
