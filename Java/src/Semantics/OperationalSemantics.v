@@ -1,6 +1,10 @@
-Require Import Program SepAlg AssertionLogic SpecLogic SepAlgMap.
+Add Rec LoadPath "/Users/jebe/git/Charge/Charge!/bin".
+Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
+
+Require Import Program SepAlg SepAlgInsts AssertionLogic SpecLogic SepAlgMap.
 Require Import MapInterface MapFacts.
-Require Import ILInsts ILogic ILEmbed Open Subst Stack Lang SemCmd.
+Require Import ILInsts ILogic ILEmbed ILEmbedTac ILQuantTac OpenILogic 
+        Open Subst Stack Lang SemCmd HeapArr SemCmdRules BILogic.
 
 Import SepAlgNotations.
 
@@ -25,12 +29,12 @@ Section Commands.
   Inductive read_sem (x y : var) (f : field) : semCmdType :=
   | read_ok : forall ref v P (s : stack) (h : heap)
       (Rref  : s y = vptr ref)
-      (Rmaps : MapsTo (ref,f) v h),
+      (Rmaps : MapsTo (ref,f) v (fst h)),
       read_sem x y f P 1 s h (Some (stack_add x v s, h))
-  | read_fail : forall ref P s h
+  | read_fail : forall ref P s (h : heap_ptr) (h' : heap_arr)
       (Sref   : s y = vptr ref)
-      (Snotin : ~ In (ref,f) h ),
-      read_sem x y f P 1 s h None.
+      (Snotin : ~ In (ref,f) h),
+      read_sem x y f P 1 s (h, h') None.
   Program Definition read_cmd x y f := Build_semCmd (read_sem x y f) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -39,49 +43,242 @@ Section Commands.
     unfold frame_property; intros.
     inversion HSem; subst n s0 h0 s' big'; clear HSem; exists h; intuition.
     apply read_ok with ref; [assumption |]; specialize (HSafe _ (le_n _)).
+    destruct h, big, frame; simpl in *; subst.
+    apply sa_mul_split in HFrame.
+    destruct HFrame as [HFrame _].
     destruct (sa_mul_mapstoR HFrame Rmaps) as [[H1 H2] | [H1 H2]]; [assumption|].
-    contradiction HSafe; apply read_fail with ref; [assumption |].
-    intro HIn. apply H2. assumption.
+    contradiction HSafe; apply read_fail with ref; assumption.
   Qed.
 
+Require Import Compare_dec.
+
+  Lemma in_list_fresh (lst : list nat) :
+    exists n, ~ List.In n lst.
+  Proof.
+    assert (exists n, forall x, List.In x lst -> n > x). {
+      induction lst. 
+      + exists 0; intros x H. destruct H.
+      + destruct IHlst as [n IHlst].
+        destruct (gt_dec n a).
+        * exists n; intros. simpl in H.
+          destruct H. subst. assumption.
+          apply IHlst. apply H.
+        * assert (n <= a) by omega; clear n0.          
+          exists (S a); intros. simpl in H0.
+          destruct H0. subst. omega.
+          specialize (IHlst x H0). omega.
+    }
+    destruct H as [n H].                                                         
+    exists n. intros Hn. 
+    specialize (H n Hn). omega.
+  Qed.
+
+  Lemma heap_arr_exists_fresh (h : heap_arr) :
+    exists k, forall i, ~ In (k, i) h.
+  Proof.
+    assert (forall lst, exists k, forall i, ~ In (k, i) h /\ ~List.In k lst).
+    generalize dependent h.
+    apply (@map_induction (arrptr * nat) _ _ _ val 
+                          (fun (h : heap_arr) => forall lst, exists k : arrptr, 
+                                                   forall i : nat, ~ In (k, i) h /\ 
+                                                                   ~ List.In k lst)).
+    + intros.
+      destruct (in_list_fresh lst) as [x H1].
+      exists x; intros. split; [|assumption].
+      intros H2.
+      rewrite elements_Empty in H.
+      rewrite elements_in_iff in H2.
+      destruct H2 as [e H2]; rewrite H in H2.
+      inversion H2.
+    + intros. destruct x; simpl in *.
+      specialize (H (a::lst)).
+      destruct H as [k H].
+      exists k; intros.
+      specialize (H i). destruct H as [H2 H3].
+      simpl in H3.
+      assert (a <> k /\ ~ List.In k lst). {
+        split. intros H4. apply H3. left. assumption.
+        intros H. apply H3. right. apply H.
+      }
+      destruct H as [H4 H5].
+      split; [|assumption].
+      SearchAbout Add.
+      unfold Add in H1.
+      specialize (H1 (k, i)).
+      rewrite add_neq_o in H1.
+      intros H. apply H2.
+      rewrite in_find_iff; rewrite in_find_iff in H.
+      intros H6.
+      apply H. rewrite H1. apply H6.
+      unfold Equivalence.equiv, complement; simpl.
+      intros. inversion H; subst. apply H4. reflexivity.
+    + destruct (H nil) as [k H1]; clear H.
+      exists k; intros. destruct (H1 i) as [H _].
+      apply H.
+  Qed.
+
+
+(*
+  Require Import ZArith.
+  Definition valid_path (vpath : list val) := 
+    List.Forall (fun v => exists a, v = vint a /\ (a >= 0)%Z) vpath.
+*)
+  Inductive read_arr_sem (x y : var) (path : list dexpr) : semCmdType :=
+  | read_arr_ok P arr s hp ha v vpath
+                (Sref : s y = varr arr)
+                (Smap : List.map (fun e => eval e s) path = vpath)
+(*                (Sarr : valid_path vpath)*)
+                (Sfind : find_heap_arr arr (List.map val_to_nat vpath) ha = Some v) :
+      read_arr_sem x y path P 1 s (hp, ha) (Some (stack_add x v s, (hp, ha)))
+  | read_arr_fail P arr s h vpath
+                  (Sref : s y = varr arr)
+                  (Smap : List.map (fun e => eval e s) path = vpath)
+                  (Sarr : ~ in_heap_arr arr (List.map val_to_nat vpath) (snd h)) :
+      read_arr_sem x y path P 1 s h None.
+  Program Definition read_arr_cmd x y path := Build_semCmd (read_arr_sem x y path) _ _.
+  Next Obligation.
+    intros H. inversion H.
+  Qed.
+  Next Obligation.
+    unfold frame_property; intros; exists h.
+    inversion HSem; subst; specialize (HSafe _ (le_n _)). 
+    split; [assumption|].
+    destruct h as [hp' ha'].
+    apply read_arr_ok with (arr := arr) (vpath := (List.map (fun e : dexpr => eval e s)) path);
+      try assumption; try reflexivity.
+    destruct frame.
+    apply sa_mul_split in HFrame as [_ HFrame].
+
+    assert (in_heap_arr arr (List.map val_to_nat (List.map (fun e : dexpr => eval e s) path)) ha').
+    apply dec_double_neg; [apply in_heap_arr_dec | intro H].
+    apply HSafe.
+    eapply read_arr_fail; try eassumption; try reflexivity.
+    eapply find_heap_arr_frame; eauto.
+  Qed.    
+
+  Inductive write_arr_sem (x : var) (path : list dexpr) (e : dexpr) : semCmdType :=
+  | write_arr_ok P arr s hp ha ha' vpath
+                 (Sref : s x = varr arr)
+                 (Smap : List.map (fun e' => eval e' s) path = vpath)
+                 (Sin  : in_heap_arr arr (List.map val_to_nat vpath) ha)
+                 (Sha  : add_heap_arr arr (List.map val_to_nat vpath) ha (eval e s) = Some ha') :
+      write_arr_sem x path e P 1 s (hp, ha) (Some (s, (hp, ha')))
+  | write_arr_fail P arr s h vpath
+                   (Sref : s x = varr arr)
+                   (Smap : List.map (fun e' => eval e' s) path = vpath)
+                   (Sin  : ~ in_heap_arr arr (List.map val_to_nat vpath) (snd h)) :
+      write_arr_sem x path e P 1 s h None.
+  Program Definition write_arr_cmd x path e := Build_semCmd (write_arr_sem x path e) _ _.
+  Next Obligation.
+    intros H. inversion H.
+  Qed.
+  Next Obligation.
+    unfold frame_property; intros; inversion HSem; subst; clear HSem.
+    destruct h, frame.
+    apply sa_mul_split in HFrame as [Hhp Hha].
+    specialize (HSafe _ (le_n _)).
+    assert (in_heap_arr arr
+          (List.map val_to_nat (List.map (fun e' : dexpr => eval e' s') path))
+          h0). {
+      apply dec_double_neg; [apply in_heap_arr_dec | intro H].
+      apply HSafe; eapply write_arr_fail; try eassumption; reflexivity.
+    }
+
+    destruct (add_heap_arr_frame _ _ _ _ _ _ _ Hha Sha H) as [ha'' [H1 H2]].
+    exists (h, ha'').
+    split.
+    split; simpl. apply Hhp. apply H1.
+    eapply write_arr_ok; try eassumption; reflexivity.
+  Qed.
+
+  Inductive alloc_arr_sem (x : var) (e : dexpr) : semCmdType :=
+  | alloc_arr_ok (P : Prog_wf) (s s' : stack) (hp : heap_ptr) (ha ha' : heap_arr) (n : nat)
+                 (Sfresh_ha : forall i, ~ In (n, i) ha) 
+                 (Sha : alloc_heap_arr n (val_to_nat (eval e s)) ha === ha') 
+                 (Ss : s' = stack_add x (varr n) s) :
+      alloc_arr_sem x e P 1 s (hp, ha) (Some (s', (hp, ha'))).
+  Program Definition alloc_arr_cmd x e := Build_semCmd (alloc_arr_sem x e) _ _.
+  Next Obligation.
+    intros H; inversion H.
+  Qed.
+  Next Obligation.
+    unfold frame_property; intros; inversion HSem; subst P n s s' big big'.
+    destruct h, frame.
+    apply sa_mul_split in HFrame as [Hhp Hha].
+    specialize (HSafe _ (le_n _)).
+    Lemma alloc_heap_arr_frame (n m : nat) (h frame h' h'' : heap_arr)
+          (Hfresh : forall i, ~ In (n, i) frame)
+          (Hh : alloc_heap_arr n m h === h')
+          (HFrame : sa_mul h'' frame h) :
+      exists h''', alloc_heap_arr n m h'' === h''' /\ sa_mul h''' frame h'.
+    Proof.
+      generalize dependent h'; induction m; simpl in *; intros.
+      + setoid_rewrite <- Hh.
+        exists (add (n, 0) null h''); split; [reflexivity|].
+        apply sa_mul_add; [assumption | apply Hfresh]. 
+      + assert (alloc_heap_arr n m h === alloc_heap_arr n m h) by reflexivity.
+        destruct (IHm _ H) as [h'''' [H1 H2]].
+        exists (add (n, m) null h'''').
+        split.
+        rewrite H1. reflexivity.
+        rewrite <- Hh.
+        apply sa_mul_add. assumption.
+        apply Hfresh.
+    Qed.
+    
+    assert (forall i : nat, ~ In (n0, i) h2) as Sfresh_frame. {
+      intros i H; apply Sfresh_ha with i.
+      apply sa_mulC in Hha; destruct (sa_mul_inL Hha H); assumption.
+    }
+    destruct (alloc_heap_arr_frame Sfresh_frame Sha Hha) as [ha'' [H1 H2]].
+    exists (h, ha''). split. split; simpl; assumption.
+    apply alloc_arr_ok with n0; try assumption.
+    intros i H.
+    specialize (Sfresh_ha i). apply Sfresh_ha.
+    destruct (sa_mul_inL Hha H). apply H3.
+  Qed.
+    
   Inductive alloc_sem (x : var) (C : class) : semCmdType :=
-  | alloc_ok : forall (P : Prog_wf) (s s0 : stack) (h h0 : heap) n fields
+  | alloc_ok : forall (P : Prog_wf) (s s0 : stack) (h h0 : heap_ptr) (h' : heap_arr) n fields
       (Snotnull : (n, C) <> pnull)
       (Sfresh_h : forall f, ~ In ((n, C), f) h)
       (Sfields  : field_lookup P C fields)
       (Sh0      : sa_mul h
-        (SS.fold (fun f h' => add ((n, C), f) (pnull : val) h') fields heap_unit) h0)
+        (SS.fold (fun f h' => add ((n, C), f) (pnull : val) h') fields heap_ptr_unit) h0)
       (Ss0      : s0 = stack_add x (vptr (n, C)) s),
-      alloc_sem x C P 1 s h (Some (s0, h0)).
+      alloc_sem x C P 1 s (h, h') (Some (s0, (h0, h'))).
   Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
   Next Obligation.
     unfold frame_property; intros.
-    inversion HSem; subst n s0 h0 s' big'; clear HSem.
-    destruct (sa_mulA HFrame Sh0) as [h2 [H1 H2]].
-    apply sa_mulC in H2; destruct (sa_mulA H1 H2) as [h3 [H3 H5]].
-    exists h3.
-    split; [apply sa_mulC; assumption|].
+    inversion HSem; subst; clear HSem.
+    destruct h, frame; simpl in *.
+    apply sa_mul_split in HFrame. destruct HFrame as [HFrame HFrameArr].
+    destruct (sa_mulA HFrame Sh0) as [h5 [H1 H2]].
+    apply sa_mulC in H2; destruct (sa_mulA H1 H2) as [h6 [H3 H5]].
+    exists (h6, h2).
+    split; [split; simpl; [apply sa_mulC|]; assumption|].
     eapply alloc_ok; [eassumption | | eassumption | apply sa_mulC; assumption | reflexivity].
     intros f H6; apply (Sfresh_h f).
-    apply sa_mulC in H2; destruct (sa_mul_inL H2 H6) as [H7 H8].
-    destruct (sa_mul_inR Sh0 H8) as [[H9 H10] | [H9 H10]]; [assumption|].
-    apply sa_mulC in H1; destruct (sa_mul_inL H1 H9); intuition.
+    apply sa_mulC in H2.
+    destruct (sa_mul_inL H2 H6) as [H8 H9].    
+    destruct (sa_mul_inR Sh0 H9) as [[H10 H11] | [H10 H11]]; [assumption|].
+    apply sa_mulC in H1; destruct (sa_mul_inL H1 H10); intuition.
   Qed.
 
   Inductive write_sem (x:var) (f:field) (e:dexpr) : semCmdType := 
-  | write_ok : forall P (s: stack) h h' ref v
+  | write_ok : forall P (s: stack) (h h' : heap_ptr) (h'' : heap_arr) ref v
       (Sref: s x = vptr ref)
       (Sin:  In (ref,f) h )
       (Heval : eval e s = v)
       (Sadd: h' = add (ref,f) v h ),
-      write_sem x f e P 1 s h (Some (s, h'))
-  | write_fail : forall P (s: stack) h ref
+      write_sem x f e P 1 s (h, h'') (Some (s, (h', h'')))
+  | write_fail : forall P (s: stack) h h'' ref
       (Sref:   s x = vptr ref)
       (Sin : ~ In (ref, f) h),
-      write_sem x f e P 1 s h None.
+      write_sem x f e P 1 s (h, h'') None.
   Program Definition write_cmd x f e := Build_semCmd (write_sem x f e) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -89,13 +286,16 @@ Section Commands.
   Next Obligation.
     unfold frame_property; intros.
     inversion HSem. subst; clear HSem.
-    assert (~ In (ref, f) frame).
+    destruct h, frame; simpl in *.
+    apply sa_mul_split in HFrame as [HFrame HFramePtr].
+    assert (~ In (ref, f) h2).
     intros H. 
     apply (HSafe 1); [omega |].
     eapply write_fail; [eassumption|].
     destruct (sa_mul_inR HFrame Sin); intuition.
-    exists (add (ref, f) (eval e s') h). split.
-    apply sa_mul_add; assumption.
+    exists ((add (ref, f) (eval e s') h, h1)). split.
+    split.
+    apply sa_mul_add; assumption. simpl. assumption.
     eapply write_ok; try eassumption; try reflexivity.
     destruct (sa_mul_inR HFrame Sin); intuition.
   Qed.
@@ -148,6 +348,12 @@ Section Commands.
       semantics (calloc x C) (alloc_cmd x C)
   | semwrite  : forall x f e,
       semantics (cwrite x f e) (write_cmd x f e)
+  | semarrread : forall x y es,
+                   semantics (carrread x y es) (read_arr_cmd x y es)
+  | semarrwrite : forall x es e,
+                   semantics (carrwrite x es e) (write_arr_cmd x es e)
+  | semarralloc : forall x (e : dexpr),
+                    semantics (carralloc x e) (alloc_arr_cmd x e)
   | semskip   : semantics cskip skip_cmd
   | semseq    : forall c1 c2 sc1 sc2
       (HL : semantics c1 sc1)
@@ -210,6 +416,11 @@ Section Commands.
     + intros P s s0 h h0 n HWr; simpl in *; inversion HWr; subst; reflexivity.
     + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HRd; simpl in *;
       inversion HRd; subst; rewrite stack_lookup_add2; trivial.
+    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n Hrd; simpl in *.
+      inversion Hrd; subst. rewrite stack_lookup_add2; [reflexivity | assumption].
+    + intros P s s0 h h0 n Hrd; simpl in *; inversion Hrd; reflexivity.
+    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n Hrd; simpl in *.
+      inversion Hrd; subst. rewrite stack_lookup_add2; [reflexivity | assumption].
     + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HCl; simpl in *;
       inversion HCl; subst; rewrite stack_lookup_add2; trivial.
     + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HCl; simpl in *;
@@ -247,6 +458,15 @@ End Commands.
   Notation " '{[' P ']}' c '{[' Q ']}' " := (triple P Q c) (at level 89,
     format " {[ P ]} '/' c '/' {[ Q ]} ").
 
+  Add Parametric Morphism : triple with signature
+    lentails --> lentails ++> eq ==> lentails
+    as triple_entails_m.
+  Proof.
+    intros p p' Hp q q' Hq c.
+    unfold triple. 
+    setoid_rewrite Hq; setoid_rewrite <- Hp. reflexivity.
+  Qed.
+
 Open Scope open_scope.
 
   Definition method_spec C m (ps : list var) (rn : var) (P Q : sasn) := (
@@ -261,6 +481,29 @@ Open Scope open_scope.
 
   Notation " C ':.:' m |-> ps {{ P }}-{{ r , Q }} " :=
     (method_spec C m ps r P Q) (at level 60).
+
+  Add Parametric Morphism : method_spec with signature
+    eq ==> eq ==> eq ==> eq ==>
+      lentails --> lentails ++> lentails
+    as method_spec_entails_m.
+  Proof.
+    intros C m ps rn P P' HP Q Q' HQ. unfold method_spec.
+    (* Unravel the two almost identical sides of the entailment first because
+        setoid_rewrite doesn't seem to go under these binders. *)
+    apply lpropandL; intro H. apply lpropandR; [assumption|].
+    lexistsL ps' c re. lexistsR ps' c re.
+    apply landR; [apply landL1; reflexivity | apply landL2].
+    setoid_rewrite HP. setoid_rewrite HQ. reflexivity.
+  Qed.
+
+  Add Parametric Morphism : method_spec with signature
+    eq ==> eq ==> eq ==> eq ==>
+      lequiv ==> lequiv ==> lequiv
+    as method_spec_bientails_m.
+  Proof.
+    split; apply method_spec_entails_m; try rewrite ?H, ?H0; reflexivity.
+  Qed.
+
 
   Lemma c_triple_zero P (p q : sasn) (c : cmd) :
     ({[ p ]} c {[ q ]}) P 0.
@@ -290,3 +533,87 @@ Open Scope open_scope.
   Notation " x ':..:' m |-> ps {{ P }}-{{ r , Q }} " :=
     (expr_spec x m ps r P Q) (at level 60).
 *)
+
+Section StructuralRules.
+
+  Lemma triple_false (G : spec) (Q : sasn) c :
+    G |-- {[lfalse]} c {[Q]}.
+  Proof.
+    intros n; simpl in *; intros; destruct H4.
+  Qed.
+
+  Lemma roc (P P' Q Q' : sasn) c (G : spec)
+    (HPre  : P  |-- P')
+    (HPost : Q' |-- Q)
+    (Hc    : G  |-- {[P']} c {[Q']}) :
+    G |-- {[P]} c {[Q]}.
+  Proof.  
+    rewrite Hc.
+    unfold triple. lforallR sc. apply lpropimplR; intros Hsc.
+    lforallL sc. apply lpropimplL; [assumption|]. apply rule_of_consequence; assumption.
+  Qed.
+
+  Lemma roc_pre (P P' Q : sasn) c G
+    (HPre : P |-- P')
+    (Hc   : G |-- {[P']} c {[Q]}) :
+    G |-- {[P]} c {[Q]}.
+  Proof.
+  	eapply roc; eassumption || reflexivity.
+  Qed.
+
+  Lemma roc_post (P Q Q' : sasn) c G
+    (Hc : G  |-- {[P]} c {[Q']})
+    (HPost : Q' |-- Q) :
+    G |-- {[P]} c {[Q]}.
+  Proof.
+    eapply roc; eassumption || reflexivity.
+  Qed.
+  
+  Lemma rule_frame_ax_list P Q R c (xs: list var)
+    (HMod : forall x, ~ List.In x xs -> c_not_modifies c x) :
+    {[ P ]} c {[ Q ]} |--
+    {[ P ** R ]} c {[ Q ** Exists vs, apply_subst R (subst_fresh vs xs) ]}.
+  Proof.
+    unfold triple. lforallR sc; apply lpropimplR; intro Hsc. lforallL sc. 
+    apply lpropimplL; [assumption|].
+    apply frame_rule. unfold c_not_modifies in HMod. intros. apply HMod; auto.
+  Qed.
+
+  Definition subst_mod_asn (R: sasn) (c: cmd) : sasn :=
+    Exists vs, apply_subst R (subst_fresh vs (SS.elements (modifies c))).
+
+  Lemma rule_frame_ax P Q R c : 
+    {[ P ]} c {[ Q ]} |--
+    {[ P ** R ]} c {[ Q ** subst_mod_asn R c ]}.
+  Proof.
+    apply rule_frame_ax_list. intros x HnotIn. apply modifies_syn_sem.
+    rewrite SS'.In_elements_iff. assumption.
+  Qed.
+
+  Lemma rule_frame P Q R c G 
+    (HPre : G |-- {[P]} c {[Q]}) :
+    G |-- {[ P ** R ]} c {[ Q ** subst_mod_asn R c ]}.
+  Proof.
+    intros; rewrite <- rule_frame_ax; assumption.
+  Qed.
+  Implicit Arguments rule_frame [[P] [Q] [R] [c] [G]].
+
+  Lemma exists_into_precond2 {A} (P: A -> sasn) c q :
+    (Forall x, {[P x]} c {[q]}) -|- {[Exists x, P x]} c {[q]}.
+  Proof.
+    unfold triple; setoid_rewrite <- exists_into_precond; split.
+    + lforallR sc. apply lpropimplR; intro Hsc; lforallR x.
+      lforallL x sc. apply lpropimplL; [assumption | reflexivity].
+    + lforallR x sc. apply lpropimplR; intro Hsc.
+      lforallL sc. apply lpropimplL; [assumption | lforallL x; reflexivity].
+  Qed.
+  
+  Lemma existentialise_triple (x : var) (P Q : sasn) c (G : spec) 
+	(H : forall (v : val), G |-- {[@lembedand pure sasn _ _ (open_eq (x/V) (`v)) P]} c {[Q]}) :
+    G |-- {[P]} c {[Q]}.
+  Proof.
+    eapply roc_pre; [apply existentialise_var with (x0 := x)|].
+    rewrite <- exists_into_precond2. lforallR y. apply H.
+  Qed.
+
+End StructuralRules.

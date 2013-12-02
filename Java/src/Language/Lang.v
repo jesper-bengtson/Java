@@ -1,3 +1,6 @@
+Add Rec LoadPath "/Users/jebe/git/Charge/Charge!/bin".
+Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
+
 Require Import DecidableType DecidableTypeEx.
 Require Import ZArith String.
 Require Import Stack Open Util OpenILogic.
@@ -17,11 +20,13 @@ Module SM' := WMapMore_fun (string_DT) SM.
 Definition class := string.
 Definition var := string.
 Definition ptr := (nat * class)%type.
+Definition arrptr := nat.
 
 Inductive sval : Set :=
 | vint :> Z -> sval
 | vbool :> bool -> sval
 | vptr :> ptr -> sval
+| varr :> arrptr -> sval
 | nothing : sval.
 
 Definition pnull := (0, EmptyString) : ptr.
@@ -47,13 +52,13 @@ Inductive dexpr : Type :=
 | E_lt    : dexpr -> dexpr -> dexpr
 | E_eq    : dexpr -> dexpr -> dexpr.
 
-Definition val_to_int (v : val) :=
+Definition val_to_int (v : val) : Z :=
   match v with
     | vint n => n
     | _ => 0%Z
   end.
 
-Definition val_to_bool (v : val) :=
+Definition val_to_bool (v : val) : bool :=
   match v with 
     | vbool b => b
     | _ => false
@@ -64,6 +69,16 @@ Definition val_to_ptr (v : val) : ptr :=
     | vptr p => p
     | _ => pnull
   end.
+
+Definition val_to_arr (v : val) : arrptr :=
+  match v with
+    | varr n => n
+    | _ => 0
+  end.
+
+Definition val_to_nat (v : val) : nat :=
+  Z.to_nat (val_to_int v).
+
   
 Definition val_class : val -> class := fun v => snd(val_to_ptr v).
 
@@ -92,33 +107,36 @@ Definition field  := string.
 Definition method := string.
 
 Inductive cmd :=
-| cassign : var -> dexpr -> cmd
-| cskip   : cmd
-| cseq    : cmd -> cmd -> cmd
-| cif     : dexpr -> cmd -> cmd -> cmd
-| cwhile  : dexpr -> cmd -> cmd
-| cwrite  : var -> field -> dexpr -> cmd
-| cread   : var -> var -> field -> cmd
-| calloc  : var -> class -> cmd
-| cdcall  : var -> var -> method -> list dexpr -> cmd
-| cscall  : var -> class -> method -> list dexpr -> cmd
-| cassert : dexpr -> cmd
+| cassign   : var -> dexpr -> cmd
+| cskip     : cmd
+| cseq      : cmd -> cmd -> cmd
+| cif       : dexpr -> cmd -> cmd -> cmd
+| cwhile    : dexpr -> cmd -> cmd
+| cwrite    : var -> field -> dexpr -> cmd
+| cread     : var -> var -> field -> cmd
+| carrread  : var -> var -> list dexpr -> cmd
+| carrwrite : var -> list dexpr -> dexpr -> cmd
+| carralloc : var -> dexpr -> cmd
+| calloc    : var -> class -> cmd
+| cdcall    : var -> var -> method -> list dexpr -> cmd
+| cscall    : var -> class -> method -> list dexpr -> cmd
+| cassert   : dexpr -> cmd
 .
 
 (* The set of stack variables potentially modified by a command *)
 Fixpoint modifies (c: cmd) :=
   match c with
   | cassign x _    => SS.singleton x
-  | cskip          => SS.empty
   | cseq c1 c2     => SS.union (modifies c1) (modifies c2)
   | cif _ c1 c2    => SS.union (modifies c1) (modifies c2)
   | cwhile _ c     => modifies c
-  | cwrite _ _ _   => SS.empty
   | cread x _ _    => SS.singleton x
+  | carrread x _ _ => SS.singleton x
+  | carralloc x _  => SS.singleton x
   | calloc x _     => SS.singleton x
   | cdcall x _ _ _ => SS.singleton x
   | cscall x _ _ _ => SS.singleton x
-  | cassert _      => SS.empty
+  |  _             => SS.empty
   end.
 
 Notation " x 'A=' e "  := (cassign x e) (at level 60, no associativity) : cmd_scope.
