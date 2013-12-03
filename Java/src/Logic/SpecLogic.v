@@ -1,3 +1,6 @@
+Add Rec LoadPath "/Users/jebe/git/Charge/Charge!/bin".
+Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
+
 Require Import Later Program ILogic ILEmbed ILInsts.
 
 Local Existing Instance ILLaterNat.
@@ -44,10 +47,10 @@ Qed.
 
 Notation "'[prog]' P"    := (prog_spec  P) (at level 65).
 
-Local Existing Instance EmbedILPreDropOpEq.
-Local Existing Instance EmbedILPreDropEq.
-Local Existing Instance EmbedILPreDropOpNeq.
-Local Existing Instance EmbedILPreDropNeq.
+Local Existing Instance EmbedILPreDropOp.
+Local Existing Instance EmbedILPreDrop.
+Local Existing Instance EmbedOpPropProp.
+Local Existing Instance EmbedPropProp.
 
 Instance EmbedPropSpecOp : EmbedOp Prop spec := _. 
 Instance EmbedPropSpec : Embed Prop spec := _.

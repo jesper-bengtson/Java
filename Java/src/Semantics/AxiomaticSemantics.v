@@ -31,8 +31,8 @@ Qed.
 
 Lemma rule_if_ax (e : dexpr) c1 c2 (P Q : sasn) :
   @lentails spec _
-            (@land spec _ ({[@lembedand pure sasn _ _ (pure_eval e) P]} c1 {[Q]})
-                   ({[@lembedand pure sasn _ _ (pure_eval (E_not e)) P]} c2 {[Q]}))
+            (@land spec _ ({[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c1 {[Q]})
+                   ({[@lembedand vlogic sasn _ _ (vlogic_eval (E_not e)) P]} c2 {[Q]}))
             ({[P]} cif e c1 c2 {[Q]}).
 Proof.
   unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
@@ -44,16 +44,16 @@ Proof.
 Qed.
 
 Lemma rule_if (e : dexpr) c1 c2 (P Q : sasn) G
-      (Hc1 : G |-- {[@lembedand pure sasn _ _ (pure_eval e) P]} c1 {[Q]})
-      (Hc2 : G |-- {[@lembedand pure sasn _ _ (pure_eval (E_not e)) P]} c2 {[Q]}) :
+      (Hc1 : G |-- {[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c1 {[Q]})
+      (Hc2 : G |-- {[@lembedand vlogic sasn _ _ (vlogic_eval (E_not e)) P]} c2 {[Q]}) :
   G |-- {[P]} cif e c1 c2 {[Q]}.
 Proof.
   intros; rewrite <- rule_if_ax; apply landR; assumption.
 Qed.
 
 Lemma rule_while_ax (e : dexpr) c (P : sasn) :
-  {[@lembedand pure sasn _ _ (pure_eval e) P]} c {[P]} |--
-  {[P]} cwhile e c {[@lembedand pure sasn _ _ (pure_eval (E_not e)) P]}.
+  {[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c {[P]} |--
+  {[P]} cwhile e c {[@lembedand vlogic sasn _ _ (vlogic_eval (E_not e)) P]}.
 Proof.
   unfold triple. lforallR sc. apply lpropimplR. intro Hsem.
   inversion Hsem; subst.
@@ -66,14 +66,14 @@ Proof.
 Qed.
   
 Lemma rule_while (e : dexpr) c (P : sasn) G
-      (Hc : G |-- {[@lembedand pure sasn _ _ (pure_eval e) P]} c {[P]}) :
-  G |-- {[P]} cwhile e c {[@lembedand pure sasn _ _ (pure_eval (E_not e)) P]}.
+      (Hc : G |-- {[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c {[P]}) :
+  G |-- {[P]} cwhile e c {[@lembedand vlogic sasn _ _ (vlogic_eval (E_not e)) P]}.
 Proof.
   intros; rewrite <- rule_while_ax; assumption.
 Qed.
 
 Lemma rule_assert (e : dexpr) P G
-      (HPe : P |-- embed(pure_eval e)) :
+      (HPe : P |-- embed(vlogic_eval e)) :
   G |-- {[ P ]} cassert e {[ P ]}.
 Proof.
   unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
@@ -100,13 +100,11 @@ Local Transparent ILPre_Ops.
 Local Transparent EmbedSasnPureOp.
 Local Transparent EmbedILFunOp.
 Local Transparent EmbedAsnPropOp.
-Local Transparent EmbedILPreDropOpEq.
 Local Transparent ILPre_Ops.
 Local Transparent BILPre_Ops.
 Local Transparent BILFun_Ops.
-Local Transparent EmbedILPreDropOpEq.
+Local Transparent EmbedILPreDropOp.
 Local Transparent EmbedILPreOp.
-Local Transparent EmbedILPreDropOpNeq.
 Local Transparent MapSepAlgOps.
 Local Transparent ILFun_Ops.
 Local Transparent EmbedILFunDropOp.
@@ -115,7 +113,7 @@ Local Transparent SepAlgOps_prod.
 
   Lemma rule_read_fwd (x y : var) (f : field) (e : expr) (P : sasn)
     (HPT : P |-- `pointsto y/V `f e) :
-   @ltrue spec _ |-- {[ P ]} cread x y f {[ Exists v : val, @lembedand pure sasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
+   @ltrue spec _ |-- {[ P ]} cread x y f {[ Exists v : val, @lembedand vlogic sasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
@@ -166,7 +164,7 @@ Require Import HeapArr.
 
   Lemma arr_read_fwd (x y : var) (es : list dexpr) (P : sasn) (e : expr)
         (HP : P |-- `pointsto_arr_element_aux y/V (fun s => List.map (fun e => eval e s) es) e) :
-        @ltrue spec _ |-- {[ P ]} carrread x y es  {[ Exists v : val, @lembedand pure sasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
+        @ltrue spec _ |-- {[ P ]} carrread x y es  {[ Exists v : val, @lembedand vlogic sasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
@@ -227,6 +225,7 @@ Require Import HeapArr.
       }
       unfold val in *; simpl in *.
       rewrite H6.
+
       apply subheap_add; [apply H5|].
       rewrite add_in_iff; left; reflexivity.
   Qed.
@@ -403,7 +402,7 @@ Qed.
     (HEnt :  forall PP s h n, (T s PP h n) -> (open_eq CC `C) s)
     (HLen : length ps = length es) :
     |> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |-- @lforall spec _ _ (fun v : val => 
-      {{@lembedand pure sasn _ _ (open_eq (x/V) (`v)) (P //! zip ps (map (fun e s => eval e s) es) //\\ T)}}
+      {{@lembedand vlogic sasn _ _ (open_eq (x/V) (`v)) (P //! zip ps (map (fun e s => eval e s) es) //\\ T)}}
       (call_cmd x CC m es c sc)
       {{Q //! zip (r :: ps) (((x/V):expr) :: map (fun e => e[{`v // x}]) (map (fun e s => eval e s) es))}}).
   Proof.
@@ -492,7 +491,7 @@ Qed.
   Lemma rule_call_static C m ps (es : list dexpr) (x r : var) P Q
     (HLen : length ps = length es) :
     |> (C :.: m |-> ps {{ P }}-{{ r, Q }}) |-- @lforall spec _ _ (fun v : val =>
-      {[ @lembedand pure sasn _ _ (open_eq (x /V) (`v)) (P //! zip ps (map (fun e s => eval e s) es)) ]} cscall x C m es
+      {[ @lembedand vlogic sasn _ _ (open_eq (x /V) (`v)) (P //! zip ps (map (fun e s => eval e s) es)) ]} cscall x C m es
       {[Q //! zip (r :: ps) ((x/V) :: map (fun e => e[{`v//x}]) (map (fun e s => eval e s) es))]}).
   Proof.
   	unfold triple. lforallR v sc. apply lpropimplR; intro HSem.
@@ -506,18 +505,18 @@ Qed.
   Lemma rule_call_dynamic C m ps (es : list dexpr) (x y r : var) P Q
     (HLen : length ps = length ((E_var y) :: es)) :
     (|> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |-- @lforall spec _ _ (fun v:val =>
-      {[ @lembedand pure sasn _ _ (@land pure _ (open_eq (x /V) (`v)) (`typeof `C y/V)) (P //! zip ps (map (fun e s => eval e s) ((E_var y) ::es))) ]}
+      {[ @lembedand vlogic sasn _ _ (@land vlogic _ (open_eq (x /V) (`v)) (`typeof `C y/V)) (P //! zip ps (map (fun e s => eval e s) ((E_var y) ::es))) ]}
       cdcall x y m es
       {[Q //! zip (r :: ps)
         ((x/V) :: (y/V) [{`v // x}] :: map (fun e => e[{`v//x}]) (map (fun e s => eval e s) es)) ]})).
   Proof.
   	unfold triple. lforallR v sc. apply lpropimplR; intro HSem.
   	inversion HSem; subst. clear HSem.
-  	rewrite rule_call_sem with (x := x) (CC := `val_class (y/V)) (T := @embed pure _ _ (`typeof `C y/V));
+  	rewrite rule_call_sem with (x := x) (CC := `val_class (y/V)) (T := @embed vlogic _ _ (`typeof `C y/V));
   		 [|eassumption | | eassumption].
     + lforallL v. apply rule_of_consequence. 
       * unfold lembedand. rewrite <- embedland.
-        rewrite landA, (landC _ (@embed pure _ _ (`typeof `C y/V))); reflexivity.
+        rewrite landA, (landC _ (@embed vlogic _ _ (`typeof `C y/V))); reflexivity.
       * reflexivity.
     + intros. unfold liftn, lift, var_expr, typeof, open_eq, val_class in *; simpl in *.
       destruct H as [p [H1 H2]]; rewrite H1; simpl; intuition.
@@ -535,7 +534,7 @@ Ltac existentialise y v :=
   Lemma rule_call_old C m ps (es : list dexpr) (x y r : var) (P Q : sasn)
     (HLen : length ps = length ((E_var y) :: es)) :
     |> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |--
-      {[@lembedand pure sasn _ _ (`typeof `C y/V) (P //! zip ps ((y/V) :: (map (fun e s => eval e s) es)))]}
+      {[@lembedand vlogic sasn _ _ (`typeof `C y/V) (P //! zip ps ((y/V) :: (map (fun e s => eval e s) es)))]}
       cdcall x y m es
       {[Exists v:val, Q //! zip (r :: ps)
           ( (x/V) :: (y/V)[{`v // x}] ::
@@ -559,7 +558,7 @@ Ltac existentialise y v :=
   Qed.
 
   Lemma rule_assign_fwd G P Q x (e : dexpr) 
-    (H : Exists v:val, @lembedand pure sasn _ _ (open_eq (x /V) ((eval e) [{`v // x}])) (P [{`v // x}]) |-- Q) :
+    (H : Exists v:val, @lembedand vlogic sasn _ _ (open_eq (x /V) ((eval e) [{`v // x}])) (P [{`v // x}]) |-- Q) :
     G |-- {[ P ]} cassign x e {[ Q ]}.
   Proof.
   	eapply roc_pre; [|eapply rule_assign].
@@ -579,10 +578,10 @@ Ltac existentialise y v :=
   Lemma rule_dcall_forward C m ps (es : list dexpr) (x y r : var) G
   (P Q F Pm Qm : sasn) 
     (Hspec : G |-- |> C :.: m |-> ps {{ Pm }}-{{ r, Qm }})
-    (HPre : P |-- (@lembedand pure sasn _ _ (`typeof (`C) (y/V)) (Pm //! zip ps (map (fun e s => eval e s) ((E_var y)::es)))
+    (HPre : P |-- (@lembedand vlogic sasn _ _ (`typeof (`C) (y/V)) (Pm //! zip ps (map (fun e s => eval e s) ((E_var y)::es)))
       ** F))
     (HLen : length ps = length (E_var y :: es))
-    (HPost : Exists v:val, @lembedand pure sasn _ _ ((`typeof (`C) (y/V))[{`v//x}])
+    (HPost : Exists v:val, @lembedand vlogic sasn _ _ ((`typeof (`C) (y/V))[{`v//x}])
      (Qm //! (zip (r :: ps) ((x/V) :: (y/V)[{`v//x}] ::
         map (fun e => e[{`v//x}]) (map (fun e s => eval e s) es))) ** F[{`v//x}]) |-- Q) :
     G |-- {[ P ]} cdcall x y m es {[ Q ]}.
@@ -590,10 +589,10 @@ Ltac existentialise y v :=
   	existentialise x v.
   	rewrite HPre.
   	eapply roc_pre with (P' := 
-  	    (@lembedand pure sasn _ _ (@land pure _ (open_eq x/V `v) (`typeof `C y/V))
+  	    (@lembedand vlogic sasn _ _ (@land vlogic _ (open_eq x/V `v) (`typeof `C y/V))
          (Pm //! zip ps (map (fun (e : dexpr) (s : Stack.stack var) => eval e s) ((E_var y) :: es)))) **
-        (@lembedand pure sasn _ _ (open_eq x/V `v) 
-        (@lembedand pure sasn _ _ (`typeof `C y/V) F))).
+        (@lembedand vlogic sasn _ _ (open_eq x/V `v) 
+        (@lembedand vlogic sasn _ _ (`typeof `C y/V) F))).
      clear Hspec HPre HLen HPost.
      intros s Pr n h [H1 [h1 [h2 [Hh [[H3 H4] H5]]]]].
      simpl in *. exists h1, h2, Hh; (repeat split); assumption.
@@ -641,9 +640,9 @@ Ltac existentialise y v :=
   	existentialise x v.
   	rewrite HPre.
   	eapply roc_pre with (P' := 
-  	    (@lembedand pure sasn _ _ (open_eq x/V `v)
+  	    (@lembedand vlogic sasn _ _ (open_eq x/V `v)
          (Pm //! zip ps (map (fun (e : dexpr) (s : Stack.stack var) => eval e s) es))) **
-        (@lembedand pure sasn _ _ (open_eq x/V `v) F)).
+        (@lembedand vlogic sasn _ _ (open_eq x/V `v) F)).
      clear HSpec HPre HLen HPost.
      intros s Pr n h [H1 [h1 [h2 [Hh [H3 H4]]]]].
      simpl in *. exists h1, h2, Hh; (repeat split); assumption.

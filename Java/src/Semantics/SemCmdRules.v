@@ -167,7 +167,7 @@ Section Rules.
           solve_model H1.
     Qed.
 
-    Lemma assume_rule P (t : pure) :
+    Lemma assume_rule P (t : vlogic) :
       |-- {{P}} assume_cmd t {{t /\\ P}}.
     Proof.
       intros n Pr Hc Pr' m k s h HPP' Hmn Hkm Hp; split.
@@ -177,7 +177,7 @@ Section Rules.
         split; [assumption|]. solve_model Hp.
     Qed.
 
-    Lemma assert_rule (P : sasn) (p : pure) (HPe : P |-- embed p) :
+    Lemma assert_rule (P : sasn) (p : vlogic) (HPe : P |-- embed p) :
       |-- {{P}} assert_cmd p {{P}}.
     Proof.
       intros n Pr Hc Pr' m k s h HPP' Hmn Hkm Hp; specialize (HPe _ _ _ _ Hp); split.

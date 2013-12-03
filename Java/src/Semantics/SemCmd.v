@@ -149,7 +149,7 @@ Section Commands.
      assume command -- this command is a bit of a hack that just skips if
      a check holds and loops otherwise, this way allowing to encode if/while
      using nondeterministic choice/Kleene star *)
-  Inductive assume_sem (p : pure) : semCmdType :=
+  Inductive assume_sem (p : vlogic) : semCmdType :=
   | assume_ok : forall P s h, p s -> assume_sem p P 1 s h (Some (s, h)).
   Program Definition assume_cmd P := @Build_semCmd (assume_sem P) _ _.
   Next Obligation.
@@ -168,7 +168,7 @@ Section Commands.
     try inversion Heqo; intuition.
   Qed.
 
-  Inductive assert_sem (p : pure) : semCmdType :=
+  Inductive assert_sem (p : vlogic) : semCmdType :=
   | assert_ok   : forall P s h (HP : p s),
     assert_sem p P 1 s h (Some (s, h))
   | assert_fail : forall P s h (HNP : ~p s),

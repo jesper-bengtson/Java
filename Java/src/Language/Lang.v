@@ -98,7 +98,7 @@ Fixpoint eval_aux (s : stack) (e : dexpr) : val :=
 
 Program Definition eval e : expr := fun s => eval_aux s e.
 
-Definition pure_eval (e : dexpr) : pure := `eq (`val_to_bool (eval e)) (`true).
+Definition vlogic_eval (e : dexpr) : vlogic := `eq (`val_to_bool (eval e)) (`true).
 
 Definition eval_exprs (s : stack) (es : list dexpr) :=
   map (fun e => eval_aux s e) es.

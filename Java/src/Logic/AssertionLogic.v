@@ -5,11 +5,11 @@
 
 Add Rec LoadPath "/Users/jebe/git/Charge/Charge!/bin".
 Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
-
+ 
 Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps String Rel.
 Require Import RelationClasses Setoid Morphisms Program. 
 Require Import MapInterface MapFacts.
-Require Import Open Stack Lang OpenILogic Pure ILEmbed.
+Require Import Open Stack Lang OpenILogic Pure ILEmbed PureInsts.
 Require Import UUSepAlg SepAlgInsts HeapArr.
 
 Local Existing Instance ILPre_Ops.
@@ -48,12 +48,17 @@ Definition heap_add_arr (h : heap) (n m : nat) (v : val) : heap :=
 Instance RelHeapPtr : Rel heap_ptr := _.
 Instance PreorderHeapPtr : PreOrder (@rel heap_ptr RelHeapPtr) := _.
 Instance HeapPtrSepAlgOps : SepAlgOps heap_ptr := _.
-Instance SepAlgHeapPtr : UUSepAlg heap_ptr := _.
+Instance SepAlgHeapPtr : SepAlg heap_ptr := _.
+Instance UUSepAlgHeapPtr : UUSepAlg heap_ptr := _.
+
+Instance SepAlgArrPtr : SepAlg heap_arr := _.
+
 
 Instance RelHeap : Rel heap := _.
 Instance PreorderHeap : PreOrder (@rel heap RelHeap) := _.
 Instance HeapSepAlgOps : SepAlgOps heap := _.
-Instance SepAlgHeap : UUSepAlg heap := _.
+Instance SepAlgHeap : SepAlg heap := _.
+Instance UUSepAlgHeap : UUSepAlg heap := _.
 
 Definition asn1 := ILPreFrm (@rel heap subheap) Prop.
 Instance ILogicOpsAsn1 : ILogicOps asn1 := _.
@@ -80,10 +85,10 @@ Instance IBILogicAsn1 : IBILogic asn1 := _.
 Instance IBILogicAsn2 : IBILogic asn2 := _.
 Instance IBILogicAsn  : IBILogic asn := _.
 
-Local Existing Instance EmbedILPreDropOpEq.
-Local Existing Instance EmbedILPreDropEq.
-Local Existing Instance EmbedILPreDropOpNeq.
-Local Existing Instance EmbedILPreDropNeq.
+Local Existing Instance EmbedILPreDropOp.
+Local Existing Instance EmbedILPreDrop.
+Local Existing Instance EmbedOpPropProp.
+Local Existing Instance EmbedPropProp.
 
 Instance EmbedAsnPropOp : EmbedOp Prop asn := _.
 Instance EmbedAsnProp : Embed Prop asn := _.
@@ -97,25 +102,17 @@ Instance BILogicSAsn : IBILogic sasn := _.
 
 Local Existing Instance EmbedILFunDropOp.
 Local Existing Instance EmbedILFunDrop.
-Local Existing Instance EmbedILPreDropOpEq.
-Local Existing Instance EmbedILPreDropEq.
-Local Existing Instance EmbedILPreDropOpNeq.
-Local Existing Instance EmbedILPreDropNeq.
 Local Existing Instance EmbedILFunOp.
 Local Existing Instance EmbedILFun.
 Local Existing Instance EmbedILPreOp.
 Local Existing Instance EmbedILPre.
 
-Local Existing Instance EmbedPropPure.
-Local Existing Instance PureFunDrop.
-Local Existing Instance PureFun.
-Local Existing Instance PurePreDrop.
-Local Existing Instance PurePre.
- 
-Instance PurePure (P : pure) : @Pure sasn _ _ (embed P) := _.
+Local Existing Instance SABIOps.
+Local Existing Instance SABILogic.
+Local Existing Instance pureop_bi_sepalg.
 
-Instance EmbedSasnPureOp : EmbedOp pure sasn := _.
-Instance EmbedSasnPure : Embed pure sasn := _.
+Instance EmbedSasnPureOp : EmbedOp vlogic sasn := _.
+Instance EmbedSasnPure : Embed vlogic sasn := _.
 
 Require Import SpecLogic.
 
@@ -128,10 +125,34 @@ Instance EmbedAsnSpec    : Embed spec asn := _.
 Instance EmbedSAsnSpecOp : EmbedOp spec sasn := _.
 Instance EmbedSAsnSpec   : Embed spec sasn := _.
 
-Instance PureProp (P : Prop) : @Pure asn1 ILogicOpsAsn1 BILOperatorsAsn1 (embed P) := _.
-Instance PureSpec1 (S : spec1) : @Pure asn2 ILogicOpsAsn2 BILOperatorsAsn2 (embed S) := _.
-Instance PureSpecAsn (S : spec) : @Pure asn _ _ (embed S) := _.
-Instance PureSpec (S : spec) : @Pure sasn _ _ (embed S) := _.
+Local Existing Instance pure_embed_pre_drop.
+Local Existing Instance pure_embed_pre.
+Local Existing Instance pure_embed_fun_drop.
+Local Existing Instance pure_embed_fun.
+Local Existing Instance pure_ibi_sepalg.
+Local Existing Instance pureop_pure_ibi_sepalg.
+Local Existing Instance pure_ibi_embed_drop.
+Local Existing Instance PureBILPre.
+Local Existing Instance PureBILPreOp.
+Local Existing Instance PureBILFun.
+Local Existing Instance PureBILFunOp.
+
+Set Printing All.
+Print pureop_bi_sepalg.
+
+Local Instance PureOpAsn1 : @PureOp asn1 := _.
+Local Instance PureAsn1 : Pure PureOpAsn1 := _.
+Local Instance PureOpAsn2 : @PureOp asn2 := _.
+Local Instance PureAsn2 : Pure PureOpAsn2 := _.
+Local Instance PureOpAsn : @PureOp asn := _.
+Local Instance PureAsn : Pure PureOpAsn := _.
+Local Instance PureOpSasn : @PureOp sasn := _.
+Local Instance PureSAsn : Pure PureOpSasn := _.
+
+Instance pure_prop (p : Prop) : pure (@embed Prop sasn _ p) := _.
+Instance pure_vlogic (p : vlogic) : pure (@embed vlogic sasn _ p) := _.
+Instance pure_spec_asn (p : spec) : pure (@embed spec asn _ p) := _.
+Instance pure_spec (p : spec) : pure (@embed spec sasn _ p) := _.
 
 Local Transparent ILPre_Ops.
 
@@ -339,8 +360,7 @@ Transparent ILogicOpsAsn.
 Transparent BILOperatorsAsn.
 Transparent BILPre_Ops.
 Transparent EmbedAsnPropOp.
-Transparent EmbedILPreDropOpNeq.
-Transparent EmbedILPreDropOpEq.
+Transparent EmbedILPreDropOp.
 Opaque MapSepAlgOps.
 Opaque SepAlgOps_prod.
 
