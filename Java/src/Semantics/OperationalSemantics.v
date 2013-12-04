@@ -4,7 +4,7 @@ Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
 Require Import Program SepAlg SepAlgInsts AssertionLogic SpecLogic SepAlgMap.
 Require Import MapInterface MapFacts.
 Require Import ILInsts ILogic ILEmbed ILEmbedTac ILQuantTac OpenILogic 
-        Open Subst Stack Lang SemCmd HeapArr SemCmdRules BILogic.
+        Open Subst Stack Lang SemCmd HeapArr HeapST SemCmdRules BILogic.
 
 Import SepAlgNotations.
 
@@ -29,12 +29,12 @@ Section Commands.
   Inductive read_sem (x y : var) (f : field) : semCmdType :=
   | read_ok : forall ref v P (s : stack) (h : heap)
       (Rref  : s y = vptr ref)
-      (Rmaps : MapsTo (ref,f) v (fst h)),
+      (Rmaps : MapsTo (ref,f) v (get_heap_ptr h)),
       read_sem x y f P 1 s h (Some (stack_add x v s, h))
-  | read_fail : forall ref P s (h : heap_ptr) (h' : heap_arr)
+  | read_fail : forall ref P s (h_ptr : heap_ptr) (h_arr : heap_arr) (h_st : heap_st)
       (Sref   : s y = vptr ref)
-      (Snotin : ~ In (ref,f) h),
-      read_sem x y f P 1 s (h, h') None.
+      (Snotin : ~ In (ref,f) h_ptr),
+      read_sem x y f P 1 s (mkheap h_ptr h_arr h_st) None.
   Program Definition read_cmd x y f := Build_semCmd (read_sem x y f) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -43,7 +43,7 @@ Section Commands.
     unfold frame_property; intros.
     inversion HSem; subst n s0 h0 s' big'; clear HSem; exists h; intuition.
     apply read_ok with ref; [assumption |]; specialize (HSafe _ (le_n _)).
-    destruct h, big, frame; simpl in *; subst.
+    destruct h as [h_ptr [h_arr h_st]], big, frame; simpl in *; subst.
     apply sa_mul_split in HFrame.
     destruct HFrame as [HFrame _].
     destruct (sa_mul_mapstoR HFrame Rmaps) as [[H1 H2] | [H1 H2]]; [assumption|].
@@ -123,16 +123,16 @@ Require Import Compare_dec.
     List.Forall (fun v => exists a, v = vint a /\ (a >= 0)%Z) vpath.
 *)
   Inductive read_arr_sem (x y : var) (path : list dexpr) : semCmdType :=
-  | read_arr_ok P arr s hp ha v vpath
+  | read_arr_ok P arr s hp ha hs v vpath
                 (Sref : s y = varr arr)
                 (Smap : List.map (fun e => eval e s) path = vpath)
 (*                (Sarr : valid_path vpath)*)
                 (Sfind : find_heap_arr arr (List.map val_to_nat vpath) ha = Some v) :
-      read_arr_sem x y path P 1 s (hp, ha) (Some (stack_add x v s, (hp, ha)))
+      read_arr_sem x y path P 1 s (mkheap hp ha hs) (Some (stack_add x v s, (mkheap hp ha hs)))
   | read_arr_fail P arr s h vpath
                   (Sref : s y = varr arr)
                   (Smap : List.map (fun e => eval e s) path = vpath)
-                  (Sarr : ~ in_heap_arr arr (List.map val_to_nat vpath) (snd h)) :
+                  (Sarr : ~ in_heap_arr arr (List.map val_to_nat vpath) (get_heap_arr h)) :
       read_arr_sem x y path P 1 s h None.
   Program Definition read_arr_cmd x y path := Build_semCmd (read_arr_sem x y path) _ _.
   Next Obligation.
@@ -142,7 +142,7 @@ Require Import Compare_dec.
     unfold frame_property; intros; exists h.
     inversion HSem; subst; specialize (HSafe _ (le_n _)). 
     split; [assumption|].
-    destruct h as [hp' ha'].
+    destruct h as [hp' [ha' hs']].
     apply read_arr_ok with (arr := arr) (vpath := (List.map (fun e : dexpr => eval e s)) path);
       try assumption; try reflexivity.
     destruct frame.
@@ -152,20 +152,20 @@ Require Import Compare_dec.
     apply dec_double_neg; [apply in_heap_arr_dec | intro H].
     apply HSafe.
     eapply read_arr_fail; try eassumption; try reflexivity.
-    eapply find_heap_arr_frame; eauto.
+    eapply find_heap_arr_frame; eauto. apply HFrame.
   Qed.    
 
   Inductive write_arr_sem (x : var) (path : list dexpr) (e : dexpr) : semCmdType :=
-  | write_arr_ok P arr s hp ha ha' vpath
+  | write_arr_ok P arr s hp ha hs ha' vpath
                  (Sref : s x = varr arr)
                  (Smap : List.map (fun e' => eval e' s) path = vpath)
                  (Sin  : in_heap_arr arr (List.map val_to_nat vpath) ha)
                  (Sha  : add_heap_arr arr (List.map val_to_nat vpath) ha (eval e s) = Some ha') :
-      write_arr_sem x path e P 1 s (hp, ha) (Some (s, (hp, ha')))
+      write_arr_sem x path e P 1 s (mkheap hp ha hs) (Some (s, (mkheap hp ha' hs)))
   | write_arr_fail P arr s h vpath
                    (Sref : s x = varr arr)
                    (Smap : List.map (fun e' => eval e' s) path = vpath)
-                   (Sin  : ~ in_heap_arr arr (List.map val_to_nat vpath) (snd h)) :
+                   (Sin  : ~ in_heap_arr arr (List.map val_to_nat vpath) (get_heap_arr h)) :
       write_arr_sem x path e P 1 s h None.
   Program Definition write_arr_cmd x path e := Build_semCmd (write_arr_sem x path e) _ _.
   Next Obligation.
@@ -173,37 +173,37 @@ Require Import Compare_dec.
   Qed.
   Next Obligation.
     unfold frame_property; intros; inversion HSem; subst; clear HSem.
-    destruct h, frame.
-    apply sa_mul_split in HFrame as [Hhp Hha].
+    destruct h as [h_ptr [h_arr h_st]], frame as [f_ptr [f_arr f_st]].
+    apply sa_mul_split in HFrame as [Hhp [Hha Hhs]]; simpl in Hha; simpl in Hhs.
     specialize (HSafe _ (le_n _)).
     assert (in_heap_arr arr
           (List.map val_to_nat (List.map (fun e' : dexpr => eval e' s') path))
-          h0). {
+          h_arr). {
       apply dec_double_neg; [apply in_heap_arr_dec | intro H].
       apply HSafe; eapply write_arr_fail; try eassumption; reflexivity.
     }
 
     destruct (add_heap_arr_frame _ _ _ _ _ _ _ Hha Sha H) as [ha'' [H1 H2]].
-    exists (h, ha'').
+    exists (mkheap h_ptr ha'' h_st).
     split.
-    split; simpl. apply Hhp. apply H1.
+    split; simpl. apply Hhp. split; simpl. apply H1. apply Hhs.
     eapply write_arr_ok; try eassumption; reflexivity.
   Qed.
 
   Inductive alloc_arr_sem (x : var) (e : dexpr) : semCmdType :=
-  | alloc_arr_ok (P : Prog_wf) (s s' : stack) (hp : heap_ptr) (ha ha' : heap_arr) (n : nat)
+  | alloc_arr_ok (P : Prog_wf) (s s' : stack) (hp : heap_ptr) (ha ha' : heap_arr) (hs : heap_st) (n : nat)
                  (Sfresh_ha : forall i, ~ In (n, i) ha) 
                  (Sha : alloc_heap_arr n (val_to_nat (eval e s)) ha === ha') 
                  (Ss : s' = stack_add x (varr n) s) :
-      alloc_arr_sem x e P 1 s (hp, ha) (Some (s', (hp, ha'))).
+      alloc_arr_sem x e P 1 s (mkheap hp ha hs) (Some (s', (mkheap hp ha' hs))).
   Program Definition alloc_arr_cmd x e := Build_semCmd (alloc_arr_sem x e) _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
   Next Obligation.
     unfold frame_property; intros; inversion HSem; subst P n s s' big big'.
-    destruct h, frame.
-    apply sa_mul_split in HFrame as [Hhp Hha].
+    destruct h as [h_ptr [h_arr h_st]], frame as [f_ptr [f_arr f_st]].
+    apply sa_mul_split in HFrame as [Hhp [Hha Hhs]]; simpl in Hha; simpl in Hhs.
     specialize (HSafe _ (le_n _)).
     Lemma alloc_heap_arr_frame (n m : nat) (h frame h' h'' : heap_arr)
           (Hfresh : forall i, ~ In (n, i) frame)
@@ -225,12 +225,12 @@ Require Import Compare_dec.
         apply Hfresh.
     Qed.
     
-    assert (forall i : nat, ~ In (n0, i) h2) as Sfresh_frame. {
+    assert (forall i : nat, ~ In (n0, i) f_arr) as Sfresh_frame. {
       intros i H; apply Sfresh_ha with i.
       apply sa_mulC in Hha; destruct (sa_mul_inL Hha H); assumption.
     }
     destruct (alloc_heap_arr_frame Sfresh_frame Sha Hha) as [ha'' [H1 H2]].
-    exists (h, ha''). split. split; simpl; assumption.
+    exists (mkheap h_ptr ha'' h_st). split. split; simpl. assumption. split; assumption.
     apply alloc_arr_ok with n0; try assumption.
     intros i H.
     specialize (Sfresh_ha i). apply Sfresh_ha.
@@ -238,14 +238,14 @@ Require Import Compare_dec.
   Qed.
     
   Inductive alloc_sem (x : var) (C : class) : semCmdType :=
-  | alloc_ok : forall (P : Prog_wf) (s s0 : stack) (h h0 : heap_ptr) (h' : heap_arr) n fields
+  | alloc_ok : forall (P : Prog_wf) (s s0 : stack) (hp hp' : heap_ptr) (ha : heap_arr) (hs : heap_st) n fields
       (Snotnull : (n, C) <> pnull)
-      (Sfresh_h : forall f, ~ In ((n, C), f) h)
+      (Sfresh_h : forall f, ~ In ((n, C), f) hp)
       (Sfields  : field_lookup P C fields)
-      (Sh0      : sa_mul h
-        (SS.fold (fun f h' => add ((n, C), f) (pnull : val) h') fields heap_ptr_unit) h0)
+      (Sh0      : sa_mul hp
+        (SS.fold (fun f h' => add ((n, C), f) (pnull : val) h') fields heap_ptr_unit) hp')
       (Ss0      : s0 = stack_add x (vptr (n, C)) s),
-      alloc_sem x C P 1 s (h, h') (Some (s0, (h0, h'))).
+      alloc_sem x C P 1 s (mkheap hp ha hs) (Some (s0, (mkheap hp' ha hs))).
   Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -253,12 +253,12 @@ Require Import Compare_dec.
   Next Obligation.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem.
-    destruct h, frame; simpl in *.
-    apply sa_mul_split in HFrame. destruct HFrame as [HFrame HFrameArr].
-    destruct (sa_mulA HFrame Sh0) as [h5 [H1 H2]].
+    destruct h as [h_ptr [h_arr h_st]], frame as [f_ptr [f_arr f_st]]; simpl in *.
+    apply sa_mul_split in HFrame. destruct HFrame as [Hhp [Hha Hhs]].
+    destruct (sa_mulA Hhp Sh0) as [h5 [H1 H2]].
     apply sa_mulC in H2; destruct (sa_mulA H1 H2) as [h6 [H3 H5]].
-    exists (h6, h2).
-    split; [split; simpl; [apply sa_mulC|]; assumption|].
+    exists (mkheap h6 h_arr h_st).
+    split; [split; simpl; [apply sa_mulC|]; [assumption|split;assumption]|].
     eapply alloc_ok; [eassumption | | eassumption | apply sa_mulC; assumption | reflexivity].
     intros f H6; apply (Sfresh_h f).
     apply sa_mulC in H2.
@@ -268,16 +268,16 @@ Require Import Compare_dec.
   Qed.
 
   Inductive write_sem (x:var) (f:field) (e:dexpr) : semCmdType := 
-  | write_ok : forall P (s: stack) (h h' : heap_ptr) (h'' : heap_arr) ref v
+  | write_ok : forall P (s: stack) (hp hp' : heap_ptr) (ha : heap_arr) (hs : heap_st) ref v
       (Sref: s x = vptr ref)
-      (Sin:  In (ref,f) h )
+      (Sin:  In (ref,f) hp )
       (Heval : eval e s = v)
-      (Sadd: h' = add (ref,f) v h ),
-      write_sem x f e P 1 s (h, h'') (Some (s, (h', h'')))
-  | write_fail : forall P (s: stack) h h'' ref
+      (Sadd: hp' = add (ref,f) v hp ),
+      write_sem x f e P 1 s (mkheap hp ha hs) (Some (s, (mkheap hp' ha hs)))
+  | write_fail : forall P (s: stack) hp ha hs ref
       (Sref:   s x = vptr ref)
-      (Sin : ~ In (ref, f) h),
-      write_sem x f e P 1 s (h, h'') None.
+      (Sin : ~ In (ref, f) hp),
+      write_sem x f e P 1 s (mkheap hp ha hs) None.
   Program Definition write_cmd x f e := Build_semCmd (write_sem x f e) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -285,18 +285,18 @@ Require Import Compare_dec.
   Next Obligation.
     unfold frame_property; intros.
     inversion HSem. subst; clear HSem.
-    destruct h, frame; simpl in *.
-    apply sa_mul_split in HFrame as [HFrame HFramePtr].
-    assert (~ In (ref, f) h2).
+    destruct h as [h_ptr [h_arr h_st]], frame as [f_ptr [f_arr f_st]]; simpl in *.
+    apply sa_mul_split in HFrame as [Hhp [Hha Hhs]]; simpl in Hha; simpl in Hhs.
+    assert (~ In (ref, f) f_ptr).
     intros H. 
     apply (HSafe 1); [omega |].
     eapply write_fail; [eassumption|].
-    destruct (sa_mul_inR HFrame Sin); intuition.
-    exists ((add (ref, f) (eval e s') h, h1)). split.
-    split.
-    apply sa_mul_add; assumption. simpl. assumption.
+    destruct (sa_mul_inR Hhp Sin); intuition.
+    exists (mkheap (add (ref, f) (eval e s') h_ptr) h_arr h_st). split.
+    split. simpl.
+    apply sa_mul_add; assumption. simpl. split; assumption.
     eapply write_ok; try eassumption; try reflexivity.
-    destruct (sa_mul_inR HFrame Sin); intuition.
+    destruct (sa_mul_inR Hhp Sin); intuition.
   Qed.
 
   Fixpoint create_stack (ps : list var) (vs : list val) : stack :=

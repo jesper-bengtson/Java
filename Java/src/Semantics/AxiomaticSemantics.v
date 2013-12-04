@@ -123,7 +123,7 @@ Local Transparent SepAlgOps_prod.
         simpl in HPT; destruct HPT as [Hnull [h'' HPT]].
         specialize (HPT (ref, f)). unfold var_expr in HPT. rewrite Sref in HPT.
         unfold liftn, lift in HPT; simpl in HPT.
-        remember (@MapInterface.find (ptr * field) _ _ sval (ref, f) h0) as o.
+        remember (@MapInterface.find (ptr * field) _ _ sval (ref, f) h_ptr) as o.
 	    destruct o; [destruct HPT as [[HPT HIn] | [Hm HPT]] | destruct HPT as [HPT _]].
         * rewrite in_find_iff. unfold val; simpl. rewrite <- Heqo.
            (* TODO : Unification fails because it can't figure out the coercion to val. This must currently be done manually, which is unintuitive as implicit arguments hide these completely. *)
@@ -173,7 +173,9 @@ Require Import HeapArr.
       specialize (HP _ _ _ _ H3); unfold pointsto_arr in HP;
         simpl in HP; destruct HP as [h' [Hsub HP]].
       unfold var_expr in HP; simpl in HP. rewrite Sref in *.
-      destruct h, h' in *; simpl in *. apply subheap_prod in Hsub as [Hsub1 Hsub2].
+      destruct h as [h_ptr [h_arr h_st]], h' as [h_ptr' [h_arr' h_st']] in *; simpl in *. apply subheap_prod in Hsub as [Hsub1 Hsub2].
+      apply subheap_prod in Hsub2 as [Hsub2 Hsub3].
+      unfold get_heap_arr in *. simpl in *.
       eapply find_heap_arr_subheap in HP; [|eapply Hsub2].
       exists (e s). 
       assert (val_to_nat arr = arr) by admit.
@@ -188,8 +190,9 @@ Require Import HeapArr.
         unfold var_expr; rewrite stack_lookup_add.
         unfold var_expr in HP; simpl in HP.
         rewrite Sref in HP. simpl in *.
-        destruct h'; simpl in *.
+        destruct h' as [h_ptr' [h_arr' h_st']]; simpl in *.
         apply subheap_prod in Hh as [Hh1 Hh2].
+        apply subheap_prod in Hh2 as [Hh2 Hh3].
         eapply find_heap_arr_subheap in HP; [|eassumption].
         assert (val_to_nat arr = arr) by admit.
         rewrite H5 in HP. rewrite HP in Sfind.

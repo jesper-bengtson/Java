@@ -10,7 +10,7 @@ Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps St
 Require Import RelationClasses Setoid Morphisms Program. 
 Require Import MapInterface MapFacts.
 Require Import Open Stack Lang OpenILogic Pure ILEmbed PureInsts.
-Require Import UUSepAlg SepAlgInsts HeapArr.
+Require Import UUSepAlg SepAlgInsts HeapArr HeapST.
 
 Local Existing Instance ILPre_Ops.
 Local Existing Instance ILPre_ILogic.
@@ -35,19 +35,22 @@ Local Existing Instance UUSepAlg_prod.
 
 Definition heap_ptr := Map [ptr * field, val].
 
-Definition heap := (heap_ptr * heap_arr)%type.
+Definition heap := (heap_ptr * (heap_arr * heap_st)%type)%type.
 
-Definition mkheap (hp: heap_ptr) (ha: heap_arr) := (hp, ha).
+Definition mkheap (hp: heap_ptr) (ha: heap_arr) (hs: heap_st) := (hp, (ha, hs)).
 Definition get_heap_ptr (h: heap) : heap_ptr := fst h.
-Definition get_heap_arr (h: heap) : heap_arr := snd h.
+Definition get_heap_arr (h: heap) : heap_arr := fst (snd h).
+Definition get_heap_st  (h: heap) : heap_st  := snd (snd h).
 
 Definition heap_ptr_unit : heap_ptr := @map_unit _ _ _ val.
-Definition heap_unit : heap := (heap_ptr_unit, heap_arr_unit).
+Definition heap_unit : heap := (heap_ptr_unit, (heap_arr_unit, heap_st_unit)).
 
 Definition heap_add_ptr (h : heap) (p : ptr) (f : field) (v : val) : heap :=
-  mkheap (add (p, f) v (get_heap_ptr h)) (get_heap_arr h).
+  mkheap (add (p, f) v (get_heap_ptr h)) (get_heap_arr h) (get_heap_st h).
 Definition heap_add_arr (h : heap) (n m : nat) (v : val) : heap :=
-  mkheap (get_heap_ptr h) (add (n, m) v (get_heap_arr h)).
+  mkheap (get_heap_ptr h) (add (n, m) v (get_heap_arr h)) (get_heap_st h).
+Definition heap_add_st (h : heap) (p : stptr) (t : sST) : heap :=
+  mkheap (get_heap_ptr h) (get_heap_arr h) (add p t (get_heap_st h)).
 
 Instance RelHeapPtr : Rel heap_ptr := _.
 Instance PreorderHeapPtr : PreOrder (@rel heap_ptr RelHeapPtr) := _.
