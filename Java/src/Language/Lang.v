@@ -21,12 +21,14 @@ Definition class := string.
 Definition var := string.
 Definition ptr := (nat * class)%type.
 Definition arrptr := nat.
+Definition stptr := nat.
 
 Inductive sval : Set :=
 | vint :> Z -> sval
 | vbool :> bool -> sval
 | vptr :> ptr -> sval
 | varr :> arrptr -> sval
+| vst :> stptr -> sval
 | nothing : sval.
 
 Definition pnull := (0, EmptyString) : ptr.
@@ -121,6 +123,9 @@ Inductive cmd :=
 | cdcall    : var -> var -> method -> list dexpr -> cmd
 | cscall    : var -> class -> method -> list dexpr -> cmd
 | cassert   : dexpr -> cmd
+| csend     : var -> var -> cmd
+| crecv     : var -> var -> cmd
+| cstart    : var -> class -> method -> cmd
 .
 
 (* The set of stack variables potentially modified by a command *)
@@ -136,6 +141,8 @@ Fixpoint modifies (c: cmd) :=
   | calloc x _     => SS.singleton x
   | cdcall x _ _ _ => SS.singleton x
   | cscall x _ _ _ => SS.singleton x
+  | crecv x _      => SS.singleton x
+  | cstart x _ _   => SS.singleton x
   |  _             => SS.empty
   end.
 
@@ -145,6 +152,10 @@ Notation " e '[' f ']' 'W=' g " := (cwrite e f g) (at level 60, no associativity
 Notation " x 'D=' e '[' m ']' args " := (cdcall x e m args) (at level 60, e at level 59, m at level 9, no associativity) : cmd_scope.
 Notation " x 'S=' C '::' m args " := (cscall x C m args) (at level 60, C at level 40, m at level 9, no associativity) : cmd_scope.
 Notation " x 'N=' 'alloc' C " := (calloc x C) (at level 60, no associativity) : cmd_scope.
+
+Notation " x 'st=' 'start' C '::' m " := (cstart x C m) (at level 60, no associativity) : cmd_scope.
+Notation " x 'st=' 'recv' c " := (crecv x c) (at level 60, no associativity) : cmd_scope.
+Notation " 'send' c x " := (csend c x) (at level 60, no associativity) : cmd_scope.
 
 Notation " c1 ';;' c2 " := (cseq c1 c2) (at level 70, right associativity) : cmd_scope.
 Notation "'Skip'" := cskip : cmd_scope.
