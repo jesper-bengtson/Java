@@ -37,13 +37,17 @@ Definition heap_ptr := Map [ptr * field, val].
 
 Definition heap := (heap_ptr * heap_arr)%type.
 
+Definition mkheap (hp: heap_ptr) (ha: heap_arr) := (hp, ha).
+Definition get_heap_ptr (h: heap) : heap_ptr := fst h.
+Definition get_heap_arr (h: heap) : heap_arr := snd h.
+
 Definition heap_ptr_unit : heap_ptr := @map_unit _ _ _ val.
 Definition heap_unit : heap := (heap_ptr_unit, heap_arr_unit).
 
 Definition heap_add_ptr (h : heap) (p : ptr) (f : field) (v : val) : heap :=
-  (add (p, f) v (fst h), snd h).
+  mkheap (add (p, f) v (get_heap_ptr h)) (get_heap_arr h).
 Definition heap_add_arr (h : heap) (n m : nat) (v : val) : heap :=
-  (fst h, add (n, m) v (snd h)).
+  mkheap (get_heap_ptr h) (add (n, m) v (get_heap_arr h)).
 
 Instance RelHeapPtr : Rel heap_ptr := _.
 Instance PreorderHeapPtr : PreOrder (@rel heap_ptr RelHeapPtr) := _.
@@ -137,7 +141,7 @@ Local Existing Instance PureBILPreOp.
 Local Existing Instance PureBILFun.
 Local Existing Instance PureBILFunOp.
 
-Set Printing All.
+(* Set Printing All. *)
 Print pureop_bi_sepalg.
 
 Local Instance PureOpAsn1 : @PureOp asn1 := _.
@@ -174,7 +178,7 @@ Grab Existential Variables.
 Defined.
 
 Program Definition pointsto_aux (x : ptr) (f : field) (v : val) : asn :=
-  mk_asn (fun P k h => subheap ((empty val) [(x, f) <- v]) (fst h)) _ _ _.
+  mk_asn (fun P k h => subheap ((empty val) [(x, f) <- v]) (get_heap_ptr h)) _ _ _.
 Next Obligation.
   destruct h, h'; simpl in *.
   apply subheap_prod in H as [H _].
@@ -188,7 +192,7 @@ Program Definition pointsto_arr_element_aux (x : val) (path : list val) (v : val
   mk_asn (fun P k h => exists (h' : heap) , 
                          subheap h' h /\
                          find_heap_arr (val_to_nat x)
-                                       (List.map val_to_nat path) (snd h') = 
+                                       (List.map val_to_nat path) (get_heap_arr h') = 
                          Some v) _ _ _.
 Next Obligation.
   exists H; split; [assumption | reflexivity].
@@ -378,7 +382,7 @@ Proof.
   destruct H as [h' [Hh H]].
   exists v; split; simpl; [reflexivity|].
   exists h'; split; [assumption|].
-  destruct h'; simpl in *.
+  simpl in *.
   assert (val_to_nat (Z.of_nat (val_to_nat i)) = val_to_nat i). {
       clear H.
       induction i; simpl in *; unfold val_to_nat in *; simpl in *; try reflexivity.
