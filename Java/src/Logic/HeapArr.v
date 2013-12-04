@@ -1,6 +1,3 @@
-Add Rec LoadPath "/Users/jebe/git/Charge/Charge!/bin".
-Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
-
 Require Import RelationClasses Setoid Morphisms Program. 
 Require Import MapInterface MapFacts.
 Require Import SepAlg SepAlgMap UUSepAlg SepAlgInsts Stack Lang Rel.
@@ -10,9 +7,6 @@ Local Existing Instance MapSepAlg.
 Local Existing Instance MapEquiv.
 Local Existing Instance EquivPreorder.
 Local Existing Instance UUMapSepAlg.
-Local Existing Instance SepAlgOps_prod.
-Local Existing Instance SepAlg_prod.
-Local Existing Instance UUSepAlg_prod.
 
 Definition heap_arr := Map [arrptr * nat, val].
 Definition heap_arr_unit : heap_arr := @map_unit _ _ _ val.

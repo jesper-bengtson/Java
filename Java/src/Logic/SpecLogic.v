@@ -1,6 +1,3 @@
-Add Rec LoadPath "/Users/jebe/git/Charge/Charge!/bin".
-Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
-
 Require Import Later Program ILogic ILEmbed ILInsts.
 
 Local Existing Instance ILLaterNat.

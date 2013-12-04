@@ -1,6 +1,3 @@
-Add Rec LoadPath "/Users/jebe/git/Charge/Charge!/bin".
-Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
-
 Require Import Morphisms Setoid Rel.
 Require Import ILogic ILEmbedTac ILQuantTac ILInsts BILInsts ILEmbed Later SepAlgMap BILogic.
 Require Import SpecLogic Pure OpenILogic AssertionLogic Program Open Stack Subst.

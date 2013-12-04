@@ -3,9 +3,6 @@
    make this easier. Ideally, this file should not be larger than a few tens of lines
    at most. *)
 
-Add Rec LoadPath "/Users/jebe/git/Charge/Charge!/bin".
-Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
- 
 Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps String Rel.
 Require Import RelationClasses Setoid Morphisms Program. 
 Require Import MapInterface MapFacts.

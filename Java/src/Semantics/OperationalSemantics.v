@@ -1,6 +1,3 @@
-Add Rec LoadPath "/Users/jebe/git/Charge/Charge!/bin".
-Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
-
 Require Import Program SepAlg SepAlgInsts AssertionLogic SpecLogic SepAlgMap.
 Require Import MapInterface MapFacts.
 Require Import ILInsts ILogic ILEmbed ILEmbedTac ILQuantTac OpenILogic 
