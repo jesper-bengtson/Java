@@ -28,10 +28,10 @@ Section Commands.
       (Rref  : s y = vptr ref)
       (Rmaps : MapsTo (ref,f) v (get_heap_ptr h)),
       read_sem x y f P 1 s h (Some (stack_add x v s, h))
-  | read_fail : forall ref P s (h_ptr : heap_ptr) (h_arr : heap_arr) (h_st : heap_st)
+  | read_fail : forall ref P s (h : heap)
       (Sref   : s y = vptr ref)
-      (Snotin : ~ In (ref,f) h_ptr),
-      read_sem x y f P 1 s (mkheap h_ptr h_arr h_st) None.
+      (Snotin : ~ In (ref,f) (get_heap_ptr h)),
+      read_sem x y f P 1 s h None.
   Program Definition read_cmd x y f := Build_semCmd (read_sem x y f) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -40,9 +40,8 @@ Section Commands.
     unfold frame_property; intros.
     inversion HSem; subst n s0 h0 s' big'; clear HSem; exists h; intuition.
     apply read_ok with ref; [assumption |]; specialize (HSafe _ (le_n _)).
-    destruct h as [h_ptr [h_arr h_st]], big, frame; simpl in *; subst.
-    apply sa_mul_split in HFrame.
-    destruct HFrame as [HFrame _].
+    subst.
+    apply isolate_heap_ptr in HFrame.
     destruct (sa_mul_mapstoR HFrame Rmaps) as [[H1 H2] | [H1 H2]]; [assumption|].
     contradiction HSafe; apply read_fail with ref; assumption.
   Qed.

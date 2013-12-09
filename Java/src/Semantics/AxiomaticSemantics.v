@@ -120,7 +120,7 @@ Local Transparent SepAlgOps_prod.
         simpl in HPT; destruct HPT as [Hnull [h'' HPT]].
         specialize (HPT (ref, f)). unfold var_expr in HPT. rewrite Sref in HPT.
         unfold liftn, lift in HPT; simpl in HPT.
-        remember (@MapInterface.find (ptr * field) _ _ sval (ref, f) h_ptr) as o.
+        remember (@MapInterface.find (ptr * field) _ _ sval (ref, f) (get_heap_ptr h)) as o.
 	    destruct o; [destruct HPT as [[HPT HIn] | [Hm HPT]] | destruct HPT as [HPT _]].
         * rewrite in_find_iff. unfold val; simpl. rewrite <- Heqo.
            (* TODO : Unification fails because it can't figure out the coercion to val. This must currently be done manually, which is unintuitive as implicit arguments hide these completely. *)

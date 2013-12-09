@@ -64,6 +64,24 @@ Instance HeapSepAlgOps : SepAlgOps heap := _.
 Instance SepAlgHeap : SepAlg heap := _.
 Instance UUSepAlgHeap : UUSepAlg heap := _.
 
+Lemma isolate_heap_ptr : forall a b c, sa_mul a b c -> 
+                         sa_mul (get_heap_ptr a) (get_heap_ptr b) (get_heap_ptr c).
+Proof.
+  intros.
+  destruct a as [a_ptr [a_arr a_st]], b as [b_ptr [b_arr b_st]], c as [c_ptr [c_arr c_st]].
+  apply sa_mul_split in H as [Hptr Harr]; apply sa_mul_split in Harr as [Harr Hst].
+  apply Hptr.
+Qed.
+
+Lemma isolate_heap_arr : forall a b c, sa_mul a b c -> 
+                         sa_mul (get_heap_arr a) (get_heap_arr b) (get_heap_arr c).
+Proof.
+  intros.
+  destruct a as [a_ptr [a_arr a_st]], b as [b_ptr [b_arr b_st]], c as [c_ptr [c_arr c_st]].
+  apply sa_mul_split in H as [Hptr Harr]; apply sa_mul_split in Harr as [Harr Hst].
+  apply Harr.
+Qed.
+
 Definition asn1 := ILPreFrm (@rel heap subheap) Prop.
 Instance ILogicOpsAsn1 : ILogicOps asn1 := _.
 Instance ILogicAsn1 : ILogic asn1 := _.
