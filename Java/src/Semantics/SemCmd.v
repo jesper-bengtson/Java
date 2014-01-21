@@ -1,6 +1,6 @@
 Require Import Program SepAlg OpenILogic AssertionLogic SpecLogic SepAlgMap.
 Require Import MapInterface MapFacts.
-Require Import ILInsts ILogic ILEmbed Open Subst Stack Lang.
+Require Import ILInsts ILogic ILEmbed Open Subst Stack Lang ST.
 
 Import SepAlgNotations.
 
@@ -10,26 +10,27 @@ Set Maximal Implicit Insertion.
 
 Section Commands.
 
-  Definition semCmdType := Prog_wf -> nat -> stack -> heap -> option (stack * heap) -> Prop.
-  Definition safe (c : semCmdType) P s t n := ~(c P s t n None).
+  Definition semCmdType := Prog_wf -> nat -> stack -> heap -> traces -> option (stack * (heap * traces)) -> Prop.
+  (* Definition safe (c : semCmdType) P s t n := ~(c P s t n None). *)
+  Definition safe (c : semCmdType) P n s h t := ~(c P n s h t None).
   Definition frame_property (c : semCmdType) :=
-    forall P s s' (big big' frame h : heap) n
+    forall P s s' (big big' frame h : heap) n t t'
       (HFrame : sa_mul h frame big)
-      (HSafe  : forall m, m <= n -> safe c P m s h)
-      (HSem   : c P n s big (Some (s', big'))),
-      exists h', sa_mul h' frame big' /\ c P n s h (Some (s', h')).
+      (HSafe  : forall m, m <= n -> safe c P m s h t)
+      (HSem   : c P n s big t (Some (s', (big', t')))),
+      exists h', sa_mul h' frame big' /\ c P n s h t (Some (s', (h', t'))).
 
   Record semCmd := {
-    cmd_rel   :> Prog_wf -> nat -> stack -> heap -> option (stack * heap) -> Prop;
-    cmd_zero  :  forall P s h cfg, ~(cmd_rel P 0 s h cfg);
+    cmd_rel   :> Prog_wf -> nat -> stack -> heap -> traces -> option (stack * (heap * traces)) -> Prop;
+    cmd_zero  :  forall P s h t cfg, ~(cmd_rel P 0 s h t cfg);
     cmd_frame :  frame_property cmd_rel
   }.
 
   Definition not_modifies (c : semCmdType) x : Prop :=
-    forall P s s' h h' n (HSem : c P n s h (Some (s', h'))),
+    forall P s s' h h' n t t' (HSem : c P n s h t (Some (s', (h', t')))),
       s x = s' x.
 
-  Lemma safe_zero : forall (c : semCmd) P s t, safe c P 0 s t.
+  Lemma safe_zero : forall (c : semCmd) P s h t, safe c P 0 s h t.
   Proof.
     intros; apply cmd_zero.
   Qed.
@@ -39,8 +40,8 @@ Section Commands.
   Implicit Arguments Build_semCmd [].
 
   Program Definition later_cmd (c : semCmd) : semCmd := Build_semCmd
-    (fun P n => match n return stack -> heap -> option (stack * heap) -> Prop with
-                  | O => fun _ _ _ => False
+    (fun P n => match n return stack -> heap -> traces -> option (stack * (heap * traces)) -> Prop with
+                  | O => fun _ _ _ _ => False
                   | S n => c P n end) _ _.
   Next Obligation.
     unfold frame_property; intros.
@@ -52,7 +53,7 @@ Section Commands.
   (* Skip *)
 
   Inductive skip_sem : semCmdType :=
-  | s_ok : forall P s h, skip_sem P 1 s h (Some (s, h)).
+  | s_ok : forall P s h t, skip_sem P 1 s h t (Some (s, (h, t))).
   Program Definition skip_cmd := @Build_semCmd skip_sem _ _.
   Next Obligation.
     intros H. inversion H.
@@ -65,17 +66,17 @@ Section Commands.
 
   (* Seq *)
   Inductive seq_sem (c1 c2 : semCmd) : semCmdType :=
-  | seq_failL : forall P n s h,
-      c1 P n s h None ->
-      seq_sem c1 c2 P (S n) s h None
-  | seq_failR : forall P n n' s s' h h',
-      c1 P n s h (Some (s', h')) ->
-      c2 P n' s' h' None ->
-      seq_sem c1 c2 P (S (n + n')) s h None
-  | seq_ok    : forall P n n0 s s0 s1 h h0 h1,
-      c1 P n  s  h  (Some (s0, h0)) ->
-      c2 P n0 s0 h0 (Some (s1, h1)) ->
-      seq_sem c1 c2 P (S (n + n0)) s h (Some (s1, h1)).
+  | seq_failL : forall P n s h t,
+      c1 P n s h t None ->
+      seq_sem c1 c2 P (S n) s h t None
+  | seq_failR : forall P n n' s s' h h' t t',
+      c1 P n s h t (Some (s', (h', t'))) ->
+      c2 P n' s' h' t' None ->
+      seq_sem c1 c2 P (S (n + n')) s h t None
+  | seq_ok    : forall P n n0 s s0 s1 h h0 h1 t t0 t1,
+      c1 P n  s  h  t  (Some (s0, (h0, t0))) ->
+      c2 P n0 s0 h0 t0 (Some (s1, (h1, t1))) ->
+      seq_sem c1 c2 P (S (n + n0)) s h t (Some (s1, (h1, t1))).
   Program Definition seq_cmd c1 c2 := @Build_semCmd (seq_sem c1 c2) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -84,25 +85,25 @@ Section Commands.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem.
     edestruct (@cmd_frame c1) as [h0 [HFrame0 HSem0]]...
-    + intros m HLe HFail; apply HSafe with (S m); [omega | ]...
-    + edestruct (@cmd_frame c2) as [hr [HFrame1 HSem1]]...
+    + intros m HLe HFail; apply HSafe with (S m); [omega | ]... 
+    + edestruct (@cmd_frame c2) with(n:=n1) as [hr [HFrame1 HSem1]]...
       intros m HLe HFail; apply HSafe with (S (n0 + m)); [omega | ]...
   Qed.
 
   (* Nondet *)
   Inductive nondet_sem (c1 c2 : semCmd) : semCmdType :=
-  | nondet_failL : forall P n s h,
-      c1 P n s h None ->
-      nondet_sem c1 c2 P (S n) s h None
-  | nondet_okL   : forall P n s s' h h',
-      c1 P n s h (Some (s', h')) ->
-      nondet_sem c1 c2 P (S n) s h (Some (s', h'))
-  | nondet_failR : forall P n s h,
-      c2 P n s h None ->
-      nondet_sem c1 c2 P (S n) s h None
-  | nondet_okR   : forall P n s s' h h',
-      c2 P n s h (Some (s', h')) ->
-      nondet_sem c1 c2 P (S n) s h (Some (s', h')).
+  | nondet_failL : forall P n s h t,
+      c1 P n s h t None ->
+      nondet_sem c1 c2 P (S n) s h t None
+  | nondet_okL   : forall P n s s' h h' t t',
+      c1 P n s h t (Some (s', (h', t'))) ->
+      nondet_sem c1 c2 P (S n) s h t (Some (s', (h', t')))
+  | nondet_failR : forall P n s h t,
+      c2 P n s h t None ->
+      nondet_sem c1 c2 P (S n) s h t None
+  | nondet_okR   : forall P n s s' h h' t t',
+      c2 P n s h t (Some (s', (h', t'))) ->
+      nondet_sem c1 c2 P (S n) s h t (Some (s', (h', t'))).
   Program Definition nondet_cmd c1 c2 := @Build_semCmd (nondet_sem c1 c2) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -118,26 +119,26 @@ Section Commands.
 
   (* Kleene star *)
   Inductive kleene_sem (c : semCmd) : semCmdType :=
-  | kleene_emp       : forall P s h,
-      kleene_sem c P 1 s h (Some (s, h))
-  | kleene_fail_one  : forall P n s h,
-      c P n s h None ->
-      kleene_sem c P (S n) s h None
-  | kleene_fail_many : forall P n n0 s s0 h h0,
-      c P n s h (Some (s0, h0)) ->
-      kleene_sem c P n0 s0 h0 None ->
-      kleene_sem c P (S (n + n0)) s h None
-  | kleene_step_ok   : forall P n n0 s s0 s1 h h0 h1,
-      c P n s h (Some (s0, h0)) ->
-      kleene_sem c P n0 s0 h0 (Some (s1, h1)) ->
-      kleene_sem c P (S (n + n0)) s h (Some (s1, h1)).
+  | kleene_emp       : forall P s h t,
+      kleene_sem c P 1 s h t (Some (s, (h, t)))
+  | kleene_fail_one  : forall P n s h t,
+      c P n s h t None ->
+      kleene_sem c P (S n) s h t None
+  | kleene_fail_many : forall P n n0 s s0 h h0 t t0,
+      c P n s h t (Some (s0, (h0, t0))) ->
+      kleene_sem c P n0 s0 h0 t0 None ->
+      kleene_sem c P (S (n + n0)) s h t None
+  | kleene_step_ok   : forall P n n0 s s0 s1 h h0 h1 t t0 t1,
+      c P n s h t (Some (s0, (h0, t0))) ->
+      kleene_sem c P n0 s0 h0 t0 (Some (s1, (h1, t1))) ->
+      kleene_sem c P (S (n + n0)) s h t (Some (s1, (h1, t1))).
   Program Definition kleene_cmd c := @Build_semCmd (kleene_sem c) _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
   Next Obligation with eauto using kleene_sem.
     unfold frame_property; intros.
-    generalize dependent h; remember (Some (s', big')) as cfg; induction HSem;
+    generalize dependent h; remember (Some (s', (big', t'))) as cfg; induction HSem;
       inversion Heqcfg; subst; intros; clear Heqcfg...
     edestruct (@cmd_frame c) as [h' [HFrame0 HSem0]]...
     + intros m HLe HFail; apply HSafe with (S m); [omega |]...
@@ -150,29 +151,29 @@ Section Commands.
      a check holds and loops otherwise, this way allowing to encode if/while
      using nondeterministic choice/Kleene star *)
   Inductive assume_sem (p : vlogic) : semCmdType :=
-  | assume_ok : forall P s h, p s -> assume_sem p P 1 s h (Some (s, h)).
+  | assume_ok : forall P s h t, p s -> assume_sem p P 1 s h t (Some (s, (h, t))).
   Program Definition assume_cmd P := @Build_semCmd (assume_sem P) _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
   Next Obligation.
     unfold frame_property; simpl; intros.
-    remember (Some (s', big')) as cfg; induction HSem.
+    remember (Some (s', (big', t'))) as cfg; induction HSem.
     inversion Heqcfg; subst; eauto using assume_sem.
   Qed.
 
-  Lemma assume_inv P e n s s0 h h0 (HSem : assume_cmd e P n s h (Some (s0, h0))) : 
-      s = s0 /\ h = h0.
+  Lemma assume_inv P e n s s0 h h0 t t0 (HSem : assume_cmd e P n s h t (Some (s0, (h0, t0)))) : 
+      s = s0 /\ h = h0 /\ t = t0.
   Proof.  
-    intros; remember (Some (s0, h0)); induction HSem; subst;
+    intros; remember (Some (s0, (h0, t0))); induction HSem; subst;
     try inversion Heqo; intuition.
   Qed.
 
   Inductive assert_sem (p : vlogic) : semCmdType :=
-  | assert_ok   : forall P s h (HP : p s),
-    assert_sem p P 1 s h (Some (s, h))
-  | assert_fail : forall P s h (HNP : ~p s),
-    assert_sem p P 1 s h None.
+  | assert_ok   : forall P s h t (HP : p s),
+    assert_sem p P 1 s h t (Some (s, (h, t)))
+  | assert_fail : forall P s h t (HNP : ~p s),
+    assert_sem p P 1 s h t None.
   Program Definition assert_cmd p := @Build_semCmd (assert_sem p) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -185,10 +186,10 @@ Section Commands.
   (* |= {p}c{q} *)
   
   Program Definition sem_triple (p q : sasn) (c : semCmd) : spec :=
-    mk_spec (fun P n => forall P' m k s h, Prog_wf_sub P P' -> m <= n -> k <= m -> 
+    mk_spec (fun P n => forall P' m k s h t, Prog_wf_sub P P' -> m <= n -> k <= m -> 
                                            p s P' m h ->
-      safe c P' k s h /\
-      forall h' s', c P' k s h (Some (s', h')) -> (q s' P' (m - k) h')) _ _.
+      safe c P' k s h t /\
+      forall t' h' s', c P' k s h t (Some (s', (h', t'))) -> (q s' P' (m - k) h')) _ _.
   Next Obligation.
     apply H0; try eassumption.
     etransitivity; eassumption.
@@ -204,15 +205,15 @@ End Commands.
     lentails --> lentails ++> eq ==> lentails
     as sem_triple_entails_m.
   Proof.
-    intros p p' Hp q q' Hq c n t H P m k s h HP Hmn Hkm Hp'.
+    intros p p' Hp q q' Hq c n x H P m k s h t HP Hmn Hkm Hp'.
     apply Hp in Hp'; try apply _.    
     simpl in *.
-    specialize (H _ _ _ _ _ HP Hmn Hkm Hp').
+    specialize (H _ _ _ _ _ t HP Hmn Hkm Hp').
     destruct H as [Hsafe H].
     split; [assumption|].
-    intros h' s' Hc.
+    intros t' h' s' Hc.
     apply Hq.
-    apply H. assumption.
+    apply H in Hc. assumption.
   Qed.
 
   Add Parametric Morphism : sem_triple with signature

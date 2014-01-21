@@ -7,7 +7,7 @@ Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps St
 Require Import RelationClasses Setoid Morphisms Program. 
 Require Import MapInterface MapFacts.
 Require Import Open Stack Lang OpenILogic Pure ILEmbed PureInsts.
-Require Import UUSepAlg SepAlgInsts HeapArr HeapST.
+Require Import UUSepAlg SepAlgInsts HeapArr.
 
 Local Existing Instance ILPre_Ops.
 Local Existing Instance ILPre_ILogic.
@@ -32,22 +32,24 @@ Local Existing Instance UUSepAlg_prod.
 
 Definition heap_ptr := Map [ptr * field, val].
 
-Definition heap := (heap_ptr * (heap_arr * heap_st)%type)%type.
+Definition heap := (heap_ptr * heap_arr)%type.
 
-Definition mkheap (hp: heap_ptr) (ha: heap_arr) (hs: heap_st) := (hp, (ha, hs)).
+(* Definition mkheap (hp: heap_ptr) (ha: heap_arr) (hs: heap_st) := (hp, (ha, hs)). *)
+Definition mkheap (hp: heap_ptr) (ha: heap_arr) := (hp, ha).
 Definition get_heap_ptr (h: heap) : heap_ptr := fst h.
-Definition get_heap_arr (h: heap) : heap_arr := fst (snd h).
-Definition get_heap_st  (h: heap) : heap_st  := snd (snd h).
+Definition get_heap_arr (h: heap) : heap_arr := snd h.
+(* Definition get_heap_st  (h: heap) : heap_st  := snd (snd h). *)
 
 Definition heap_ptr_unit : heap_ptr := @map_unit _ _ _ val.
-Definition heap_unit : heap := (heap_ptr_unit, (heap_arr_unit, heap_st_unit)).
+(* Definition heap_unit : heap := (heap_ptr_unit, (heap_arr_unit, heap_st_unit)).*)
+Definition heap_unit : heap := (heap_ptr_unit, heap_arr_unit).
 
 Definition heap_add_ptr (h : heap) (p : ptr) (f : field) (v : val) : heap :=
-  mkheap (add (p, f) v (get_heap_ptr h)) (get_heap_arr h) (get_heap_st h).
+  mkheap (add (p, f) v (get_heap_ptr h)) (get_heap_arr h) (*(get_heap_st h)*).
 Definition heap_add_arr (h : heap) (n m : nat) (v : val) : heap :=
-  mkheap (get_heap_ptr h) (add (n, m) v (get_heap_arr h)) (get_heap_st h).
-Definition heap_add_st (h : heap) (p : stptr) (t : sST) : heap :=
-  mkheap (get_heap_ptr h) (get_heap_arr h) (add p t (get_heap_st h)).
+  mkheap (get_heap_ptr h) (add (n, m) v (get_heap_arr h)) (*(get_heap_st h)*).
+(*Definition heap_add_st (h : heap) (p : stptr) (t : sST) : heap :=
+  mkheap (get_heap_ptr h) (get_heap_arr h) (add p t (get_heap_st h)).*)
 
 Instance RelHeapPtr : Rel heap_ptr := _.
 Instance PreorderHeapPtr : PreOrder (@rel heap_ptr RelHeapPtr) := _.
@@ -64,12 +66,14 @@ Instance HeapSepAlgOps : SepAlgOps heap := _.
 Instance SepAlgHeap : SepAlg heap := _.
 Instance UUSepAlgHeap : UUSepAlg heap := _.
 
+Import SepAlgNotations.
+
 Lemma isolate_heap_ptr : forall a b c, sa_mul a b c -> 
                          sa_mul (get_heap_ptr a) (get_heap_ptr b) (get_heap_ptr c).
 Proof.
   intros.
-  destruct a as [a_ptr [a_arr a_st]], b as [b_ptr [b_arr b_st]], c as [c_ptr [c_arr c_st]].
-  apply sa_mul_split in H as [Hptr Harr]; apply sa_mul_split in Harr as [Harr Hst].
+  destruct a as [a_ptr a_arr], b as [b_ptr b_arr], c as [c_ptr c_arr].
+  apply sa_mul_split in H as [Hptr Harr].
   apply Hptr.
 Qed.
 
@@ -77,10 +81,100 @@ Lemma isolate_heap_arr : forall a b c, sa_mul a b c ->
                          sa_mul (get_heap_arr a) (get_heap_arr b) (get_heap_arr c).
 Proof.
   intros.
-  destruct a as [a_ptr [a_arr a_st]], b as [b_ptr [b_arr b_st]], c as [c_ptr [c_arr c_st]].
-  apply sa_mul_split in H as [Hptr Harr]; apply sa_mul_split in Harr as [Harr Hst].
+  destruct a as [a_ptr a_arr], b as [b_ptr b_arr], c as [c_ptr c_arr].
+  apply sa_mul_split in H as [Hptr Harr].
   apply Harr.
 Qed.
+
+(*
+Lemma isolate_heap_st : forall a b c, sa_mul a b c -> 
+                         sa_mul (get_heap_st a) (get_heap_st b) (get_heap_st c).
+Proof.
+  intros.
+  destruct a as [a_ptr [a_arr a_st]], b as [b_ptr [b_arr b_st]], c as [c_ptr [c_arr c_st]].
+  apply sa_mul_split in H as [Hptr Harr]; apply sa_mul_split in Harr as [Harr Hst].
+  apply Hst.
+Qed.
+*)
+
+Lemma split_heap : forall a b c,
+                   sa_mul (get_heap_ptr a) (get_heap_ptr b) (get_heap_ptr c) ->
+                   sa_mul (get_heap_arr a) (get_heap_arr b) (get_heap_arr c) ->
+                   (* sa_mul (get_heap_st a) (get_heap_st b) (get_heap_st c) -> *)
+                   sa_mul a b c.
+Proof.
+  intros.
+  destruct a as [a_ptr a_arr], b as [b_ptr b_arr], c as [c_ptr c_arr].
+  apply sa_mul_split; split; assumption. 
+Qed.
+
+Lemma remove_mkheap_ptr : forall Hptr Harr, get_heap_ptr (mkheap Hptr Harr) = Hptr.
+  Proof. intros. reflexivity. Qed.
+Lemma remove_mkheap_arr : forall Hptr Harr, get_heap_arr (mkheap Hptr Harr) = Harr.
+  Proof. intros. reflexivity. Qed.
+(*Lemma remove_mkheap_st : forall Hptr Harr Hst, get_heap_st (mkheap Hptr Harr Hst) = Hst.
+  Proof. intros. reflexivity. Qed.*)
+
+Definition DisjointHeaps (n m : heap) := Disjoint (get_heap_ptr n) (get_heap_ptr m) /\ Disjoint (get_heap_arr n) (get_heap_arr m).
+
+Lemma empty_is_disjoint {K A : Type} {H : OrderedType K} {a : Map [K, A]} (Hempty : Empty a) : forall b, Disjoint a b.
+Proof.
+  intros.
+  unfold Disjoint. intros k Hcounter.
+  destruct Hcounter as [Hcounter _].
+  unfold In in Hcounter; destruct Hcounter as [v Hcounter].
+  unfold Empty in Hempty; specialize (Hempty k v).
+  auto.
+Qed.
+
+Lemma empty_or_disjoint {K A : Type} {H : OrderedType K} {a b : Map [K, A]} :
+  Disjoint a b \/ (exists (k : K), In k a /\ In k b).
+Proof.
+  destruct (is_empty_dec a); [left; apply empty_is_disjoint; assumption |].
+  destruct (is_empty_dec b); [left; apply Disjoint_sym; apply empty_is_disjoint; assumption |].
+  admit.
+Admitted.
+
+Lemma overlapping_exists : forall a b, ~ DisjointHeaps a b ->
+  (exists ref f, In (ref, f) (get_heap_ptr a) /\ In (ref, f) (get_heap_ptr b))
+  \/
+  (exists ref i, In (ref, i) (get_heap_arr a) /\ In (ref, i) (get_heap_arr b)).
+Proof.
+  intros.
+  unfold not in H; unfold DisjointHeaps in H.
+  assert (Disjoint (get_heap_ptr a) (get_heap_ptr b) \/ (exists (k : (ptr * field)), In k (get_heap_ptr a) /\ In k (get_heap_ptr b))) by (apply empty_or_disjoint).
+  assert (Disjoint (get_heap_arr a) (get_heap_arr b) \/ (exists (k : (arrptr * nat)), In k (get_heap_arr a) /\ In k (get_heap_arr b))) by (apply empty_or_disjoint).
+  destruct H0; destruct H1.
+  exfalso; auto.
+  right. destruct H1 as [[ref i] H1].
+  exists ref; exists i. assumption.
+  left. destruct H0 as [[ref f] H0].
+  exists ref; exists f. assumption.
+  left. destruct H0 as [[ref f] H0].
+  exists ref; exists f. assumption.
+Qed.
+
+(*
+Definition merge (h1 h2 : heap_ptr) : heap_ptr :=
+  fold (fun key val h => add key val h) h2 h1.
+
+Definition this_level (val : sval) (h : heap_ptr) : heap_ptr :=
+  match val with
+    | vptr ref => filter (fun (key : (ptr * field)) _ => let (ref', f) := key in ref == ref') h
+    | _ => empty _
+  end.
+
+Fixpoint test (n : nat) (val : sval) (h : heap_ptr) {struct n} : heap_ptr :=
+  match val with
+    | vptr ref => match n with
+      | O => empty _
+      | S n => let (here, rest) := partition (fun (key : (ptr * field)) _ => let (ref', f) := key in ref == ref') h in
+             if is_empty here then empty _ else
+             update here (fold (fun _ val' => update (test n val' rest)) here rest)
+      end
+    | _ => empty _
+  end.
+*)
 
 Definition asn1 := ILPreFrm (@rel heap subheap) Prop.
 Instance ILogicOpsAsn1 : ILogicOps asn1 := _.

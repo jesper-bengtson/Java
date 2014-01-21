@@ -1,6 +1,7 @@
 Require Import RelationClasses Setoid Morphisms Program. 
 Require Import MapInterface MapFacts.
 Require Import SepAlg SepAlgMap UUSepAlg SepAlgInsts Stack Lang Rel.
+Import SepAlgNotations.
 
 Local Existing Instance MapSepAlgOps.
 Local Existing Instance MapSepAlg.
@@ -298,4 +299,73 @@ apply IHpath.
       unfold arrptr in *; simpl in *; rewrite <- Heqo0.
       destruct o.
   Qed.
+*)
+
+(*
+  Lemma map_add_exists {K V} `{H: FMap K} `{Spec: FMapSpecs K} {h: Map [K, V]} {k: K} {v: V}
+    (Hin: MapsTo k v h) :
+    exists h', h === (add k v h').
+  Proof.
+    exists (remove k h).
+    unfold "===".
+    unfold Equal.
+    intros.
+    
+    destruct (eq_dec k y).
+    + rewrite add_eq_o; [|assumption]. 
+      erewrite zfind_1; [reflexivity|]. 
+      eapply zMapsTo_1; [apply H2 | apply Hin].
+    + assert (k =/= y) by auto; clear H2.
+      rewrite add_neq_o; [|assumption].
+      rewrite remove_neq_o; [|assumption].
+      reflexivity.
+  Qed.
+  
+  Lemma map_add_idempotent {K V} `{H: FMap K} `{Spec: FMapSpecs K} {h: Map [K, V]} {k: K} {v: V}
+    (Hin: MapsTo k v h) :
+    h === (add k v h).
+  Proof.
+    unfold "===".
+    unfold Equal.
+    intros.
+    
+    destruct (eq_dec k y).
+    + rewrite add_eq_o; [|assumption]. 
+      erewrite zfind_1; [reflexivity|]. 
+      eapply zMapsTo_1; [apply H2 | apply Hin].
+    + assert (k =/= y) by auto; clear H2.
+      rewrite add_neq_o; [|assumption].
+      reflexivity.
+  Qed.
+
+  Lemma subheap_add_exists {K} `{H: FMap K} `{Spec: FMapSpecs K} {V: Type} {h h': Map [K, V]} {k: K} {v: V}
+    (Hin: MapsTo k v h) (Hsubheap: subheap h' h) :
+    subheap (add k v h') h.
+  Proof.
+    unfold subheap in *. destruct Hsubheap as [h'' Hsubheap].
+    assert (h === (add k v h)) by (apply map_add_idempotent; apply Hin).
+    
+    assert (sa_mul h' h'' h) as Hsubheap' by assumption.
+    eapply sa_mul_inR in Hsubheap'; [| unfold In; exists v; apply Hin].
+    destruct Hsubheap' as [Hsubheap' | Hsubheap']; destruct Hsubheap' as [Hshin Hshnin].
+    exists h''.
+    rewrite H2.
+    apply sa_mul_add; assumption.
+    
+    
+    exists (remove k h'').
+    unfold sa_mul. simpl. 
+    
+    rewrite H2.
+    apply sa_mul_add; [|apply remove_1; auto].
+    
+    admit.
+    ( *
+    eapply sa_mul_inR in Hsubheap; [| unfold In; exists v; apply Hin].
+    
+    
+    assert (exists h', h === (add k v h')) by (apply map_add_exists; assumption).
+    destruct H2 as [h'' Heq]. rewrite Heq in *.
+    admit.* )
+  Admitted.
 *)
