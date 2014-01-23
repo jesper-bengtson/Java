@@ -329,16 +329,16 @@ Require Import Compare_dec.
     assumption.
     assert (DisjointHeaps frame h' \/ ~DisjointHeaps frame h') by admit.
     destruct H.
-    eapply send_ok; [ apply Sref | apply Strace | | reflexivity].
-    eapply marshall_from_smaller in H; [| apply HFrame | apply Smarshall].
-    destruct H; [eapply H | eapply marshall_into_unit; [ apply H | apply Smarshall]].
-    eapply marshall_fails_outside in H; [| apply HFrame | apply Smarshall].
-    destruct H.
-    exfalso.
-    apply (HSafe 1); [omega|].
-    eapply send_fail2; [apply Sref | apply Strace | apply H].
-    eapply send_ok; [apply Sref | apply Strace | | reflexivity].
-    eapply marshall_into_unit; [ apply H | apply Smarshall]. 
+    * eapply send_ok; [ apply Sref | apply Strace | | reflexivity].
+      eapply marshall_from_smaller in H; [| apply HFrame | apply Smarshall].
+      destruct H; [eapply H | eapply marshall_into_unit; [ apply H | apply Smarshall]].
+    * eapply marshall_fails_outside in H; [| apply HFrame | apply Smarshall].
+      destruct H.
+      + exfalso.
+        apply (HSafe 1); [omega|].
+        eapply send_fail2; [apply Sref | apply Strace | apply H].
+      + eapply send_ok; [apply Sref | apply Strace | | reflexivity].
+        eapply marshall_into_unit; [ apply H | apply Smarshall].
   Qed.
 
   Fixpoint create_stack (ps : list var) (vs : list val) : stack :=
