@@ -1,6 +1,9 @@
 Require Import DecidableType DecidableTypeEx.
 Require Import ZArith String.
 Require Import Stack Open Util OpenILogic.
+Require Import Compare_dec.
+Require Import OrderedType.
+Require Import SepAlgMap.
 
 Module string_DT' <: MiniDecidableType.
   Definition t := string.
@@ -36,6 +39,101 @@ Instance SVal : ValNull := Build_ValNull nothing.
 
 (* This lets sval unify with val *)
 Canonical Structure SVal.
+
+Inductive svalEq : sval -> sval -> Prop :=
+| s_int (a b : Z) : a === b -> svalEq (vint a) (vint b)
+| s_bool (a b : bool) : a === b -> svalEq (vbool a) (vbool b)
+| s_ptr (a b : ptr) : a === b -> svalEq (vptr a) (vptr b)
+| s_arrptr (a b : arrptr) : a === b -> svalEq (varr a) (varr b)
+| s_stptr (a b : stptr) : a === b -> svalEq (vst a) (vst b)
+| s_nothing : svalEq nothing nothing
+.
+Instance SvalEqEquiv : Equivalence svalEq.
+Proof.
+  split.
+  * unfold Reflexive; intros x; induction x; constructor; auto.
+  * unfold Symmetric; intros x y Hxy.
+    induction Hxy; constructor; auto.
+  * unfold Transitive; intros x y z Hxy Hyz.
+    inversion Hxy; subst; inversion Hyz; subst;
+    constructor; transitivity b; assumption.
+Qed.
+
+Inductive sval_lt : sval -> sval -> Prop :=
+| s_lt_int_int (a b : Z) : a <<< b -> sval_lt (vint a) (vint b)
+| s_lt_bool_bool (a b : bool): a <<< b -> sval_lt (vbool a) (vbool b)
+| s_lt_ptr_ptr (a b : ptr) : a <<< b -> sval_lt (vptr a) (vptr b)
+| s_lt_arr_arr (a b : arrptr) : a <<< b -> sval_lt (varr a) (varr b)
+| s_lt_st_st (a b : stptr) : a <<< b -> sval_lt (vst a) (vst b)
+
+| s_lt_nothing_int b : sval_lt nothing (vint b)
+
+| s_lt_nothing_bool b : sval_lt nothing (vbool b)
+| s_lt_int_bool a b : sval_lt (vint a) (vbool b)
+
+| s_lt_nothing_ptr b : sval_lt nothing (vptr b)
+| s_lt_int_ptr a b : sval_lt (vint a) (vptr b)
+| s_lt_bool_ptr a b : sval_lt (vbool a) (vptr b)
+
+| s_lt_nothing_arr b : sval_lt nothing (varr b)
+| s_lt_int_arr a b : sval_lt (vint a) (varr b)
+| s_lt_bool_arr a b : sval_lt (vbool a) (varr b)
+| s_lt_ptr_arr a b : sval_lt (vptr a) (varr b)
+
+| s_lt_nothing_st b : sval_lt nothing (vst b)
+| s_lt_int_st a b : sval_lt (vint a) (vst b)
+| s_lt_bool_st a b : sval_lt (vbool a) (vst b)
+| s_lt_ptr_st a b : sval_lt (vptr a) (vst b)
+| s_lt_arr_st a b : sval_lt (varr a) (vst b)
+.
+Definition sval_compare a b :=
+  match a, b with
+      | nothing, nothing => Eq
+      | nothing, _ => Lt
+      | _, nothing => Gt
+
+      | vint a', vint b' => a' =?= b'
+      | vint a', _ => Lt
+      | _, vint b' => Gt
+
+      | vbool a', vbool b' => a' =?= b'
+      | vbool a', _ => Lt
+      | _, vbool b' => Gt
+
+      | vptr a', vptr b' => a' =?= b'
+      | vptr b', _ => Lt
+      | _, vptr b' => Gt
+
+      | varr a', varr b' => a' =?= b'
+      | varr a', _ => Lt
+      | _, varr b' => Gt
+
+      | vst a', vst b' => a' =?= b'
+  end.
+Instance StrictOrderSval : StrictOrder sval_lt svalEq.
+Proof.
+  split.
+  * intros a b c Hab Hbc.
+    inversion Hab; subst;
+    inversion Hbc; subst;
+    constructor; transitivity b0; assumption.
+  * intros x y Hxy H; induction Hxy; inversion H; try (inversion H2);
+    apply lt_not_eq in H0; apply H0; apply H3.
+Qed.
+
+Instance OrderedTypeSval : OrderedType sval := {
+   _eq := svalEq;
+   _lt := sval_lt;
+   _cmp := sval_compare
+}.
+Proof.
+  intros x; destruct x; intros y; destruct y; simpl; repeat constructor.
+  * destruct (compare_dec z z0); repeat constructor; auto.
+  * destruct (compare_dec b b0); repeat constructor; auto.
+  * destruct (compare_dec p p0); repeat constructor; auto.
+  * destruct (compare_dec a a0); repeat constructor; auto.
+  * destruct (compare_dec s s0); repeat constructor; auto.
+Qed.
 
 Definition stack := stack var.
 
