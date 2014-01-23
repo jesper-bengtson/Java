@@ -154,6 +154,15 @@ Proof.
   exists ref; exists f. assumption.
 Qed.
 
+Lemma DisjointHeaps_sa_mul {a b : heap} (Hdisjoint: DisjointHeaps a b) :
+  sa_mul a b (mkheap (update (get_heap_ptr a) (get_heap_ptr b)) (update (get_heap_arr a) (get_heap_arr b))).
+Proof.
+  unfold DisjointHeaps in Hdisjoint; destruct Hdisjoint as [Hdisjoint_ptr Hdisjoint_arr].
+  apply Disjoint_sa_mul in Hdisjoint_ptr.
+  apply Disjoint_sa_mul in Hdisjoint_arr.
+  apply split_heap; [ repeat rewrite remove_mkheap_ptr | repeat rewrite remove_mkheap_arr ]; assumption.
+Qed.
+
 (*
 Definition merge (h1 h2 : heap_ptr) : heap_ptr :=
   fold (fun key val h => add key val h) h2 h1.
