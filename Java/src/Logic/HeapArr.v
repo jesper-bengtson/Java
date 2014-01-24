@@ -15,7 +15,8 @@ Definition heap_arr_unit : heap_arr := @map_unit _ _ _ val.
 Instance RelHeapArr : Rel heap_arr := _.
 Instance PreorderHeapArr : PreOrder (@rel heap_arr RelHeapArr) := _.
 Instance HeapArrSepAlgOps : SepAlgOps heap_arr := _.
-Instance SepAlgHeapArr : UUSepAlg heap_arr := _.
+Instance SepAlgArrPtr : SepAlg heap_arr := _.
+Instance UUSepAlgHeapArr : UUSepAlg heap_arr := _.
 
 Lemma dec_double_neg (P : Prop) (H : {P} + {~P}) : 
   P <-> ~~P.

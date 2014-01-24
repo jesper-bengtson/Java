@@ -57,9 +57,6 @@ Instance HeapPtrSepAlgOps : SepAlgOps heap_ptr := _.
 Instance SepAlgHeapPtr : SepAlg heap_ptr := _.
 Instance UUSepAlgHeapPtr : UUSepAlg heap_ptr := _.
 
-Instance SepAlgArrPtr : SepAlg heap_arr := _.
-
-
 Instance RelHeap : Rel heap := _.
 Instance PreorderHeap : PreOrder (@rel heap RelHeap) := _.
 Instance HeapSepAlgOps : SepAlgOps heap := _.
