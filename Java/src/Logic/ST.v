@@ -143,14 +143,14 @@ Proof.
       eapply marshall_into_unit; [apply H0 | apply Hmarshall].
 Qed.
 
+Local Existing Instance OrderedTypeSval.
+
 Lemma marshall_fails_outside {a b c m : heap} {v : sval}
     (Habc : sa_mul a b c) (Hmarshall : marshall v c m)
     (Hdisjoint: ~ DisjointHeaps b m) :
     ~ marshall v a m \/ m === heap_unit.
 Proof.
-  assert (m === heap_unit \/ m =/= heap_unit) by admit.
-  destruct H; [right; assumption |].
-  
+  destruct (eq_dec m heap_unit); [right; assumption |].
   apply overlapping_exists in Hdisjoint.
   destruct Hdisjoint.
   * destruct H0 as [ref [f [Hinb Hinm]]].
