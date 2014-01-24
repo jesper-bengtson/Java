@@ -2,7 +2,7 @@ Require Import DecidableType DecidableTypeEx.
 Require Import ZArith String.
 Require Import Stack Open Util OpenILogic.
 Require Import Compare_dec.
-Require Import OrderedType.
+Require Import OrderedType OrderedTypeEx.
 Require Import SepAlgMap.
 
 Module string_DT' <: MiniDecidableType.
@@ -40,6 +40,7 @@ Instance SVal : ValNull := Build_ValNull nothing.
 (* This lets sval unify with val *)
 Canonical Structure SVal.
 
+
 Inductive svalEq : sval -> sval -> Prop :=
 | s_int (a b : Z) : a === b -> svalEq (vint a) (vint b)
 | s_bool (a b : bool) : a === b -> svalEq (vbool a) (vbool b)
@@ -48,7 +49,7 @@ Inductive svalEq : sval -> sval -> Prop :=
 | s_stptr (a b : stptr) : a === b -> svalEq (vst a) (vst b)
 | s_nothing : svalEq nothing nothing
 .
-Instance SvalEqEquiv : Equivalence svalEq.
+Definition SvalEqEquiv : Equivalence svalEq.
 Proof.
   split.
   * unfold Reflexive; intros x; induction x; constructor; auto.
@@ -110,7 +111,8 @@ Definition sval_compare a b :=
 
       | vst a', vst b' => a' =?= b'
   end.
-Instance StrictOrderSval : StrictOrder sval_lt svalEq.
+Local Existing Instance SvalEqEquiv.
+Definition StrictOrderSval : StrictOrder sval_lt svalEq.
 Proof.
   split.
   * intros a b c Hab Hbc.
@@ -121,13 +123,10 @@ Proof.
     apply lt_not_eq in H0; apply H0; apply H3.
 Qed.
 
-Instance OrderedTypeSval : OrderedType sval := {
-   _eq := svalEq;
-   _lt := sval_lt;
-   _cmp := sval_compare
-}.
-Proof.
-  intros x; destruct x; intros y; destruct y; simpl; repeat constructor.
+Local Existing Instance StrictOrderSval.
+Program Definition OrderedTypeSval : OrderedType sval := Build_OrderedType sval svalEq sval_lt _ _ sval_compare _.
+Next Obligation.
+  destruct x; destruct y; simpl; repeat constructor.
   * destruct (compare_dec z z0); repeat constructor; auto.
   * destruct (compare_dec b b0); repeat constructor; auto.
   * destruct (compare_dec p p0); repeat constructor; auto.
