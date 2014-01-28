@@ -298,7 +298,7 @@ Require Import Compare_dec.
     eapply write_ok; try eassumption; try reflexivity.
     destruct (sa_mul_inR HFrame_ptr Sin); intuition.
   Qed.
-  
+
   Inductive send_sem (x v : var) : semCmdType :=
   | send_ok : forall P (s: stack) (h h': heap) (t t': traces) (tr: trace) (c: stptr)
     (Sref: s x = vst c)
@@ -340,6 +340,47 @@ Require Import Compare_dec.
       + eapply send_ok; [apply Sref | apply Strace | | reflexivity].
         eapply marshall_into_unit; [ apply H | apply Smarshall].
   Qed.
+
+  Inductive recv_sem (v x : var) : semCmdType :=
+  | recv_ok : forall P (s: stack) (h ih rh h': heap) (t t': traces) (tr: trace) (c: stptr) (rv : sval)
+    (Sref: s x = vst c)
+    (Strace: MapsTo c tr t)
+    (Smarshall: marshall rv ih rh)
+    (Snewheap : sa_mul h rh h')
+    (Sadd: t' = add c (trecv rv rh tr) t),
+    recv_sem v x P 1 s h t (Some (stack_add v rv s, (h', t')))
+  .
+  Program Definition recv_cmd v x := Build_semCmd (recv_sem v x) _ _.
+  Next Obligation.
+    intros H; inversion H.
+  Qed.
+  Next Obligation.
+    unfold frame_property; intros.
+    inversion HSem. subst; clear HSem.
+    remember (mkheap (update (elt:=val) (get_heap_ptr h) (get_heap_ptr rh))
+           (update (elt:=val) (get_heap_arr h) (get_heap_arr rh))) as h'.
+    exists h'. split.
+    * apply sa_mulC in HFrame.
+      eapply sa_mulA in Snewheap; [| apply HFrame].
+      destruct Snewheap as [h'0 [H0 Snewheap]].
+      destruct (heap_eq_dec h'0 h') as [Heq | Hneq].
+      + apply sa_mulC in Snewheap.
+        eapply sa_mul_mon. apply Heq. apply Snewheap.
+      + assert (h'0 === mkheap (update (elt:=val) (get_heap_ptr h) (get_heap_ptr rh))
+                               (update (elt:=val) (get_heap_arr h) (get_heap_arr rh))). {
+          eapply sa_mul_heapResEq. apply H0.
+          apply DisjointHeaps_sa_mul. eapply sa_mul_DisjointHeaps. apply H0.
+        }
+        rewrite <- Heqh' in H.
+        exfalso. apply Hneq. apply H.
+     * eapply recv_ok; [apply Sref | apply Strace | apply Smarshall | | reflexivity].
+       rewrite Heqh'. apply DisjointHeaps_sa_mul.
+       apply sa_mulC in HFrame.
+       eapply sa_mulA in Snewheap; [| apply HFrame].
+       destruct Snewheap as [h'0 [H0 _]].
+       apply sa_mul_DisjointHeaps in H0.
+       apply H0.
+   Qed.
 
   Fixpoint create_stack (ps : list var) (vs : list val) : stack :=
     match ps, vs with

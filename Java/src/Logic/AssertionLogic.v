@@ -65,6 +65,21 @@ Instance UUSepAlgHeap : UUSepAlg heap := _.
 
 Import SepAlgNotations.
 
+Lemma heap_eq_dec : forall (a b : heap), {a === b} + {a =/= b}.
+Proof.
+  admit.
+Qed.
+
+Lemma sa_mul_heapResEq {a b c c' : heap}
+  (Habc : sa_mul a b c) (Habc' : sa_mul a b c') :
+  c === c'.
+Proof.
+  destruct c as [c_ptr c_arr]; destruct c' as [c'_ptr c'_arr].
+  split.
+  * eapply sa_mul_MapResEq; [apply Habc | apply Habc'].
+  * eapply sa_mul_MapResEq; [apply Habc | apply Habc'].
+Qed.
+
 Lemma isolate_heap_ptr : forall a b c, sa_mul a b c -> 
                          sa_mul (get_heap_ptr a) (get_heap_ptr b) (get_heap_ptr c).
 Proof.
@@ -151,13 +166,21 @@ Proof.
   exists ref; exists f. assumption.
 Qed.
 
-Lemma DisjointHeaps_sa_mul {a b : heap} (Hdisjoint: DisjointHeaps a b) :
+Lemma DisjointHeaps_sa_mul {a b : heap} (H : DisjointHeaps a b) :
   sa_mul a b (mkheap (update (get_heap_ptr a) (get_heap_ptr b)) (update (get_heap_arr a) (get_heap_arr b))).
 Proof.
-  unfold DisjointHeaps in Hdisjoint; destruct Hdisjoint as [Hdisjoint_ptr Hdisjoint_arr].
+  unfold DisjointHeaps in H; destruct H as [Hdisjoint_ptr Hdisjoint_arr].
   apply Disjoint_sa_mul in Hdisjoint_ptr.
   apply Disjoint_sa_mul in Hdisjoint_arr.
   apply split_heap; [ repeat rewrite remove_mkheap_ptr | repeat rewrite remove_mkheap_arr ]; assumption.
+Qed.
+
+Lemma sa_mul_DisjointHeaps {a b c : heap} (H : sa_mul a b c) :
+  DisjointHeaps a b.
+Proof.
+  unfold DisjointHeaps; split;
+  [apply isolate_heap_ptr in H|apply isolate_heap_arr in H];
+  eapply sa_mul_Disjoint; apply H.
 Qed.
 
 (*

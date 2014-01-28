@@ -143,17 +143,15 @@ Proof.
       eapply marshall_into_unit; [apply H0 | apply Hmarshall].
 Qed.
 
-Local Existing Instance OrderedTypeSval.
-
 Lemma marshall_fails_outside {a b c m : heap} {v : sval}
     (Habc : sa_mul a b c) (Hmarshall : marshall v c m)
     (Hdisjoint: ~ DisjointHeaps b m) :
     ~ marshall v a m \/ m === heap_unit.
 Proof.
-  destruct (eq_dec m heap_unit); [right; assumption |].
+  destruct (heap_eq_dec m heap_unit) as [Heq | Hneq]; [right; assumption |].
   apply overlapping_exists in Hdisjoint.
   destruct Hdisjoint.
-  * destruct H0 as [ref [f [Hinb Hinm]]].
+  * destruct H as [ref [f [Hinb Hinm]]].
     assert (sa_mul (get_heap_ptr a) (get_heap_ptr b) (get_heap_ptr c)) as Habc_ptr by (apply Habc).
     apply sa_mulC2 in Habc_ptr.
     eapply sa_mul_inL in Habc_ptr; [ |apply Hinb]; destruct Habc_ptr as [Hnotina _].
@@ -162,7 +160,7 @@ Proof.
     unfold subheap in Hcounter; destruct Hcounter as [d Hcounter].
     apply Hnotina.
     eapply sa_mul_inL; [apply Hcounter | apply Hinm].
-  * destruct H0 as [ref [i [Hinb Hinm]]].
+  * destruct H as [ref [i [Hinb Hinm]]].
     assert (sa_mul (get_heap_arr a) (get_heap_arr b) (get_heap_arr c)) as Habc_arr by (apply Habc).
     apply sa_mulC2 in Habc_arr.
     eapply sa_mul_inL in Habc_arr; [ |apply Hinb]; destruct Habc_arr as [Hnotina _].
