@@ -15,13 +15,18 @@ Section Commands.
   | assign_ok : forall P s h t v
                        (He: eval e s = v),
       assign_sem x e P 1 s h t (Some (stack_add x v s, (h, t))).
-  Program Definition assign_cmd x e := Build_semCmd (assign_sem x e) _ _.
+  Program Definition assign_cmd x e := Build_semCmd (assign_sem x e) _ _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
   Next Obligation with eauto using assign_sem.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem; exists h...
+  Qed.
+  Next Obligation.
+    unfold increasing_traces; intros.
+    inversion HSem; subst.
+    reflexivity.
   Qed.
 
   Inductive read_sem (x y : var) (f : field) : semCmdType :=
@@ -33,7 +38,7 @@ Section Commands.
       (Sref   : s y = vptr ref)
       (Snotin : ~ In (ref,f) (get_heap_ptr h)),
       read_sem x y f P 1 s h t None.
-  Program Definition read_cmd x y f := Build_semCmd (read_sem x y f) _ _.
+  Program Definition read_cmd x y f := Build_semCmd (read_sem x y f) _ _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
@@ -45,6 +50,11 @@ Section Commands.
     apply isolate_heap_ptr in HFrame.
     destruct (sa_mul_mapstoR HFrame Rmaps) as [[H1 H2] | [H1 H2]]; [assumption|].
     contradiction HSafe; apply read_fail with ref; assumption.
+  Qed.
+  Next Obligation.
+    unfold increasing_traces; intros.
+    inversion HSem; subst.
+    reflexivity.
   Qed.
 
 Require Import Compare_dec.
@@ -131,7 +141,7 @@ Require Import Compare_dec.
                   (Smap : List.map (fun e => eval e s) path = vpath)
                   (Sarr : ~ in_heap_arr arr (List.map val_to_nat vpath) (get_heap_arr h)) :
       read_arr_sem x y path P 1 s h t None.
-  Program Definition read_arr_cmd x y path := Build_semCmd (read_arr_sem x y path) _ _.
+  Program Definition read_arr_cmd x y path := Build_semCmd (read_arr_sem x y path) _ _ _.
   Next Obligation.
     intros H. inversion H.
   Qed.
@@ -146,7 +156,12 @@ Require Import Compare_dec.
     apply HSafe.
     eapply read_arr_fail; try eassumption; try reflexivity.
     eapply find_heap_arr_frame; eauto. apply HFrame.
-  Qed.    
+  Qed.
+  Next Obligation.
+    unfold increasing_traces; intros.
+    inversion HSem; subst.
+    reflexivity.
+  Qed.
 
   Inductive write_arr_sem (x : var) (path : list dexpr) (e : dexpr) : semCmdType :=
   | write_arr_ok P arr s h ha' t vpath
@@ -160,7 +175,7 @@ Require Import Compare_dec.
                    (Smap : List.map (fun e' => eval e' s) path = vpath)
                    (Sin  : ~ in_heap_arr arr (List.map val_to_nat vpath) (get_heap_arr h)) :
       write_arr_sem x path e P 1 s h t None.
-  Program Definition write_arr_cmd x path e := Build_semCmd (write_arr_sem x path e) _ _.
+  Program Definition write_arr_cmd x path e := Build_semCmd (write_arr_sem x path e) _ _ _.
   Next Obligation.
     intros H. inversion H.
   Qed.
@@ -182,6 +197,11 @@ Require Import Compare_dec.
     apply H1.
     eapply write_arr_ok; try eassumption; reflexivity.
   Qed.
+  Next Obligation.
+    unfold increasing_traces; intros.
+    inversion HSem; subst.
+    reflexivity.
+  Qed.
 
   Inductive alloc_arr_sem (x : var) (e : dexpr) : semCmdType :=
   | alloc_arr_ok (P : Prog_wf) (s s' : stack) (h : heap) (ha' : heap_arr) (t : traces) (n : nat)
@@ -189,7 +209,7 @@ Require Import Compare_dec.
                  (Sha : alloc_heap_arr n (val_to_nat (eval e s)) (get_heap_arr h) === ha') 
                  (Ss : s' = stack_add x (varr n) s) :
       alloc_arr_sem x e P 1 s h t (Some (s', ((mkheap (get_heap_ptr h) ha'), t))).
-  Program Definition alloc_arr_cmd x e := Build_semCmd (alloc_arr_sem x e) _ _.
+  Program Definition alloc_arr_cmd x e := Build_semCmd (alloc_arr_sem x e) _ _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
@@ -234,6 +254,11 @@ Require Import Compare_dec.
     specialize (Sfresh_ha i). apply Sfresh_ha.
     destruct (sa_mul_inL HFrame_arr H). assumption.
   Qed.
+  Next Obligation.
+    unfold increasing_traces; intros.
+    inversion HSem; subst.
+    reflexivity.
+  Qed.
     
   Inductive alloc_sem (x : var) (C : class) : semCmdType :=
   | alloc_ok : forall (P : Prog_wf) (s s' : stack) (h : heap) (hp' : heap_ptr) t n fields
@@ -244,7 +269,7 @@ Require Import Compare_dec.
         (SS.fold (fun f h' => add ((n, C), f) (pnull : val) h') fields heap_ptr_unit) hp')
       (Ss0      : s' = stack_add x (vptr (n, C)) s),
       alloc_sem x C P 1 s h t (Some (s', ((mkheap hp' (get_heap_arr h)), t))).
-  Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _ _.
+  Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _ _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
@@ -266,6 +291,11 @@ Require Import Compare_dec.
     destruct (sa_mul_inR Sh0 H9) as [[H10 H11] | [H10 H11]]; [assumption|].
     apply sa_mulC in H1; destruct (sa_mul_inL H1 H10); intuition.
   Qed.
+  Next Obligation.
+    unfold increasing_traces; intros.
+    inversion HSem; subst.
+    reflexivity.
+  Qed.
 
   Inductive write_sem (x:var) (f:field) (e:dexpr) : semCmdType := 
   | write_ok : forall P (s: stack) (h : heap) (hp' : heap_ptr) t ref v
@@ -278,7 +308,7 @@ Require Import Compare_dec.
       (Sref:   s x = vptr ref)
       (Sin : ~ In (ref, f) (get_heap_ptr h)),
       write_sem x f e P 1 s h t None.
-  Program Definition write_cmd x f e := Build_semCmd (write_sem x f e) _ _.
+  Program Definition write_cmd x f e := Build_semCmd (write_sem x f e) _ _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
@@ -297,6 +327,11 @@ Require Import Compare_dec.
     apply sa_mul_add; assumption. apply HFrame.
     eapply write_ok; try eassumption; try reflexivity.
     destruct (sa_mul_inR HFrame_ptr Sin); intuition.
+  Qed.
+  Next Obligation.
+    unfold increasing_traces; intros.
+    inversion HSem; subst.
+    reflexivity.
   Qed.
 
   Inductive send_sem (x v : var) : semCmdType :=
@@ -318,7 +353,7 @@ Require Import Compare_dec.
     (* Unable to marshall the value pointed to by (s v) in the heap h *)
     send_sem x v P 1 s h t None
   .  
-  Program Definition send_cmd x v := Build_semCmd (send_sem x v) _ _.
+  Program Definition send_cmd x v := Build_semCmd (send_sem x v) _ _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
@@ -340,6 +375,12 @@ Require Import Compare_dec.
       + eapply send_ok; [apply Sref | apply Strace | | reflexivity].
         eapply marshall_into_unit; [ apply H | apply Smarshall].
   Qed.
+  Next Obligation.
+    unfold increasing_traces; intros.
+    inversion HSem; subst.
+    eapply traces_lte_existing; [apply Strace |].
+    repeat constructor.
+  Qed.
 
   Inductive recv_sem (v x : var) : semCmdType :=
   | recv_ok : forall P (s: stack) (h ih rh h': heap) (t t': traces) (tr: trace) (c: stptr) (rv : sval)
@@ -350,7 +391,7 @@ Require Import Compare_dec.
     (Sadd: t' = add c (trecv rv rh tr) t),
     recv_sem v x P 1 s h t (Some (stack_add v rv s, (h', t')))
   .
-  Program Definition recv_cmd v x := Build_semCmd (recv_sem v x) _ _.
+  Program Definition recv_cmd v x := Build_semCmd (recv_sem v x) _ _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
@@ -380,7 +421,13 @@ Require Import Compare_dec.
        destruct Snewheap as [h'0 [H0 _]].
        apply sa_mul_DisjointHeaps in H0.
        apply H0.
-   Qed.
+  Qed.
+  Next Obligation.
+    unfold increasing_traces; intros.
+    inversion HSem; subst.
+    eapply traces_lte_existing; [ apply Strace |].
+    repeat constructor.
+  Qed.
 
   Fixpoint create_stack (ps : list var) (vs : list val) : stack :=
     match ps, vs with
@@ -410,7 +457,7 @@ Require Import Compare_dec.
       (HSem    : sc P n (create_stack ps (eval_exprs s es)) h t (Some (sr, (hr, tr)))),
       call_sem rvar C m es c sc P (S n) s h t
         (Some (stack_add rvar (eval rexpr sr) s, (hr, tr))).
-  Program Definition call_cmd rvar C m es c sc := Build_semCmd (call_sem rvar C m es c sc) _ _.
+  Program Definition call_cmd rvar C m es c sc := Build_semCmd (call_sem rvar C m es c sc) _ _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
@@ -418,6 +465,12 @@ Require Import Compare_dec.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem.
     edestruct (@cmd_frame sc) as [h1 [HFrame1 HSem1]]...
+    intros k HLe HFail; apply HSafe with (S k); [omega |]...
+  Qed.
+  Next Obligation with eauto using call_sem.
+    unfold increasing_traces; intros.
+    inversion HSem; subst.
+    apply semCmd_traces_lte in HSem0; [apply HSem0 |].
     intros k HLe HFail; apply HSafe with (S k); [omega |]...
   Qed.
 
