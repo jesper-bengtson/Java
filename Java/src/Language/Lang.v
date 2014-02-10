@@ -235,7 +235,7 @@ Fixpoint modifies (c: cmd) :=
   | calloc x _     => SS.singleton x
   | cdcall x _ _ _ => SS.singleton x
   | cscall x _ _ _ => SS.singleton x
-  | crecv x _      => SS.singleton x
+  | crecv v _      => SS.singleton v
   | cstart x _ _   => SS.singleton x
   |  _             => SS.empty
   end.

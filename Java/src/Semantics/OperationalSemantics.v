@@ -511,7 +511,12 @@ Require Import Compare_dec.
       (HSem     : semantics c sc),
       semantics (cscall x C m es) (call_cmd x (open_const C) m es c sc)
   | semassert : forall e,
-      semantics (cassert e) (assert_cmd (vlogic_eval e)).
+      semantics (cassert e) (assert_cmd (vlogic_eval e))
+  | semsend : forall x y,
+      semantics (csend x y) (send_cmd x y)
+  | semrecv : forall v x,
+      semantics (crecv v x) (recv_cmd v x)
+  .
 
   Definition c_not_modifies c x :=
     forall sc, semantics c sc -> not_modifies sc x.
@@ -563,6 +568,9 @@ Require Import Compare_dec.
     + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 t t0 n HCl; simpl in *;
       inversion HCl; subst; rewrite stack_lookup_add2; trivial.
     + intros P s s0 h h0 t t0 n HAs; inversion HAs; subst; reflexivity.
+    + intros P s s0 h h0 t t0 n HAs; inversion HAs; subst; reflexivity.
+    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 t t0 n HCl; simpl in *;
+      inversion HCl; subst; rewrite stack_lookup_add2; trivial.
   Qed.
 
   (* A reasonable alternative definition would be
