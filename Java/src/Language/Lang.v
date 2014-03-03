@@ -175,7 +175,12 @@ Definition val_to_arr (v : val) : arrptr :=
 Definition val_to_nat (v : val) : nat :=
   Z.to_nat (val_to_int v).
 
-  
+Definition val_to_stptr (v : val) : stptr :=
+  match v with
+    | vst n => n
+    | _ => 0
+  end.
+ 
 Definition val_class : val -> class := fun v => snd(val_to_ptr v).
 
 Fixpoint eval_aux (s : stack) (e : dexpr) : val :=
