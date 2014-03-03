@@ -1,7 +1,7 @@
 Require Import Program SepAlg SepAlgInsts AssertionLogic SpecLogic SepAlgMap.
 Require Import MapInterface MapFacts.
 Require Import ILInsts ILogic ILEmbed ILEmbedTac ILQuantTac OpenILogic 
-        Open Subst Stack Lang SemCmd HeapArr Traces SemCmdRules BILogic.
+        Open Subst Stack Lang SemCmd HeapArr Traces ST SemCmdRules BILogic.
 
 
 Import SepAlgNotations.
@@ -365,7 +365,7 @@ Require Import Compare_dec.
     assert (DisjointHeaps frame h' \/ ~DisjointHeaps frame h') by admit.
     destruct H.
     * eapply send_ok; [ apply Sref | apply Strace | | reflexivity].
-      eapply marshall_from_smaller in H; [| apply HFrame | apply Smarshall].
+      eapply marshall_into_smaller in H; [| apply HFrame | apply Smarshall].
       destruct H; [eapply H | eapply marshall_into_unit; [ apply H | apply Smarshall]].
     * eapply marshall_fails_outside in H; [| apply HFrame | apply Smarshall].
       destruct H.

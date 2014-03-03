@@ -205,7 +205,7 @@ Proof.
     exfalso; auto.
 Qed.
 
-Lemma marshall_from_smaller {a b c m : heap} {v : sval}
+Lemma marshall_into_smaller {a b c m : heap} {v : sval}
     (Habc : sa_mul a b c) (Hmarshall : marshall v c m)
     (Hdisjoint: DisjointHeaps b m) :
     marshall v a m \/ m === heap_unit.
@@ -251,6 +251,27 @@ Proof.
       apply IHHmarshall in Habc; [| apply H].
       destruct Habc; auto.
       eapply marshall_into_unit; [apply H0 | apply Hmarshall].
+Qed.
+
+Lemma marshall_from_smaller {a b m : heap} {v : sval}
+    (Hsubheap : subheap a b) (Hmarshall : marshall v a m) :
+    marshall v b m.
+Proof.
+  induction Hmarshall.
+  * eapply marshall_int; apply Vint.
+  * eapply marshall_bool; apply Vbool.
+  * eapply marshall_ptr. 
+    + apply Varr.
+    + unfold subheap in Hsubheap; destruct Hsubheap as [h Hsubheap].
+      eapply sa_mul_mapstoL in Mmaps as [Mmaps Mnotin]; [| apply Hsubheap].
+      apply Mmaps.
+    + apply IHHmarshall; apply Hsubheap.
+  * eapply marshall_arr. 
+    + apply Varr.
+    + unfold subheap in Hsubheap; destruct Hsubheap as [h Hsubheap].
+      eapply sa_mul_mapstoL in Mmaps as [Mmaps Mnotin]; [| apply Hsubheap].
+      apply Mmaps.
+    + apply IHHmarshall; apply Hsubheap.
 Qed.
 
 Lemma marshall_fails_outside {a b c m : heap} {v : sval}
