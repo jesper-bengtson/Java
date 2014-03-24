@@ -166,81 +166,7 @@ Import SepAlgNotations.
     	P s t Pr n h -> P s (MapInterface.remove (val_to_stptr (s x)) t) Pr n h 
     ) _ _ _ ) _.
   *)
-  
-  (* Lemma rule_send_ax (x y z : var) (P: sasn) (t : ST) (G : spec) :
-    G |-- {[ fp P[{y/V //! z}] y | x : `(!z,{P}.t) ]} csend x y {[ fp P[{y/V //! z}] y | x : (`subst_ST `z y/V `t) ]}.
-  Proof.
-    unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
-    inversion Hsem; subst.
-    unfold sem_triple; simpl; split; intros.
-    * intros HSafe. inversion HSafe; subst.
-      unfold STs_traces in H4.
-      specialize (H4 c (!z,{ P }.t)).
-      assert (MapsTo c (!z,{ P }.t) ((x : `(!z,{ P }.t)) s)). {
-        unfold singleton_STs.
-        apply find_mapsto_iff. rewrite Sref.
-        rewrite add_eq_o; auto.
-      }
-      specialize (H4 H5); clear H5.
-      destruct H4 as [tr' [Hmt Hstt']].
-      
-	  admit.
-    * inversion H4; subst.
-      split.
-      - intros.
-        specialize (H3 _ _ H5 H6).
-        solve_model H3. congruence.
-      - unfold STs_traces.
-        intros Hstt k t' Hmt.
-        destruct (eq_dec k c).
-        + unfold singleton_STs in Hmt. apply find_mapsto_iff in Hmt.
-          rewrite add_eq_o in Hmt; [| rewrite Sref; auto].
-          inversion Hmt. 
-          rewrite H5.
-          exists (tsend (s' y) h'0 tr).
-          split; [assumption|].
-          unfold STs_traces, singleton_STs in Hstt.
-          specialize (Hstt c (`subst_ST `z y/V `t s')); rewrite Sref in Hstt.
-          assert (MapsTo c (`subst_ST `z y/V `t s') (add (val_to_stptr c) (`subst_ST `z y/V `t s') (empty ST))). {
-            apply find_mapsto_iff.
-            rewrite add_eq_o; auto.
-          }
-          specialize (Hstt H6); clear H6.
-          destruct Hstt as [tr' [Hmt' Hstt]].
-          apply find_mapsto_iff in Hmt'. rewrite add_eq_o in Hmt'; [|auto].
-          inversion Hmt'; subst; clear Hmt'.
-          apply stt_send; [apply Hstt |].
-          assert (subheap h' h') by reflexivity.
-          specialize (H3 _ _ H6 Smarshall).
-          rewrite subst1_trunc_singleton_stack in H3.
-          unfold apply_subst.
-          solve_model H3.
-          apply functional_extensionality; intro k'.
-          unfold subst1, stack_subst, liftn, lift; simpl.
-          remember (@dec_eq string DecString k' z); destruct s.
-          rewrite e; repeat rewrite stack_lookup_add. reflexivity.
-          rewrite stack_lookup_add2; [| auto]. reflexivity.
-        + unfold singleton_STs in Hmt; rewrite Sref in Hmt; simpl in Hmt.
-          apply add_neq_mapsto_iff in Hmt; [| congruence].
-          apply find_mapsto_iff in Hmt.
-          rewrite empty_o in Hmt.
-          inversion Hmt.
-  Admitted.
-  
-  Lemma rule_send (x y z : var) (P: sasn) (t : ST) (G : spec) :
-    G |-- {[ P[{y/V //! z}] | x : `(!z,{P}.t) ]} csend x y {[ P[{y/V //! z}] | x : (`subst_ST `z y/V `t) ]}.
-  Proof.
-    eapply roc; try (apply fp_good).
-    rewrite <- exists_into_precond2.
-    apply lforallR. intro Q.
-    eapply roc_post.
-    eapply rule_frame.
-    apply rule_send_ax.
-    apply lexistsR with (subst_mod_asn Q (csend x y)).
-    reflexivity.
-  Qed.
-  *)
-  
+    
   Lemma rule_send_ax (x y z : var) (P: sasn) (t : ST) (G : spec) (Hdmt : dmt P[{y/V //! z}] x) :
     G |-- {[ fp P[{y/V //! z}] y //\\ `has_ST (x/V) `(!z,{P}.t) //\\ (nsm x)  ]} csend x y {[ fp P[{y/V //! z}] y //\\ `has_ST (x/V) (`subst_ST `z y/V `t) ]}.
   Proof.
@@ -294,6 +220,22 @@ Import SepAlgNotations.
         
         apply HGuard.
   Qed.
+  
+  (*
+  Lemma rule_send (x y z : var) (P: sasn) (t : ST) (G : spec) :
+    G |-- {[ P[{y/V //! z}] | x : `(!z,{P}.t) ]} csend x y {[ P[{y/V //! z}] | x : (`subst_ST `z y/V `t) ]}.
+  Proof.
+    eapply roc; try (apply fp_good).
+    rewrite <- exists_into_precond2.
+    apply lforallR. intro Q.
+    eapply roc_post.
+    eapply rule_frame.
+    apply rule_send_ax.
+    apply lexistsR with (subst_mod_asn Q (csend x y)).
+    reflexivity.
+  Qed.
+  *)
+  
   
   Lemma rule_recv (x y z : var) (P: sasn) (t : ST) (G : spec) (Hdiff: x <> y) (Hdmt : dmt P[{y/V //! z}] x) :
     G |-- {[ `has_ST x/V `(&z,{P}.t) ]} crecv y x {[ P[{y/V //! z}] //\\ (`has_ST (x/V) (`subst_ST `z y/V `t)) ]}.
@@ -349,37 +291,10 @@ Import SepAlgNotations.
         rewrite H7; clear H7.
 	  	apply Hstt'.
   Admitted.
-
-(*      - rewrite subst1_trunc_singleton_stack, stack_lookup_add.
-        admit.
-      - intros Hstt k tr' Hmt.
-        destruct (eq_dec k c).
-        + unfold singleton_STs in Hmt. apply find_mapsto_iff in Hmt.
-          rewrite add_eq_o in Hmt; [| rewrite Sref; auto].
-          inversion Hmt. 
-          rewrite H5.
-          exists (trecv rv rh tr).
-          split; [assumption|].
-          
-          unfold STs_traces, singleton_STs in Hstt.
-          specialize (Hstt c (`subst_ST `z y/V `t (stack_add y rv s))).
-          rewrite stack_lookup_add2, Sref in Hstt. simpl in Hstt.
-          assert (MapsTo c (`subst_ST `z y/V `t (stack_add y rv s))
-                  (add c (`subst_ST `z y/V `t (stack_add y rv s)) (empty ST))). {
-            apply find_mapsto_iff.
-            rewrite add_eq_o; auto.
-          }
-          specialize (Hstt H6); clear H6.
-          destruct Hstt as [tr'' [Hmt' Hstt]].
-          apply find_mapsto_iff in Hmt'. rewrite add_eq_o in Hmt'; [|auto].
-          inversion Hmt'; subst; clear Hmt'.
-          
-          admit.
-        + unfold singleton_STs in Hmt; rewrite Sref in Hmt; simpl in Hmt.
-          apply add_neq_mapsto_iff in Hmt; [| congruence].
-          apply find_mapsto_iff in Hmt.
-          rewrite empty_o in Hmt.
-          inversion Hmt. *)
+  
+  (*******************************
+   * Anything after this breaks! *
+   *******************************)
   
   Lemma rule_read_fwd (x y : var) (f : field) (e : expr) (P : sasn)
     (HPT : P |-- `pointsto y/V `f e) :

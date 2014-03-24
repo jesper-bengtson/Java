@@ -82,8 +82,6 @@ Section Rules.
       + destruct (HSpec _ m k s h1 t HPP' Hmn Hkm) as [_ HC]. 
         * apply HP.
         * specialize (HC t' h'' s' Hc).
-          (* destruct HC as [HC Hst].
-          split; [| assumption]. *)
           exists h'', h2, HBig. split; [assumption |].
           simpl. exists s. unfold apply_subst.
           solve_model HR.
@@ -107,11 +105,7 @@ Section Rules.
       simpl. intros m k s h t HPP' Hm Hk [HP1 HP2]. split.
       + eapply H1; eauto.
       + intros t' h' s' Hsem.
-        (* split *)
-        - split; [eapply H1|eapply H2]; eauto.
-        (* - edestruct H1; try eassumption.
-          specialize (H0 t' h' s' Hsem).
-          apply H0. *)
+        split; [eapply H1|eapply H2]; eauto.
     Qed.
 
   End StructuralRules.
@@ -123,7 +117,6 @@ Section Rules.
       intros n Pr HPP Pr' m k s h t _ Hmn Hkm HP; split.
       + intros H; inversion H.
       + intros t' h' s' HSem; inversion HSem; subst.
-        (* split; [|intros; assumption]. *)
         solve_model HP.
     Qed.
 
@@ -145,9 +138,7 @@ Section Rules.
         destruct (Hc2 _ (k - n0) n1 s1 h1 t1 HPP') as [_ HC2]; [omega | omega | |].
         apply HC1.
         specialize (HC2 _ _ _ H8) (*; destruct HC2 as [HC2 Hst2] *).
-        (* split. *)
-        * solve_model HC2.
-        (* * intuition. *) 
+        solve_model HC2. 
     Qed.
 
     Lemma nondet_rule c1 c2 P Q:
@@ -166,8 +157,7 @@ Section Rules.
           (* split; [ solve_model HC | assumption ]. *)
         * destruct (Hc2 _ _ n0 s h t HPP' Hmn) as [_ HC]; [omega | assumption |].
           specialize (HC _ _ _ H5) (*; destruct HC as [HC Hst] *).
-           solve_model HC.
-          (* split; [ solve_model HC | assumption ]. *)
+          solve_model HC.
     Qed.
 
     Lemma kleene_rule c P:
@@ -190,10 +180,7 @@ Section Rules.
           specialize (HC _ _ _ H) (*; destruct HC as [HC Hst] *).
           assert ((((P s') t' P0) ((m - n0) - n1)) h') as H2. 
             apply IHkleene_sem; try assumption; try omega. 
-          (* assert ( (STs_traces P0 (st s') t' -> STs_traces P0 (st s0) t0)).
-            apply IHkleene_sem with (m := m - n0); try assumption; try omega. *)
           solve_model H2.
-          (* split; [ solve_model H2 | intuition]. *)
     Qed.
 
     Lemma assume_rule P (t : vlogic) :
@@ -203,7 +190,6 @@ Section Rules.
       + intros HFail. inversion HFail.
       + intros tr' h' s' H. remember (Some (s', (h', tr'))) as cfg; induction H.
         inversion Heqcfg; subst; intros.
-        (* split; [| intuition]. *)
         split; [assumption|]. solve_model Hp.
     Qed.
 
@@ -214,7 +200,6 @@ Section Rules.
       + intros HF; inversion HF; subst; auto.
       + intros t' h' s' HSem; inversion HSem; subst.
         solve_model Hp.
-        (* split; [ solve_model Hp | intuition ]. *)
     Qed.
 
   End PrimitivesRules.

@@ -19,11 +19,6 @@ Section Commands.
       (HSafe  : forall m, m <= n -> safe c P m s h t)
       (HSem   : c P n s big t (Some (s', (big', t')))),
       exists h', sa_mul h' frame big' /\ c P n s h t (Some (s', (h', t'))).
-  (* Definition increasing_traces (c : semCmdType) :=
-    forall P s s' h h' n t t'
-      (HSafe  : forall m, m <= n -> safe c P m s h t)
-      (HSem : c P n s h t (Some (s', (h', t')))),
-      traces_lte t t'. *)
 
   Record semCmd := {
     cmd_rel   :> Prog_wf -> nat -> stack -> heap -> traces -> option (stack * (heap * traces)) -> Prop;
@@ -41,20 +36,6 @@ Section Commands.
     intros; apply cmd_zero.
   Qed.
   
-  (*
-  Lemma semCmd_traces_lte : forall (c : semCmd) P s s' h h' t t' n
-    (HSafe  : forall m, m <= n -> safe c P m s h t) 
-    (HSem: c P n s h t (Some (s', (h', t')))),
-    traces_lte t t'. 
-  Proof.
-    intros.
-    intros k v Hmt.
-    edestruct (@cmd_trace c); try eassumption. 
-    exists x.
-    apply H.
-  Qed.
-  *)
-
   Global Opaque sa_mul.
 
   Implicit Arguments Build_semCmd [].
@@ -69,13 +50,6 @@ Section Commands.
     eapply cmd_frame; eauto. 
     intros m HLe HFail; apply (HSafe (S m)); auto with arith.
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    destruct n as [| n]; unfold safe in HSafe; simpl in *; [contradiction |].
-    eapply cmd_trace; eauto.
-    intros m HLe HFail; apply (HSafe (S m)); auto with arith.
-  Qed. *)
-  (* Skip *)
 
   Inductive skip_sem : semCmdType :=
   | s_ok : forall P s h t, skip_sem P 1 s h t (Some (s, (h, t))).
@@ -88,11 +62,6 @@ Section Commands.
     inversion HSem; subst; clear HSem.
     exists h; auto using skip_sem.
   Qed.
-  (*Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst; clear HSem.
-    reflexivity.
-  Qed.*)
 
   (* Seq *)
   Inductive seq_sem (c1 c2 : semCmd) : semCmdType :=
@@ -119,19 +88,6 @@ Section Commands.
     + edestruct (@cmd_frame c2) with(n:=n1) as [hr [HFrame1 HSem1]]...
       intros m HLe HFail; apply HSafe with (S (n0 + m)); [omega | ]...
   Qed.
-  (* Next Obligation with eauto using seq_sem.
-    unfold increasing_traces; intros.
-    inversion HSem; subst; clear HSem.
-    assert (traces_lte t t1). {
-      apply semCmd_traces_lte in H6; [ apply H6 |].
-      intros m HLe HFail; apply HSafe with (S m); [omega | ]...
-    }
-    assert (traces_lte t1 t'). {
-      apply semCmd_traces_lte in H8; [ apply H8 |].
-      intros m HLe HFail; apply HSafe with (S (n0 + m)); [omega | ]...
-	}
-    transitivity t1; assumption.
-  Qed. *)   
 
   (* Nondet *)
   Inductive nondet_sem (c1 c2 : semCmd) : semCmdType :=
@@ -159,14 +115,6 @@ Section Commands.
     + edestruct (@cmd_frame c2) as [h0 [HFrame0 HSem0]]...
       intros m HLe HFail; apply HSafe with (S m); [omega |]...
   Qed.
-  (* Next Obligation with eauto using nondet_sem.
-    unfold increasing_traces; intros.
-    inversion HSem; subst; clear HSem.
-    + apply semCmd_traces_lte in H5; [ apply H5 |].
-      intros m HLe HFail; apply HSafe with (S m); [omega |]...
-    + apply semCmd_traces_lte in H5; [ apply H5 |].
-      intros m HLe HFail; apply HSafe with (S m); [omega |]...
-  Qed. *)   
 
   (* Kleene star *)
   Inductive kleene_sem (c : semCmd) : semCmdType :=
@@ -196,19 +144,6 @@ Section Commands.
     + destruct (IHHSem (eq_refl _) h' HFrame0) as [hr [HFrame1 HSem1]]...
       intros m HLe HFail; apply HSafe with (S (n + m)); [omega |]...
   Qed.
-  (* Next Obligation with eauto using kleene_sem.
-    unfold increasing_traces; intros.
-    remember (Some (s', (h', t'))) as cfg; induction HSem;
-    inversion Heqcfg; subst; intros; clear Heqcfg...
-    reflexivity.
-    assert (traces_lte t t0). {
-      apply semCmd_traces_lte in H; [ apply H |].
-      intros m HLe HFail; apply HSafe with (S m); [omega |]...
-    }
-    transitivity t0; [apply H0 |].
-    apply IHHSem; [| reflexivity].
-    intros m HLe HFail; apply HSafe with (S (n + m)); [omega |]...
-  Qed. *)
 
   (* TODO: update the description
      assume command -- this command is a bit of a hack that just skips if
@@ -225,11 +160,6 @@ Section Commands.
     remember (Some (s', (big', t'))) as cfg; induction HSem.
     inversion Heqcfg; subst; eauto using assume_sem.
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst. 
-    reflexivity.
-  Qed. *)
 
   Lemma assume_inv P e n s s0 h h0 t t0 (HSem : assume_cmd e P n s h t (Some (s0, (h0, t0)))) : 
       s = s0 /\ h = h0 /\ t = t0.
@@ -251,30 +181,8 @@ Section Commands.
     unfold frame_property; simpl; intros.
     inversion HSem; subst; eauto using assert_sem.
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    reflexivity.
-  Qed. *)
 
-  (* |= {p}c{q} )
-  Program Definition sem_triple (p q : sasn) (st st': open STs) (c : semCmd) : spec :=
-    mk_spec (fun P n => forall P' m k s h t, Prog_wf_sub P P' -> m <= n -> k <= m -> 
-                                           p s P' m h ->
-      (STs_traces P' (st s) t -> safe c P' k s h t) /\
-      (forall t' h' s',  
-      	c P' k s h t (Some (s', (h', t'))) ->
-      		((q s' P' (m - k) h')
-      		/\
-            (STs_traces P' (st' s') t' -> STs_traces P' (st s) t))
-      )
-    ) _ _.
-  Next Obligation.
-    apply H0; try eassumption.
-    etransitivity; eassumption.
-  Qed.
-  *)
-  
+  (* |= {p}c{q} *)
   Program Definition sem_triple (p q : sasn) (c : semCmd) : spec :=
     mk_spec (fun P n => forall P' m k s h t, Prog_wf_sub P P' -> m <= n -> k <= m -> 
                                            p s t P' m h ->
@@ -296,30 +204,6 @@ End Commands.
   Local Transparent ILPre_Ops.
   Local Transparent ILFun_Ops.
 
-  (*
-  Add Parametric Morphism : sem_triple with signature
-    lentails --> lentails ++> eq ++> eq ++> eq ==> lentails
-    as sem_triple_entails_m.
-  Proof.
-    intros p p' Hp q q' Hq st st' c n x H P m k s h t HP Hmn Hkm Hp'.
-    apply Hp in Hp'; try apply _.    
-    simpl in *.
-    specialize (H _ _ _ _ _ t HP Hmn Hkm Hp').
-    destruct H as [Hsafe H].
-    split; [assumption|].
-    intros t' h' s'; split.
-    * apply Hq.
-      specialize (H _ _ _ H0).
-      apply H.
-    * specialize (H _ _ _ H0).
-      apply H.
-  Qed.
-
-  Add Parametric Morphism : sem_triple with signature
-    lequiv ==> lequiv ==> eq ==> eq ==> eq ==> lequiv
-    as sem_triple_lequiv_m.
-  *)
-  
   Add Parametric Morphism : sem_triple with signature
     lentails --> lentails ++> eq ==> lentails
     as sem_triple_entails_m.
@@ -349,8 +233,5 @@ End Commands.
 
 Implicit Arguments Build_semCmd [].
 
-(*
-Notation "{{ p | st }} c {{ q | st' }}" := (sem_triple p q st st' c) (at level 89,
-  format "{{ p | st }} '/ '  c '/ '  {{ q | st' }}"). *)
 Notation "{{ p }} c {{ q }}" := (sem_triple p q c) (at level 89,
   format "{{ p }} '/ '  c '/ '  {{ q }}").

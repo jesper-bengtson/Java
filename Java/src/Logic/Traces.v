@@ -18,14 +18,6 @@ Inductive marshall (v : sval) (big : heap) : heap -> Prop :=
                     (Mmaps : MapsTo (ref, f) v' (get_heap_ptr big))
                     (Mmarshalls : marshall v' big m),
                     marshall v big (heap_add_ptr m ref f v')
-  (*| marshall_ptr  : forall (ref : ptr) (m : heap)
-                    (Vptr : v = vptr ref)
-                    (Mhasfields : exists f, In (ref, f) (get_heap_ptr big))
-                    (Mmarshalls :  forall (f : field) (v' : sval)
-                    	(Mmaps : MapsTo (ref,f) v' (get_heap_ptr big)), 
-                    	marshall v' big m /\ MapsTo (ref,f) v' (get_heap_ptr m))
-                  	(Msubheap : subheap m big),
-                    marshall v big m*)
   | marshall_arr  : forall (ref : arrptr) (i : nat) (v' : sval) (m : heap)
                     (Varr : v = varr ref)
                     (Mmaps : MapsTo (ref, i) v' (get_heap_arr big))
@@ -40,120 +32,12 @@ Inductive trace : Type :=
   | trecv  : sval -> heap -> trace -> trace
   .
 
-Instance trace_Equivalance : Equivalence (@eq trace) := _.
-
-Inductive trace_lte : relation trace :=
-  | tlte_eq : forall t, trace_lte t t
-  | tlte_start : forall t t' t'', trace_lte t t' -> trace_lte t (tstart t'' t')
-  | tlte_send : forall t v h t', trace_lte t t' -> trace_lte t (tsend v h t')
-  | tlte_recv : forall t v h t', trace_lte t t' -> trace_lte t (trecv v h t')
-  .
-
-Instance trace_Reflexive : Reflexive trace_lte.
-Proof.
-  intro x; constructor.
-Qed.
-
-Instance trace_Transitive : Transitive trace_lte.
-Proof.
-  intros x y z Hxy Hyz.
-  inversion Hxy; try assumption; (
-    induction Hyz; try apply Hxy; (constructor; apply IHHyz; [apply Hxy | apply H1])
-  ).
-Qed.
-
-(*
-It should also be anti-symmetrical, that is if a <= b and b <= a, then a = b,
-but this was less trivial to prove...
-Instance trace_Antisymmetric : Antisymmetric trace eq trace_lte.
-*)
-
-Instance trace_PreOrder : PreOrder trace_lte := Build_PreOrder trace trace_lte _ _.
-
 Definition traces := Map [stptr, trace].
 
-Instance traces_Rel : Rel traces | 0 := {
-  rel := @rel traces Equal
-}.
+Local Existing Instance EquivPreorder.
 
-Definition traces_lte : relation traces := fun (t t' : traces) => forall k v, MapsTo k v t -> exists v', MapsTo k v' t' /\ trace_lte v v'.
-
-Instance traces_Reflexive : Reflexive traces_lte.
-Proof.
-  intros x k v Hmt.
-  exists v.
-  split; [ assumption | apply tlte_eq ].
-Qed.
-
-Instance traces_lte_m : Proper (Equal ==> Equal ==> iff) traces_lte.
-Proof.
-  intros x y Hxy u t Hut; split; intro Hlte;
-  unfold traces_lte in *;
-  intros k v Hmt;
-  specialize (Hlte k v);
-  [ rewrite <- Hxy in Hmt | rewrite Hxy in Hmt ];
-  apply Hlte in Hmt; clear Hlte;
-  destruct Hmt as [v' [Hmt Htlte]];
-  exists v';
-  (split; [| apply Htlte]);
-  [ rewrite <- Hut | rewrite Hut ];
-  apply Hmt.
-Qed.
-
-Instance traces_Transitive : Transitive traces_lte.
-Proof.
-  intros x y z Hxy Hyz.
-  intros k v Hmt.
-  unfold traces_lte in *.
-  specialize (Hxy k v).
-  apply Hxy in Hmt; destruct Hmt as [v' [Hmt Hlte]]; clear Hxy.
-  specialize (Hyz  k v').
-  apply Hyz in Hmt; destruct Hmt as [v'' [Hmt' Hlte']]; clear Hyz.
-  exists v''.
-  split; [apply Hmt' | transitivity v'; assumption].
-Qed.
-
-Instance traces_PreOrder : PreOrder traces_lte := Build_PreOrder traces traces_lte _ _.
-
-Lemma traces_lte_equal : forall t t', t === t' -> traces_lte t t'.
-Proof.
-  intros.
-  rewrite H.
-  reflexivity.
-Qed.
-
-Lemma traces_lte_new : forall t k v, ~In k t -> traces_lte t (add k v t).
-Proof.
-  intros t k v Hnotin k' v' Hmt.
-  destruct (eq_dec k k').
-  * exfalso; apply Hnotin.
-    unfold In; exists v'.
-    rewrite H.
-    apply Hmt.
-  * exists v'.
-    split; [ | reflexivity].
-    apply zadd_2; [ apply H | apply Hmt ].
-Qed.
-
-Lemma traces_lte_existing : forall t k v v', MapsTo k v t -> trace_lte v v' -> traces_lte t (add k v' t).
-Proof.
-  intros t k v v' Hmt Hlte k' v'' Hmt'.
-  destruct (eq_dec k k').
-  * rewrite <- H in *.
-    assert (v = v''). {
-      apply find_mapsto_iff in Hmt;
-      apply find_mapsto_iff in Hmt'.
-      rewrite Hmt in Hmt'.
-      inversion Hmt'.
-      reflexivity.
-    }
-    rewrite <- H0.
-    exists v'.
-    split; [apply zadd_1; auto | apply Hlte ].
-  * exists v''.
-    split; [| reflexivity ].
-    apply zadd_2;[ apply H | apply Hmt' ].
-Qed.
+Instance traces_Rel : Rel traces := Equal.
+Instance traces_PreOrder : PreOrder (@rel traces Equal) := _. 
 
 Lemma marshall_subheap {h h' : heap} {v : sval}
     (Hmarshall : marshall v h h') :

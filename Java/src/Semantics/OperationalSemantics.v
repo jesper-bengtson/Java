@@ -3,7 +3,6 @@ Require Import MapInterface MapFacts.
 Require Import ILInsts ILogic ILEmbed ILEmbedTac ILQuantTac OpenILogic 
         Open Subst Stack Lang SemCmd HeapArr Traces ST SemCmdRules BILogic.
 
-
 Import SepAlgNotations.
 
 Set Implicit Arguments.
@@ -23,11 +22,6 @@ Section Commands.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem; exists h...
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    reflexivity.
-  Qed. *)
 
   Inductive read_sem (x y : var) (f : field) : semCmdType :=
   | read_ok : forall ref v P (s : stack) (h : heap) (t : traces)
@@ -51,11 +45,6 @@ Section Commands.
     destruct (sa_mul_mapstoR HFrame Rmaps) as [[H1 H2] | [H1 H2]]; [assumption|].
     contradiction HSafe; apply read_fail with ref; assumption.
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    reflexivity.
-  Qed. *)
 
 Require Import Compare_dec.
 
@@ -157,11 +146,6 @@ Require Import Compare_dec.
     eapply read_arr_fail; try eassumption; try reflexivity.
     eapply find_heap_arr_frame; eauto. apply HFrame.
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    reflexivity.
-  Qed. *)
 
   Inductive write_arr_sem (x : var) (path : list dexpr) (e : dexpr) : semCmdType :=
   | write_arr_ok P arr s h ha' t vpath
@@ -197,11 +181,6 @@ Require Import Compare_dec.
     apply H1.
     eapply write_arr_ok; try eassumption; reflexivity.
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    reflexivity.
-  Qed. *)
 
   Inductive alloc_arr_sem (x : var) (e : dexpr) : semCmdType :=
   | alloc_arr_ok (P : Prog_wf) (s s' : stack) (h : heap) (ha' : heap_arr) (t : traces) (n : nat)
@@ -215,10 +194,6 @@ Require Import Compare_dec.
   Qed.
   Next Obligation.
     unfold frame_property; intros; inversion HSem; subst P n s s' big big'.
-    (*
-    destruct h as [h_ptr [h_arr h_st]], frame as [f_ptr [f_arr f_st]].
-    apply sa_mul_split in HFrame as [Hhp [Hha Hhs]]; simpl in Hha; simpl in Hhs.
-    *)
     specialize (HSafe _ (le_n _)).
     Lemma alloc_heap_arr_frame (n m : nat) (h frame h' h'' : heap_arr)
           (Hfresh : forall i, ~ In (n, i) frame)
@@ -254,11 +229,6 @@ Require Import Compare_dec.
     specialize (Sfresh_ha i). apply Sfresh_ha.
     destruct (sa_mul_inL HFrame_arr H). assumption.
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    reflexivity.
-  Qed. *)
     
   Inductive alloc_sem (x : var) (C : class) : semCmdType :=
   | alloc_ok : forall (P : Prog_wf) (s s' : stack) (h : heap) (hp' : heap_ptr) t n fields
@@ -291,11 +261,6 @@ Require Import Compare_dec.
     destruct (sa_mul_inR Sh0 H9) as [[H10 H11] | [H10 H11]]; [assumption|].
     apply sa_mulC in H1; destruct (sa_mul_inL H1 H10); intuition.
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    reflexivity.
-  Qed. *)
 
   Inductive write_sem (x:var) (f:field) (e:dexpr) : semCmdType := 
   | write_ok : forall P (s: stack) (h : heap) (hp' : heap_ptr) t ref v
@@ -328,11 +293,6 @@ Require Import Compare_dec.
     eapply write_ok; try eassumption; try reflexivity.
     destruct (sa_mul_inR HFrame_ptr Sin); intuition.
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    reflexivity.
-  Qed. *)
 
   Inductive send_sem (x v : var) : semCmdType :=
   | send_ok : forall P (s: stack) (h mres: heap) (t t': traces) (tr: trace) (c: stptr)
@@ -369,12 +329,6 @@ Require Import Compare_dec.
       + eapply send_ok; [apply Sref | apply Strace | | reflexivity].
         eapply marshall_into_unit; [ apply H | apply Smarshall].
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    eapply traces_lte_existing; [apply Strace |].
-    repeat constructor.
-  Qed. *)
 
   Inductive recv_sem (v x : var) : semCmdType :=
   | recv_ok : forall P (s: stack) (h rh h': heap) (t t': traces) (tr: trace) (c: stptr) (rv : sval)
@@ -415,12 +369,6 @@ Require Import Compare_dec.
        apply sa_mul_DisjointHeaps in H0.
        apply H0.
   Qed.
-  (* Next Obligation.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    eapply traces_lte_existing; [ apply Strace |].
-    repeat constructor.
-  Qed. *)
 
   Fixpoint create_stack (ps : list var) (vs : list val) : stack :=
     match ps, vs with
@@ -460,12 +408,6 @@ Require Import Compare_dec.
     edestruct (@cmd_frame sc) as [h1 [HFrame1 HSem1]]...
     intros k HLe HFail; apply HSafe with (S k); [omega |]...
   Qed.
-  (* Next Obligation with eauto using call_sem.
-    unfold increasing_traces; intros.
-    inversion HSem; subst.
-    apply semCmd_traces_lte in HSem0; [apply HSem0 |].
-    intros k HLe HFail; apply HSafe with (S k); [omega |]...
-  Qed. *)
 
   Inductive semantics : cmd -> semCmd -> Prop :=
   | semassign : forall x e,
@@ -588,27 +530,25 @@ End Commands.
   Local Transparent ILPre_Ops.
   Local Transparent ILFun_Ops.
 
-  Definition triple (P Q : sasn) (* st st': open STs *) (c : cmd) :=
+  Definition triple (P Q : sasn) (c : cmd) :=
     Forall sc : semCmd, (semantics c sc) ->> {{P}} sc {{Q}}.
 
- (* Notation " '{[' P '|' st ']}' c '{[' Q '|' st' ']}' " := (triple P Q st st' c) (at level 89,
-    format " {[ P | st ]} '/' c '/' {[ Q | st' ]} "). *)
   Notation " '{[' P ']}' c '{[' Q ']}' " := (triple P Q c) (at level 89,
     format " {[ P ]} '/' c '/' {[ Q ]} ").
     
 
   Add Parametric Morphism : triple with signature
-    lentails --> lentails ++> eq (*++> eq ++> eq*) ==> lentails
+    lentails --> lentails ++> eq ==> lentails
     as triple_entails_m.
   Proof.
-    intros p p' Hp q q' Hq (* st st' *) c.
+    intros p p' Hp q q' Hq c.
     unfold triple. 
     setoid_rewrite Hq; setoid_rewrite <- Hp. reflexivity.
   Qed.
 
 Open Scope open_scope.
 
-  Definition method_spec C m (ps : list var) (rn : var) (P Q : sasn) (* st st': open STs *) := (
+  Definition method_spec C m (ps : list var) (rn : var) (P Q : sasn) := (
     NoDup (rn :: ps) /\\
     Exists ps' : (list var), Exists c : cmd, Exists re : dexpr,
       [prog] (fun X : Prog_wf => method_lookup X C m (Build_Method ps' c re)
@@ -618,36 +558,34 @@ Open Scope open_scope.
          c {[ Q //! zip (rn :: ps) (eval re :: (List.map var_expr ps')) ]}
     ).
 
-  (*Notation " C ':.:' m |-> ps {{ P | st }}-{{ r , Q | st' }} " :=
-    (method_spec C m ps r P Q st st') (at level 60).*)
   Notation " C ':.:' m |-> ps {{ P }}-{{ r , Q }} " :=
     (method_spec C m ps r P Q) (at level 60).
 
   Add Parametric Morphism : method_spec with signature
     eq ==> eq ==> eq ==> eq ==>
-      lentails --> lentails ++> (* eq ++> eq ++>*)  lentails
+      lentails --> lentails ++> lentails
     as method_spec_entails_m.
   Proof.
-    intros C m ps rn P P' HP Q Q' HQ (* st st' *). unfold method_spec.
+    intros C m ps rn P P' HP Q Q' HQ. unfold method_spec.
     (* Unravel the two almost identical sides of the entailment first because
         setoid_rewrite doesn't seem to go under these binders. *)
     apply lpropandL; intro H. apply lpropandR; [assumption|].
     lexistsL ps' c re. lexistsR ps' c re.
     apply landR; [apply landL1; reflexivity | apply landL2].
-    admit.
-(*    setoid_rewrite HP. setoid_rewrite HQ. reflexivity.*)
+    admit (* fangel *).
+    (* setoid_rewrite HP. setoid_rewrite HQ. reflexivity. *)
   Qed.
 
   Add Parametric Morphism : method_spec with signature
     eq ==> eq ==> eq ==> eq ==>
-      lequiv ==> lequiv ==> (* eq ==> eq ==> *) lequiv
+      lequiv ==> lequiv ==> lequiv
     as method_spec_bientails_m.
   Proof.
     split; apply method_spec_entails_m; try rewrite ?H, ?H0; reflexivity.
   Qed.
 
 
-  Lemma c_triple_zero P (p q : sasn) (* st st': open STs *) (c : cmd) :
+  Lemma c_triple_zero P (p q : sasn) (c : cmd) :
     ({[ p ]} c {[ q ]}) P 0.
   Proof.
     intros sc n Hn Q HPQ sem R k m s h t HQR Hk Hv Hp.
@@ -678,13 +616,13 @@ Open Scope open_scope.
 
 Section StructuralRules.
 
-  Lemma triple_false (G : spec) (Q : sasn) (* st st': open STs *) c :
+  Lemma triple_false (G : spec) (Q : sasn) c :
     G |-- {[lfalse]} c {[Q]}.
   Proof.
     intros n; simpl in *; intros; destruct H4.
   Qed.
 
-  Lemma roc (P P' Q Q' : sasn) (* st st': open STs *) c (G : spec)
+  Lemma roc (P P' Q Q' : sasn) c (G : spec)
     (HPre  : P  |-- P')
     (HPost : Q' |-- Q)
     (Hc    : G  |-- {[P']} c {[Q']}) :
@@ -695,7 +633,7 @@ Section StructuralRules.
     lforallL sc. apply lpropimplL; [assumption|]. apply rule_of_consequence; assumption.
   Qed.
 
-  Lemma roc_pre (P P' Q : sasn) (* st st': open STs *) c G
+  Lemma roc_pre (P P' Q : sasn) c G
     (HPre : P |-- P')
     (Hc   : G |-- {[P']} c {[Q]}) :
     G |-- {[P]} c {[Q]}.
@@ -703,7 +641,7 @@ Section StructuralRules.
   	eapply roc; eassumption || reflexivity.
   Qed.
 
-  Lemma roc_post (P Q Q' : sasn) (* st st': open STs *) c G
+  Lemma roc_post (P Q Q' : sasn) c G
     (Hc : G  |-- {[P]} c {[Q']})
     (HPost : Q' |-- Q) :
     G |-- {[P]} c {[Q]}.
@@ -740,7 +678,7 @@ Section StructuralRules.
   Qed.
   Implicit Arguments rule_frame [[P] [Q] [R] [c] [G]].
 
-  Lemma exists_into_precond2 {A} (P: A -> sasn) (* st st': open STs *) c q :
+  Lemma exists_into_precond2 {A} (P: A -> sasn) c q :
     (Forall x, {[P x]} c {[q]}) -|- {[Exists x, P x]} c {[q]}.
   Proof.
     unfold triple; setoid_rewrite <- exists_into_precond; split.
@@ -750,7 +688,7 @@ Section StructuralRules.
       lforallL sc. apply lpropimplL; [assumption | lforallL x; reflexivity].
   Qed.
   
-  Lemma existentialise_triple (x : var) (P Q : sasn) (* st st': open STs *) c (G : spec) 
+  Lemma existentialise_triple (x : var) (P Q : sasn) c (G : spec) 
 	(H : forall (v : val), G |-- {[@lembedand vlogic sasn _ _ (open_eq (x/V) (`v)) P]} c {[Q]}) :
     G |-- {[P]} c {[Q]}.
   Proof.

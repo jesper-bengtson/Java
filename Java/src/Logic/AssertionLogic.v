@@ -50,8 +50,6 @@ Local Existing Instance EmbedPropProp.
 Instance EmbedAsnPropOp : EmbedOp Prop asn := _.
 Instance EmbedAsnProp : Embed Prop asn := _.
  
-Instance traces_Rel : Rel traces := Equal.
-Instance traces_PreOrder : PreOrder (@rel traces Equal) := _. 
 Definition tasn := ILPreFrm (@rel traces Equal) asn.
 
 Instance ILogicOpsTAsn : ILogicOps tasn := _.

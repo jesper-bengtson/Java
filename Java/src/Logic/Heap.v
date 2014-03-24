@@ -18,22 +18,17 @@ Definition heap_ptr := Map [ptr * field, val].
 
 Definition heap := (heap_ptr * heap_arr)%type.
 
-(* Definition mkheap (hp: heap_ptr) (ha: heap_arr) (hs: heap_st) := (hp, (ha, hs)). *)
 Definition mkheap (hp: heap_ptr) (ha: heap_arr) := (hp, ha).
 Definition get_heap_ptr (h: heap) : heap_ptr := fst h.
 Definition get_heap_arr (h: heap) : heap_arr := snd h.
-(* Definition get_heap_st  (h: heap) : heap_st  := snd (snd h). *)
 
 Definition heap_ptr_unit : heap_ptr := @map_unit _ _ _ val.
-(* Definition heap_unit : heap := (heap_ptr_unit, (heap_arr_unit, heap_st_unit)).*)
 Definition heap_unit : heap := (heap_ptr_unit, heap_arr_unit).
 
 Definition heap_add_ptr (h : heap) (p : ptr) (f : field) (v : val) : heap :=
   mkheap (add (p, f) v (get_heap_ptr h)) (get_heap_arr h) (*(get_heap_st h)*).
 Definition heap_add_arr (h : heap) (n m : nat) (v : val) : heap :=
   mkheap (get_heap_ptr h) (add (n, m) v (get_heap_arr h)) (*(get_heap_st h)*).
-(*Definition heap_add_st (h : heap) (p : stptr) (t : sST) : heap :=
-  mkheap (get_heap_ptr h) (get_heap_arr h) (add p t (get_heap_st h)).*)
 
 Instance RelHeapPtr : Rel heap_ptr := _.
 Instance PreorderHeapPtr : PreOrder (@rel heap_ptr RelHeapPtr) := _.
@@ -107,7 +102,7 @@ Proof.
         unfold In. exists v_a.
         rewrite find_mapsto_iff.
         congruence.
-      - admit.
+      - admit (* fangel *).
 Admitted.
 
 Lemma heap_eq_dec : forall (a b : heap), {a === b} + {a =/= b}.
@@ -143,21 +138,9 @@ Proof.
   apply Harr.
 Qed.
 
-(*
-Lemma isolate_heap_st : forall a b c, sa_mul a b c -> 
-                         sa_mul (get_heap_st a) (get_heap_st b) (get_heap_st c).
-Proof.
-  intros.
-  destruct a as [a_ptr [a_arr a_st]], b as [b_ptr [b_arr b_st]], c as [c_ptr [c_arr c_st]].
-  apply sa_mul_split in H as [Hptr Harr]; apply sa_mul_split in Harr as [Harr Hst].
-  apply Hst.
-Qed.
-*)
-
 Lemma split_heap : forall a b c,
                    sa_mul (get_heap_ptr a) (get_heap_ptr b) (get_heap_ptr c) ->
                    sa_mul (get_heap_arr a) (get_heap_arr b) (get_heap_arr c) ->
-                   (* sa_mul (get_heap_st a) (get_heap_st b) (get_heap_st c) -> *)
                    sa_mul a b c.
 Proof.
   intros.
@@ -169,8 +152,6 @@ Lemma remove_mkheap_ptr : forall Hptr Harr, get_heap_ptr (mkheap Hptr Harr) = Hp
   Proof. intros. reflexivity. Qed.
 Lemma remove_mkheap_arr : forall Hptr Harr, get_heap_arr (mkheap Hptr Harr) = Harr.
   Proof. intros. reflexivity. Qed.
-(*Lemma remove_mkheap_st : forall Hptr Harr Hst, get_heap_st (mkheap Hptr Harr Hst) = Hst.
-  Proof. intros. reflexivity. Qed.*)
 
 Definition DisjointHeaps (n m : heap) := Disjoint (get_heap_ptr n) (get_heap_ptr m) /\ Disjoint (get_heap_arr n) (get_heap_arr m).
 
@@ -227,25 +208,3 @@ Proof.
   [apply isolate_heap_ptr in H|apply isolate_heap_arr in H];
   eapply sa_mul_Disjoint; apply H.
 Qed.
-
-(*
-Definition merge (h1 h2 : heap_ptr) : heap_ptr :=
-  fold (fun key val h => add key val h) h2 h1.
-
-Definition this_level (val : sval) (h : heap_ptr) : heap_ptr :=
-  match val with
-    | vptr ref => filter (fun (key : (ptr * field)) _ => let (ref', f) := key in ref == ref') h
-    | _ => empty _
-  end.
-
-Fixpoint test (n : nat) (val : sval) (h : heap_ptr) {struct n} : heap_ptr :=
-  match val with
-    | vptr ref => match n with
-      | O => empty _
-      | S n => let (here, rest) := partition (fun (key : (ptr * field)) _ => let (ref', f) := key in ref == ref') h in
-             if is_empty here then empty _ else
-             update here (fold (fun _ val' => update (test n val' rest)) here rest)
-      end
-    | _ => empty _
-  end.
-*)
