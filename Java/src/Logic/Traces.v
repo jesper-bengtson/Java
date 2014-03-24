@@ -72,6 +72,10 @@ Instance trace_PreOrder : PreOrder trace_lte := Build_PreOrder trace trace_lte _
 
 Definition traces := Map [stptr, trace].
 
+Instance traces_Rel : Rel traces | 0 := {
+  rel := @rel traces Equal
+}.
+
 Definition traces_lte : relation traces := fun (t t' : traces) => forall k v, MapsTo k v t -> exists v', MapsTo k v' t' /\ trace_lte v v'.
 
 Instance traces_Reflexive : Reflexive traces_lte.

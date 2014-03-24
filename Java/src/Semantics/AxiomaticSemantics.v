@@ -8,7 +8,7 @@ Require Import String List FunctionalExtensionality.
 Set Implicit Arguments.
 Unset Strict Implicit.
 
-Lemma rule_seq_ax c1 c2 (P Q R : sasn) :
+Lemma rule_seq_ax c1 c2 (P Q R : sasn) (* st1 st1' st2: open STs *) :
   ({[P]} c1 {[Q]} //\\ {[Q]} c2 {[R]}) |-- {[P]} cseq c1 c2 {[R]}.
 Proof.
   unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
@@ -18,7 +18,7 @@ Proof.
 Qed.
 
 
-Lemma rule_seq c1 c2 (P Q R : sasn) G
+Lemma rule_seq c1 c2 (P Q R : sasn) (* st1 st1' st2: open STs *) G
       (Hc1 : G |-- {[P]} c1 {[Q]})
       (Hc2 : G |-- {[Q]} c2 {[R]}) :
   G |-- {[P]} cseq c1 c2 {[R]}.
@@ -26,7 +26,7 @@ Proof.
   intros; rewrite <- rule_seq_ax; apply landR; eassumption.
 Qed.
 
-Lemma rule_if_ax (e : dexpr) c1 c2 (P Q : sasn) :
+Lemma rule_if_ax (e : dexpr) c1 c2 (P Q : sasn) (* st st': open STs *) :
   @lentails spec _
             (@land spec _ ({[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c1 {[Q]})
                    ({[@lembedand vlogic sasn _ _ (vlogic_eval (E_not e)) P]} c2 {[Q]}))
@@ -40,7 +40,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma rule_if (e : dexpr) c1 c2 (P Q : sasn) G
+Lemma rule_if (e : dexpr) c1 c2 (P Q : sasn) (* st st': open STs *) G
       (Hc1 : G |-- {[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c1 {[Q]})
       (Hc2 : G |-- {[@lembedand vlogic sasn _ _ (vlogic_eval (E_not e)) P]} c2 {[Q]}) :
   G |-- {[P]} cif e c1 c2 {[Q]}.
@@ -48,7 +48,7 @@ Proof.
   intros; rewrite <- rule_if_ax; apply landR; assumption.
 Qed.
 
-Lemma rule_while_ax (e : dexpr) c (P : sasn) :
+Lemma rule_while_ax (e : dexpr) c (P : sasn) (* st: open STs *) :
   {[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c {[P]} |--
   {[P]} cwhile e c {[@lembedand vlogic sasn _ _ (vlogic_eval (E_not e)) P]}.
 Proof.
@@ -62,7 +62,7 @@ Proof.
   ].
 Qed.
   
-Lemma rule_while (e : dexpr) c (P : sasn) G
+Lemma rule_while (e : dexpr) c (P : sasn) (* st: open STs *) G
       (Hc : G |-- {[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c {[P]}) :
   G |-- {[P]} cwhile e c {[@lembedand vlogic sasn _ _ (vlogic_eval (E_not e)) P]}.
 Proof.
@@ -94,6 +94,7 @@ Qed.
 Require Import SepAlgInsts.
 	
 Local Transparent ILPre_Ops.
+Local Transparent ILPreFrm_pred.
 Local Transparent EmbedSasnPureOp.
 Local Transparent EmbedILFunOp.
 Local Transparent EmbedAsnPropOp.
@@ -107,7 +108,279 @@ Local Transparent ILFun_Ops.
 Local Transparent EmbedILFunDropOp.
 Local Transparent EmbedILFunOp.
 Local Transparent SepAlgOps_prod.
+  
+Import STNotations.
+Import SepAlgNotations.
+  
+  Program Definition fp (P : sasn) (x : var) : sasn := 
+  	fun s => mk_tasn (fun t => mk_asn (fun Pr n big => 
+  		forall big' mres, subheap big big' -> marshall (s x) big' mres -> P s t Pr n mres
+  	) _ _ _) _.
+  Next Obligation.
+    specialize (H big' mres H0 H1).
+    solve_model H.
+  Qed.
+  Next Obligation.
+    specialize (H0 big' mres H1 H2).
+    solve_model H0.
+  Qed.
+  Next Obligation.
+    eapply H0.
+    transitivity h'; eassumption.
+    assumption.
+  Qed.
+  Next Obligation.
+    specialize (H0 big' mres H1 H2).
+    solve_model H0.
+  Qed.
+  
+  Lemma fp_good (P : sasn) (x : var) :
+    P -|- Exists Q, (fp P x) ** Q.
+  Proof.
+    admit.
+  Admitted.
+  
+  Program Definition nsm (x : var) : sasn :=
+    fun s => mk_tasn (fun t => mk_asn (fun Pr n h => 
+    	match MapInterface.find (val_to_stptr (s x)) t with
+    	  | Some (tsend v m tr') => marshall v h m
+    	  | _ => False
+    	end
+    ) _ _ _) _.
+  Next Obligation.
+    remember (MapInterface.find (val_to_stptr (s x)) t).
+    destruct o; try assumption.
+    destruct t0; try assumption.
+    eapply marshall_from_smaller; eassumption.
+  Defined.
+  Next Obligation.
+    rewrite <- H.
+    assumption.
+  Defined.
+  
+  Definition dmt (P : sasn) (x : var) : Prop := forall s t Pr n h, P s t Pr n h <-> P s (MapInterface.remove (val_to_stptr (s x)) t) Pr n h.
+  
+  (*
+  Program Definition dmt (P : sasn) (x : var) : sasn :=
+    fun s => mk_tasn ( fun t => mk_asn ( fun Pr n h =>
+    	P s t Pr n h -> P s (MapInterface.remove (val_to_stptr (s x)) t) Pr n h 
+    ) _ _ _ ) _.
+  *)
+  
+  (* Lemma rule_send_ax (x y z : var) (P: sasn) (t : ST) (G : spec) :
+    G |-- {[ fp P[{y/V //! z}] y | x : `(!z,{P}.t) ]} csend x y {[ fp P[{y/V //! z}] y | x : (`subst_ST `z y/V `t) ]}.
+  Proof.
+    unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
+    inversion Hsem; subst.
+    unfold sem_triple; simpl; split; intros.
+    * intros HSafe. inversion HSafe; subst.
+      unfold STs_traces in H4.
+      specialize (H4 c (!z,{ P }.t)).
+      assert (MapsTo c (!z,{ P }.t) ((x : `(!z,{ P }.t)) s)). {
+        unfold singleton_STs.
+        apply find_mapsto_iff. rewrite Sref.
+        rewrite add_eq_o; auto.
+      }
+      specialize (H4 H5); clear H5.
+      destruct H4 as [tr' [Hmt Hstt']].
+      
+	  admit.
+    * inversion H4; subst.
+      split.
+      - intros.
+        specialize (H3 _ _ H5 H6).
+        solve_model H3. congruence.
+      - unfold STs_traces.
+        intros Hstt k t' Hmt.
+        destruct (eq_dec k c).
+        + unfold singleton_STs in Hmt. apply find_mapsto_iff in Hmt.
+          rewrite add_eq_o in Hmt; [| rewrite Sref; auto].
+          inversion Hmt. 
+          rewrite H5.
+          exists (tsend (s' y) h'0 tr).
+          split; [assumption|].
+          unfold STs_traces, singleton_STs in Hstt.
+          specialize (Hstt c (`subst_ST `z y/V `t s')); rewrite Sref in Hstt.
+          assert (MapsTo c (`subst_ST `z y/V `t s') (add (val_to_stptr c) (`subst_ST `z y/V `t s') (empty ST))). {
+            apply find_mapsto_iff.
+            rewrite add_eq_o; auto.
+          }
+          specialize (Hstt H6); clear H6.
+          destruct Hstt as [tr' [Hmt' Hstt]].
+          apply find_mapsto_iff in Hmt'. rewrite add_eq_o in Hmt'; [|auto].
+          inversion Hmt'; subst; clear Hmt'.
+          apply stt_send; [apply Hstt |].
+          assert (subheap h' h') by reflexivity.
+          specialize (H3 _ _ H6 Smarshall).
+          rewrite subst1_trunc_singleton_stack in H3.
+          unfold apply_subst.
+          solve_model H3.
+          apply functional_extensionality; intro k'.
+          unfold subst1, stack_subst, liftn, lift; simpl.
+          remember (@dec_eq string DecString k' z); destruct s.
+          rewrite e; repeat rewrite stack_lookup_add. reflexivity.
+          rewrite stack_lookup_add2; [| auto]. reflexivity.
+        + unfold singleton_STs in Hmt; rewrite Sref in Hmt; simpl in Hmt.
+          apply add_neq_mapsto_iff in Hmt; [| congruence].
+          apply find_mapsto_iff in Hmt.
+          rewrite empty_o in Hmt.
+          inversion Hmt.
+  Admitted.
+  
+  Lemma rule_send (x y z : var) (P: sasn) (t : ST) (G : spec) :
+    G |-- {[ P[{y/V //! z}] | x : `(!z,{P}.t) ]} csend x y {[ P[{y/V //! z}] | x : (`subst_ST `z y/V `t) ]}.
+  Proof.
+    eapply roc; try (apply fp_good).
+    rewrite <- exists_into_precond2.
+    apply lforallR. intro Q.
+    eapply roc_post.
+    eapply rule_frame.
+    apply rule_send_ax.
+    apply lexistsR with (subst_mod_asn Q (csend x y)).
+    reflexivity.
+  Qed.
+  *)
+  
+  Lemma rule_send_ax (x y z : var) (P: sasn) (t : ST) (G : spec) (Hdmt : dmt P[{y/V //! z}] x) :
+    G |-- {[ fp P[{y/V //! z}] y //\\ `has_ST (x/V) `(!z,{P}.t) //\\ (nsm x)  ]} csend x y {[ fp P[{y/V //! z}] y //\\ `has_ST (x/V) (`subst_ST `z y/V `t) ]}.
+  Proof.
+    unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
+    inversion Hsem; subst.
+    unfold sem_triple; simpl; split; intros.
+    * destruct H3 as [HP [Hstt Hnsm]].
+      intro HFail. inversion HFail; subst.
+      apply find_mapsto_iff in Strace.
+      rewrite Sref in Hnsm; simpl in Hnsm.
+      rewrite Strace in Hnsm.
+      auto.
+    * inversion H4; subst.
+      destruct H3 as [HP [Hstt _]].
+      split.
+      - intros. 
+        specialize (HP _ _ H3 H5).
+        apply Hdmt. apply Hdmt in HP.
+        rewrite Sref in *; simpl in *.
+        solve_model HP; [| congruence].
+        symmetry; apply map_remove_add_eq.
+      - intros.
+        assert (subheap h' h') by reflexivity.
+        specialize (HP _ _ H6 Smarshall); clear H6.
+        specialize (Hstt _ (tsend (s' y) mres tr) H3).
+        unfold liftn, lift, var_expr in Hstt; simpl in Hstt.
+        unfold var_expr in H5.
+        rewrite Sref in *; simpl in *.
+        replace (val_to_stptr (x/V s')) with c by (unfold var_expr; rewrite Sref; reflexivity).
+        assert (tr = tr0) by (apply map_mapsto_add_eq in H5; auto).
+        rewrite <- H6 in *; clear H6.
+        
+        specialize (Hstt Strace).
+        inversion Hstt; subst.
+        
+        assert ((!z,{ P }.t) = (!z,{ P }.t)) by reflexivity.
+        assert (P[{`(s' y)//z}] (stack_empty var) (MapInterface.remove c t2) P'0 0 mres). {
+          apply Hdmt in HP.
+          rewrite Sref, subst1_trunc_singleton_stack in HP; simpl in HP.
+          unfold apply_subst, subst1, stack_subst, liftn, lift, var_expr; simpl.
+          solve_model HP.
+          apply functional_extensionality. intro k.
+          destruct (@dec_eq string DecString k z); [subst |].
+          rewrite stack_lookup_add; reflexivity.
+          rewrite stack_lookup_add2; [| congruence]. reflexivity.
+        }
+        specialize (HGuard z P t H6 H7); clear H6 H7.
+        
+        assert ( (MapInterface.remove c (add c tr t2)) === (MapInterface.remove c t2) ) by (apply map_remove_add_eq).
+        rewrite H6; clear H6.
+        
+        apply HGuard.
+  Qed.
+  
+  Lemma rule_recv (x y z : var) (P: sasn) (t : ST) (G : spec) (Hdiff: x <> y) (Hdmt : dmt P[{y/V //! z}] x) :
+    G |-- {[ `has_ST x/V `(&z,{P}.t) ]} crecv y x {[ P[{y/V //! z}] //\\ (`has_ST (x/V) (`subst_ST `z y/V `t)) ]}.
+  Proof.
+    unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
+    inversion Hsem; subst.
+    unfold sem_triple; simpl; split; intros.
+    * intro HSafe. inversion HSafe.
+    * inversion H4; subst.
+      split.
+	  - assert (Prog_wf_sub P' P') by reflexivity.
+	    unfold liftn, lift, var_expr in H3; simpl in H3.
+        rewrite Sref in *; simpl in *.
+        specialize (H3 _ (trecv rv rh tr) H5 Strace).
+        inversion H3.
+        assert ((&z,{P}.t) = (&z,{P}.t)) by reflexivity.
+        specialize (HGuard _ _ _ H9); clear H9.
+        destruct HGuard as [HP Hstt'].
 
+		apply Hdmt.
+		rewrite subst1_trunc_singleton_stack, stack_lookup_add.
+		unfold apply_subst in HP.
+		rewrite subst1_stack in HP.
+		unfold liftn, lift in HP; simpl in HP.
+		rewrite stack_lookup_add2; [| auto].
+		rewrite Sref; simpl.
+		
+		assert (subheap rh h'). {
+		  apply sa_mulC2 in Snewheap.
+		  unfold subheap; exists h.
+		  assumption.
+		}
+
+		solve_model HP.
+		admit (* fangel *).
+		symmetry; apply map_remove_add_eq.
+	  - intros.
+	    unfold liftn, lift, var_expr in *; simpl in *.
+	    rewrite stack_lookup_add2 in H6; [| auto].
+	    rewrite stack_lookup_add2; [| auto].
+	    rewrite Sref in *; simpl in *.
+	    
+	    assert (tr = tr0) by (apply map_mapsto_add_eq in H6; auto).
+	    rewrite <- H7 in *; clear H7.
+	    specialize (H3 _ _ H5 Strace).
+	    inversion H3; subst.
+	    assert ((&z,{P}.t) = (&z,{P}.t)) by reflexivity.
+	    specialize (HGuard _ _ _ H7); clear H7.
+	    destruct HGuard as [HP Hstt'].
+	  	rewrite stack_lookup_add.
+	  	
+	  	assert ( (MapInterface.remove c (add c tr t2)) === (MapInterface.remove c t2) ) by (apply map_remove_add_eq). 
+        rewrite H7; clear H7.
+	  	apply Hstt'.
+  Admitted.
+
+(*      - rewrite subst1_trunc_singleton_stack, stack_lookup_add.
+        admit.
+      - intros Hstt k tr' Hmt.
+        destruct (eq_dec k c).
+        + unfold singleton_STs in Hmt. apply find_mapsto_iff in Hmt.
+          rewrite add_eq_o in Hmt; [| rewrite Sref; auto].
+          inversion Hmt. 
+          rewrite H5.
+          exists (trecv rv rh tr).
+          split; [assumption|].
+          
+          unfold STs_traces, singleton_STs in Hstt.
+          specialize (Hstt c (`subst_ST `z y/V `t (stack_add y rv s))).
+          rewrite stack_lookup_add2, Sref in Hstt. simpl in Hstt.
+          assert (MapsTo c (`subst_ST `z y/V `t (stack_add y rv s))
+                  (add c (`subst_ST `z y/V `t (stack_add y rv s)) (empty ST))). {
+            apply find_mapsto_iff.
+            rewrite add_eq_o; auto.
+          }
+          specialize (Hstt H6); clear H6.
+          destruct Hstt as [tr'' [Hmt' Hstt]].
+          apply find_mapsto_iff in Hmt'. rewrite add_eq_o in Hmt'; [|auto].
+          inversion Hmt'; subst; clear Hmt'.
+          
+          admit.
+        + unfold singleton_STs in Hmt; rewrite Sref in Hmt; simpl in Hmt.
+          apply add_neq_mapsto_iff in Hmt; [| congruence].
+          apply find_mapsto_iff in Hmt.
+          rewrite empty_o in Hmt.
+          inversion Hmt. *)
+  
   Lemma rule_read_fwd (x y : var) (f : field) (e : expr) (P : sasn)
     (HPT : P |-- `pointsto y/V `f e) :
    @ltrue spec _ |-- {[ P ]} cread x y f {[ Exists v : val, @lembedand vlogic sasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
