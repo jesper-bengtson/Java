@@ -1,4 +1,4 @@
-Require Import Program SepAlg SepAlgInsts AssertionLogic SpecLogic SepAlgMap.
+Require Import Program SepAlg SepAlgInsts Heap AssertionLogic SpecLogic SepAlgMap.
 Require Import MapInterface MapFacts.
 Require Import ILInsts ILogic ILEmbed ILEmbedTac ILQuantTac OpenILogic 
         Open Subst Stack Lang SemCmd HeapArr Traces ST SemCmdRules BILogic.

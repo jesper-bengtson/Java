@@ -1,7 +1,7 @@
 Require Import ZArith.
 Require Import MapInterface MapFacts.
-Require Import SepAlg UUSepAlg SepAlgInsts SepAlgMap.
-Require Import Lang Program AssertionLogic HeapArr.
+Require Import SepAlg UUSepAlg SepAlgInsts SepAlgMap Rel.
+Require Import Lang Program Heap.
 Require Import OrderedType Morphisms.
 
 Import SepAlgNotations.

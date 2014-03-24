@@ -1,7 +1,7 @@
 Require Import SemCmd ILogic BILogic ILInsts BILInsts. 
-Require Import OpenILogic Later AssertionLogic SpecLogic ILEmbed.
+Require Import OpenILogic Later AssertionLogic SpecLogic ILEmbed Open.
 Require Import Stack Subst Lang Util List.
-Require Import FunctionalExtensionality.
+Require Import FunctionalExtensionality Traces.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

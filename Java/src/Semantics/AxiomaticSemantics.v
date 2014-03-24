@@ -1,9 +1,9 @@
-Require Import Morphisms Setoid Rel.
-Require Import ILogic ILEmbedTac ILQuantTac ILInsts BILInsts ILEmbed Later SepAlgMap BILogic.
+Require Import Morphisms Setoid Rel Util.
+Require Import ILogic ILEmbedTac ILQuantTac ILInsts BILInsts ILEmbed Later SepAlg SepAlgMap BILogic.
 Require Import SpecLogic Pure OpenILogic AssertionLogic Program Open Stack Subst.
 Require Import OperationalSemantics Lang IBILogic.
-Require Import MapInterface MapFacts SemCmd SemCmdRules.
-Require Import String List.
+Require Import MapInterface MapFacts SemCmd SemCmdRules Heap Traces ST.
+Require Import String List FunctionalExtensionality.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
