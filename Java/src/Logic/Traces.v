@@ -44,6 +44,21 @@ Class Dual (A : Type) (dual : A -> A) : Prop := {
 Definition dual {A : Type} {dual' : A -> A} {D : Dual A dual'} (a : A) : A := dual' a.
 Hint Unfold dual.
 
+Lemma dual_isomorphic_aux {A : Type} {dual' : A -> A} {D : Dual A dual'} : forall (a b : A), a === b -> dual a === dual b.
+Proof.
+  intros.
+  rewrite H; reflexivity.
+Qed.
+
+Lemma dual_isomorphic {A : Type} {dual' : A -> A} {D : Dual A dual'} : forall (a b : A), a === b <-> dual a === dual b.
+Proof.
+  split; intro H.
+  * apply dual_isomorphic_aux; assumption.
+  * apply dual_isomorphic_aux in H.
+    repeat rewrite dual_involutive in H.
+    assumption.
+Qed.
+
 Fixpoint trace_dual (tr : trace) : trace :=
   match tr with
   | tinit => tinit
