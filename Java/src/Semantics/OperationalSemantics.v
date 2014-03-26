@@ -408,6 +408,25 @@ Require Import Compare_dec.
     edestruct (@cmd_frame sc) as [h1 [HFrame1 HSem1]]...
     intros k HLe HFail; apply HSafe with (S k); [omega |]...
   Qed.
+  
+  Inductive start_sem (C : class) (m : method) (x : var) (c : cmd) (sc : semCmd)
+    : semCmdType :=
+  | start_ok    : forall (P : Prog_wf) (a : var) (chan : stptr) (s rs: stack) (h rh : heap) (trs rtrs : traces) (tr : trace) (rexpr : dexpr) n
+       (HFresh  : ~ In chan trs)
+       (HLookup : method_lookup P C m (Build_Method (a::nil) c rexpr))
+       (HSem    : sc P n (stack_add a (vst chan) (stack_empty _)) heap_unit (add chan tr (empty _)) (Some (rs, (rh, rtrs)))),
+       start_sem C m x c sc P (S n) s h trs (Some ((stack_add x (vst chan) s), (h, (add chan (dual tr) trs)))).
+  Program Definition start_cmd C m x c sc := Build_semCmd (start_sem C m x c sc) _ _.
+  Next Obligation.
+    intros H; inversion H.
+  Qed.
+  Next Obligation with eauto using start_sem.
+    unfold frame_property; intros.
+    inversion HSem; subst; clear HSem.
+    exists h.
+    split; [assumption |].
+    eapply start_ok; eassumption.
+  Qed.
 
   Inductive semantics : cmd -> semCmd -> Prop :=
   | semassign : forall x e,
@@ -451,6 +470,9 @@ Require Import Compare_dec.
       semantics (csend x y) (send_cmd x y)
   | semrecv : forall v x,
       semantics (crecv v x) (recv_cmd v x)
+  | semstart : forall (x : var) (C : class) m c sc
+      (HSem  : semantics c sc),
+      semantics (cstart x C m) (start_cmd C m x c sc)
   .
 
   Definition c_not_modifies c x :=
@@ -504,6 +526,8 @@ Require Import Compare_dec.
       inversion HCl; subst; rewrite stack_lookup_add2; trivial.
     + intros P s s0 h h0 t t0 n HAs; inversion HAs; subst; reflexivity.
     + intros P s s0 h h0 t t0 n HAs; inversion HAs; subst; reflexivity.
+    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 t t0 n HCl; simpl in *;
+      inversion HCl; subst; rewrite stack_lookup_add2; trivial.
     + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 t t0 n HCl; simpl in *;
       inversion HCl; subst; rewrite stack_lookup_add2; trivial.
   Qed.
