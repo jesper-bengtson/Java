@@ -27,7 +27,6 @@ Inductive marshall (v : sval) (big : heap) : heap -> Prop :=
 
 Inductive trace : Type :=
   | tinit  : trace
-  | tstart : trace -> trace -> trace
   | tsend  : sval -> heap -> trace -> trace
   | trecv  : sval -> heap -> trace -> trace
   .
@@ -38,6 +37,27 @@ Local Existing Instance EquivPreorder.
 
 Instance traces_Rel : Rel traces := Equal.
 Instance traces_PreOrder : PreOrder (@rel traces Equal) := _. 
+
+Class Dual (A : Type) (dual : A -> A) : Prop := {
+  dual_involutive : forall a : A, dual (dual a) === a
+}.
+Definition dual {A : Type} {dual' : A -> A} {D : Dual A dual'} (a : A) : A := dual' a.
+Hint Unfold dual.
+
+Fixpoint trace_dual (tr : trace) : trace :=
+  match tr with
+  | tinit => tinit
+  | tsend v h tr' => trecv v h (trace_dual tr')
+  | trecv v h tr' => tsend v h (trace_dual tr')
+  end.
+
+Program Instance trace_Dual : Dual trace trace_dual := {
+  dual_involutive := _
+}.
+Next Obligation.
+  induction a; [reflexivity | |];
+  simpl; rewrite IHa; reflexivity.
+Qed.
 
 Lemma marshall_subheap {h h' : heap} {v : sval}
     (Hmarshall : marshall v h h') :

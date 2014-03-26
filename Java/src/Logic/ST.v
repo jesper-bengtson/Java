@@ -13,6 +13,21 @@ Inductive ST : Type :=
 
 Definition STs := Map [stptr, ST].
 
+Fixpoint dual_ST (st : ST) : ST :=
+  match st with
+  | st_end => st_end
+  | st_send v P st' => st_recv v P (dual_ST st')
+  | st_recv v P st' => st_send v P (dual_ST st')
+  end.
+
+Program Instance ST_Dual : Dual ST dual_ST := {
+  dual_involutive := _
+}.
+Next Obligation.
+  induction a; [ reflexivity | |];
+  simpl; rewrite IHa; reflexivity.
+Qed.
+
 Fixpoint subst_ST (x : var) (v : val) (t : ST) : ST :=
   match t with
   | st_end => st_end
