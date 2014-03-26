@@ -535,7 +535,6 @@ End Commands.
 
   Notation " '{[' P ']}' c '{[' Q ']}' " := (triple P Q c) (at level 89,
     format " {[ P ]} '/' c '/' {[ Q ]} ").
-    
 
   Add Parametric Morphism : triple with signature
     lentails --> lentails ++> eq ==> lentails
@@ -555,7 +554,7 @@ Open Scope open_scope.
         /\ length ps = length ps' /\
         (forall x, List.In x ps' -> ~ SS.In x (modifies c)))
       //\\ {[ P //! zip ps (List.map var_expr ps') ]}
-         c {[ Q //! zip (rn :: ps) (eval re :: (List.map var_expr ps')) ]}
+         c {[ Q //! zip (rn :: ps) (eval re :: (List.map var_expr ps'))]}
     ).
 
   Notation " C ':.:' m |-> ps {{ P }}-{{ r , Q }} " :=
@@ -572,8 +571,8 @@ Open Scope open_scope.
     apply lpropandL; intro H. apply lpropandR; [assumption|].
     lexistsL ps' c re. lexistsR ps' c re.
     apply landR; [apply landL1; reflexivity | apply landL2].
-    admit (* fangel *).
-    (* setoid_rewrite HP. setoid_rewrite HQ. reflexivity. *)
+    admit (* jesper *).
+(*    setoid_rewrite HP. setoid_rewrite HQ. reflexivity.*)
   Qed.
 
   Add Parametric Morphism : method_spec with signature
