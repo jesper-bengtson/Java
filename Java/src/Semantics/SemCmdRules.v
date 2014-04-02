@@ -7,28 +7,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Set Maximal Implicit Insertion.
 
-Ltac solve_atom :=
-	match goal with 
-		| |- ?P => first [has_evar P | reflexivity | omega | assumption | idtac]
-	end.
-    
-Ltac solve_model_aux := 
-	match goal with
-		| |- ?P ?a |-- ?Q ?b =>
-			 first [apply ILPreFrm_fold_entails; [solve_atom|solve_model_aux] | 
-			        apply ILFun_fold_entails; [solve_atom|solve_model_aux]]
-	    | |- ?P |-- ?Q => try reflexivity
-	end.
-
-Ltac solve_model x :=
-	let H := fresh "H" in
-	match goal with 
-		| |- ?Q => let P := type of x in
-						assert (P |-- Q) as H; [solve_model_aux|apply H; apply x]
-						
-    end.
-
-
 Open Scope open_scope.
 
 	Local Transparent ILPre_Ops.

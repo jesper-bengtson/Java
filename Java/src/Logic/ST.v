@@ -1,9 +1,9 @@
 Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps String Rel.
-Require Import RelationClasses Setoid Morphisms Program. 
+Require Import RelationClasses Setoid Morphisms. 
 Require Import MapInterface MapFacts.
 Require Import Open Stack Subst Lang OpenILogic Pure ILEmbed PureInsts.
 Require Import UUSepAlg SepAlgInsts.
-Require Import Heap AssertionLogic Traces SemCmd SemCmdRules.
+Require Import Heap AssertionLogic Traces Util Program.
 
 Inductive ST : Type :=
   | st_end : ST

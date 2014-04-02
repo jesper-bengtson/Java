@@ -22,6 +22,7 @@ Definition var := string.
 Definition ptr := (nat * class)%type.
 Definition arrptr := nat.
 Definition stptr := nat.
+Definition protocol := nat.
 
 Inductive sval : Set :=
 | vint :> Z -> sval

@@ -1,6 +1,7 @@
-Require Import Program SepAlg OpenILogic Heap AssertionLogic SpecLogic SepAlgMap.
+Require Import SepAlg OpenILogic SepAlgMap.
 Require Import MapInterface MapFacts.
-Require Import ILInsts ILogic ILEmbed Open Subst Stack Lang Traces.
+Require Import ILInsts ILogic ILEmbed Open Subst Stack.
+Require Import Program SpecLogic Heap AssertionLogic Lang Traces.
 
 Import SepAlgNotations.
 
@@ -23,8 +24,7 @@ Section Commands.
   Record semCmd := {
     cmd_rel   :> Prog_wf -> nat -> stack -> heap -> traces -> option (stack * (heap * traces)) -> Prop;
     cmd_zero  :  forall P s h t cfg, ~(cmd_rel P 0 s h t cfg);
-    cmd_frame :  frame_property cmd_rel (*;
-    cmd_trace :  increasing_traces cmd_rel *)
+    cmd_frame :  frame_property cmd_rel
   }.
 
   Definition not_modifies (c : semCmdType) x : Prop :=

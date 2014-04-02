@@ -4,10 +4,10 @@
    at most. *)
 
 Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps String Rel.
-Require Import RelationClasses Setoid Morphisms Program. 
+Require Import RelationClasses Setoid Morphisms. 
 Require Import MapInterface MapFacts.
-Require Import Open Stack Lang OpenILogic Pure ILEmbed PureInsts.
-Require Import UUSepAlg SepAlgInsts Heap Traces.
+Require Import Open Stack Lang OpenILogic Pure ILEmbed PureInsts UUSepAlg SepAlgInsts.
+Require Import Program Heap Traces.
 
 Local Existing Instance ILPre_Ops.
 Local Existing Instance ILPre_ILogic.
@@ -93,7 +93,7 @@ Instance EmbedTAsnProp : Embed Prop tasn := _.
 
 Instance EmbedSasnPureOp : EmbedOp vlogic sasn := _.
 Instance EmbedSasnPure : Embed vlogic sasn := _.
-
+ 
 Require Import SpecLogic.
 
 Instance EmbedAsn1PropOp : EmbedOp Prop asn1 := _.
