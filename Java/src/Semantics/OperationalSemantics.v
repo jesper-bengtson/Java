@@ -422,7 +422,7 @@ Require Import Compare_dec.
        (HFresh    : ~ In chan trs)
        (HLookup   : method_lookup P C m (Build_Method (a::nil) c rexpr))
        (HSem      : sc P PM n (stack_add a (vst chan) (stack_empty _)) heap_unit (add chan tr (empty _)) (Some (rs, (rh, rtrs))))
-       (HOngoing  : ~ MapsTo chan tinit rtrs),
+       (HOngoing  : exists oc otr, MapsTo oc otr rtrs /\ otr <> tinit),
        start_sem C m x p c sc P PM (S n) s h trs None
   | start_ok      : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s rs: stack) (h rh : heap) (trs : traces) (tr : trace) (rexpr : dexpr) n
        (HProtocol : (forall T, MapsTo p T PM -> ST_trace_strong P (T s) tr)) 

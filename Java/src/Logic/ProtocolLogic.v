@@ -1,7 +1,7 @@
 Require Import Rel Open ILogic ILInsts BILogic BILInsts IBILogic SepAlg SepAlgMap
                UUSepAlg SepAlgInsts OpenILogic Pure ILEmbed PureInsts Subst Stack.
 Require Import Maps MapInterface MapFacts.
-Require Import Lang ST AssertionLogic SpecLogic Util Program.
+Require Import Lang Traces ST AssertionLogic SpecLogic Util Program.
 
 Definition PM := Map [protocol, @open var _ ST].
 
@@ -35,6 +35,15 @@ Program Definition ST_exists (p : protocol) (T : open ST) : psasn :=
   fun PM s => mk_tasn (fun trs => mk_asn (fun P k h =>
     MapsTo p T PM
   ) _ _ _) _.
+
+Program Definition all_traces_eq (t : trace) : psasn :=
+  fun PM s => mk_tasn (fun trs => mk_asn (fun P k h =>
+    forall c, In c trs -> MapsTo c t trs
+  ) _ _ _) _.
+Next Obligation.
+  rewrite <- H in *.
+  apply H0; assumption.
+Defined.
 
 Local Existing Instance ILPre_Ops.
 Local Existing Instance ILPre_ILogic.

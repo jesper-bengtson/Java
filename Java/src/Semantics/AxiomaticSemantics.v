@@ -163,7 +163,7 @@ Import SepAlgNotations.
   Lemma rule_start_sem (C : class) (m : method) (x a rv : var) (T : ST) (p : protocol) c sc 
     (HSem : semantics c sc) :
     @lentails spec _
-      (|> (C :.: m |-> (a::nil) {{ embed (has_ST (a/V) `T)}}-{{rv, embed (has_ST (a/V) `st_end)}}))
+      (|> (C :.: m |-> (a::nil) {{ embed (has_ST (a/V) `T)}}-{{rv, all_traces_eq tinit}}))
       ({{ ST_exists p `T }} start_cmd C m x p c sc {{ embed (has_ST (x/V) `(dual T)) }}).
   Proof.
   	intros P n H P' PM m' k s h t Hsub Hm'n Hkm' HP.
@@ -222,15 +222,16 @@ Import SepAlgNotations.
             simpl in HProtocol.
           apply ST_trace_strong_weakening; assumption.
         }
-        apply HOngoing.
         specialize (HPost _ _ _ HSem0).
         unfold psasn_subst, substl_trunc_aux, stack_subst, var_expr, liftn, lift in HPost; simpl in HPost.
-        assert (Prog_wf_sub P' P') by reflexivity.
-        specialize (HPost _ tinit H); clear H.
-        destruct (dec_eq a rv); [
-          rewrite e in Hemb; simpl in Hemb; inversion Hemb; exfalso; apply H1; unfold In; auto |].
-        destruct (dec_eq a a); [clear e| intuition].
-        admit.
+        
+        destruct HOngoing as [oc [otr [HOMT HOEq]]].
+        apply HOEq.
+        assert (MapInterface.In oc rtrs) by (unfold MapInterface.In; exists otr; apply HOMT).
+        specialize (HPost _ H); clear H.
+        apply find_mapsto_iff in HPost; apply find_mapsto_iff in HOMT.
+        rewrite HOMT in HPost; inversion HPost.
+        reflexivity.
     + (* correctness *)
       intros t' h' s' HSem1; inversion HSem1; subst; clear HSem1.
       intros.
