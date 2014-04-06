@@ -225,7 +225,7 @@ Inductive cmd :=
 | cassert   : dexpr -> cmd
 | csend     : var -> var -> cmd
 | crecv     : var -> var -> cmd
-| cstart    : var -> class -> method -> cmd
+| cstart    : var -> class -> method -> protocol -> cmd
 .
 
 (* The set of stack variables potentially modified by a command *)
@@ -242,7 +242,7 @@ Fixpoint modifies (c: cmd) :=
   | cdcall x _ _ _ => SS.singleton x
   | cscall x _ _ _ => SS.singleton x
   | crecv v _      => SS.singleton v
-  | cstart x _ _   => SS.singleton x
+  | cstart x _ _ _   => SS.singleton x
   |  _             => SS.empty
   end.
 
@@ -253,7 +253,7 @@ Notation " x 'D=' e '[' m ']' args " := (cdcall x e m args) (at level 60, e at l
 Notation " x 'S=' C '::' m args " := (cscall x C m args) (at level 60, C at level 40, m at level 9, no associativity) : cmd_scope.
 Notation " x 'N=' 'alloc' C " := (calloc x C) (at level 60, no associativity) : cmd_scope.
 
-Notation " x 'st=' 'start' C '::' m " := (cstart x C m) (at level 60, no associativity) : cmd_scope.
+Notation " x 'st=' 'start' C '::' m p" := (cstart x C m p) (at level 60, no associativity) : cmd_scope.
 Notation " x 'st=' 'recv' c " := (crecv x c) (at level 60, no associativity) : cmd_scope.
 Notation " 'send' c x " := (csend c x) (at level 60, no associativity) : cmd_scope.
 
