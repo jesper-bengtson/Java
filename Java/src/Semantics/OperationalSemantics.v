@@ -1,7 +1,7 @@
 Require Import Program SepAlg SepAlgInsts Heap ProtocolLogic AssertionLogic SpecLogic SepAlgMap.
 Require Import MapInterface MapFacts.
 Require Import ILInsts ILogic ILEmbed ILEmbedTac ILQuantTac OpenILogic
-               Open Subst Stack Lang SemCmd HeapArr Traces ST SemCmdRules BILogic.
+               Open Subst Stack Lang SemCmd HeapArr ST SemCmdRules BILogic.
 
 Import SepAlgNotations.
 
@@ -11,9 +11,9 @@ Unset Strict Implicit.
 Section Commands.
 
   Inductive assign_sem (x : var) (e : dexpr) : semCmdType :=
-  | assign_ok : forall P PM s h t v
+  | assign_ok : forall P PM s h STs v
                        (He: eval e s = v),
-      assign_sem x e P PM 1 s h t (Some (stack_add x v s, (h, t))).
+      assign_sem x e P PM 1 s h STs (Some (stack_add x v s, (h, STs))).
   Program Definition assign_cmd x e := Build_semCmd (assign_sem x e) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -24,14 +24,14 @@ Section Commands.
   Qed.
 
   Inductive read_sem (x y : var) (f : field) : semCmdType :=
-  | read_ok : forall ref v P PM (s : stack) (h : heap) (t : traces)
+  | read_ok : forall ref v P PM (s : stack) (h : heap) (STs : STs)
       (Rref  : s y = vptr ref)
       (Rmaps : MapsTo (ref,f) v (get_heap_ptr h)),
-      read_sem x y f P PM 1 s h t (Some (stack_add x v s, (h, t)))
-  | read_fail : forall ref P PM s (h : heap) (t : traces)
+      read_sem x y f P PM 1 s h STs (Some (stack_add x v s, (h, STs)))
+  | read_fail : forall ref P PM s (h : heap) (STs : STs)
       (Sref   : s y = vptr ref)
       (Snotin : ~ In (ref,f) (get_heap_ptr h)),
-      read_sem x y f P PM 1 s h t None.
+      read_sem x y f P PM 1 s h STs None.
   Program Definition read_cmd x y f := Build_semCmd (read_sem x y f) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -119,17 +119,17 @@ Require Import Compare_dec.
     List.Forall (fun v => exists a, v = vint a /\ (a >= 0)%Z) vpath.
 *)
   Inductive read_arr_sem (x y : var) (path : list dexpr) : semCmdType :=
-  | read_arr_ok P PM arr s h t v vpath
+  | read_arr_ok P PM arr s h STs v vpath
                 (Sref : s y = varr arr)
                 (Smap : List.map (fun e => eval e s) path = vpath)
 (*                (Sarr : valid_path vpath)*)
                 (Sfind : find_heap_arr arr (List.map val_to_nat vpath) (get_heap_arr h) = Some v) :
-      read_arr_sem x y path P PM 1 s h t (Some (stack_add x v s, (h, t)))
-  | read_arr_fail P PM arr s h t vpath
+      read_arr_sem x y path P PM 1 s h STs (Some (stack_add x v s, (h, STs)))
+  | read_arr_fail P PM arr s h STs vpath
                   (Sref : s y = varr arr)
                   (Smap : List.map (fun e => eval e s) path = vpath)
                   (Sarr : ~ in_heap_arr arr (List.map val_to_nat vpath) (get_heap_arr h)) :
-      read_arr_sem x y path P PM 1 s h t None.
+      read_arr_sem x y path P PM 1 s h STs None.
   Program Definition read_arr_cmd x y path := Build_semCmd (read_arr_sem x y path) _ _.
   Next Obligation.
     intros H. inversion H.
@@ -148,17 +148,17 @@ Require Import Compare_dec.
   Qed.
 
   Inductive write_arr_sem (x : var) (path : list dexpr) (e : dexpr) : semCmdType :=
-  | write_arr_ok P PM arr s h ha' t vpath
+  | write_arr_ok P PM arr s h ha' STs vpath
                  (Sref : s x = varr arr)
                  (Smap : List.map (fun e' => eval e' s) path = vpath)
                  (Sin  : in_heap_arr arr (List.map val_to_nat vpath) (get_heap_arr h))
                  (Sha  : add_heap_arr arr (List.map val_to_nat vpath) (get_heap_arr h) (eval e s) = Some ha') :
-      write_arr_sem x path e P PM 1 s h t (Some (s, ((mkheap (get_heap_ptr h) ha'), t)))
-  | write_arr_fail P PM arr s h t vpath
+      write_arr_sem x path e P PM 1 s h STs (Some (s, ((mkheap (get_heap_ptr h) ha'), STs)))
+  | write_arr_fail P PM arr s h STs vpath
                    (Sref : s x = varr arr)
                    (Smap : List.map (fun e' => eval e' s) path = vpath)
                    (Sin  : ~ in_heap_arr arr (List.map val_to_nat vpath) (get_heap_arr h)) :
-      write_arr_sem x path e P PM 1 s h t None.
+      write_arr_sem x path e P PM 1 s h STs None.
   Program Definition write_arr_cmd x path e := Build_semCmd (write_arr_sem x path e) _ _.
   Next Obligation.
     intros H. inversion H.
@@ -183,11 +183,11 @@ Require Import Compare_dec.
   Qed.
 
   Inductive alloc_arr_sem (x : var) (e : dexpr) : semCmdType :=
-  | alloc_arr_ok (P : Prog_wf) PM (s s' : stack) (h : heap) (ha' : heap_arr) (t : traces) (n : nat)
+  | alloc_arr_ok (P : Prog_wf) PM (s s' : stack) (h : heap) (ha' : heap_arr) (STs : STs) (n : nat)
                  (Sfresh_ha : forall i, ~ In (n, i) (get_heap_arr h)) 
                  (Sha : alloc_heap_arr n (val_to_nat (eval e s)) (get_heap_arr h) === ha') 
                  (Ss : s' = stack_add x (varr n) s) :
-      alloc_arr_sem x e P PM 1 s h t (Some (s', ((mkheap (get_heap_ptr h) ha'), t))).
+      alloc_arr_sem x e P PM 1 s h STs (Some (s', ((mkheap (get_heap_ptr h) ha'), STs))).
   Program Definition alloc_arr_cmd x e := Build_semCmd (alloc_arr_sem x e) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -231,14 +231,14 @@ Require Import Compare_dec.
   Qed.
     
   Inductive alloc_sem (x : var) (C : class) : semCmdType :=
-  | alloc_ok : forall (P : Prog_wf) PM (s s' : stack) (h : heap) (hp' : heap_ptr) t n fields
+  | alloc_ok : forall (P : Prog_wf) PM (s s' : stack) (h : heap) (hp' : heap_ptr) STs n fields
       (Snotnull : (n, C) <> pnull)
       (Sfresh_h : forall f, ~ In ((n, C), f) (get_heap_ptr h))
       (Sfields  : field_lookup P C fields)
       (Sh0      : sa_mul (get_heap_ptr h)
         (SS.fold (fun f h' => add ((n, C), f) (pnull : val) h') fields heap_ptr_unit) hp')
       (Ss0      : s' = stack_add x (vptr (n, C)) s),
-      alloc_sem x C P PM 1 s h t (Some (s', ((mkheap hp' (get_heap_arr h)), t))).
+      alloc_sem x C P PM 1 s h STs (Some (s', ((mkheap hp' (get_heap_arr h)), STs))).
   Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -263,16 +263,16 @@ Require Import Compare_dec.
   Qed.
 
   Inductive write_sem (x:var) (f:field) (e:dexpr) : semCmdType := 
-  | write_ok : forall P PM (s: stack) (h : heap) (hp' : heap_ptr) t ref v
+  | write_ok : forall P PM (s: stack) (h : heap) (hp' : heap_ptr) STs ref v
       (Sref: s x = vptr ref)
       (Sin:  In (ref,f) (get_heap_ptr h) )
       (Heval : eval e s = v)
       (Sadd: hp' = add (ref,f) v (get_heap_ptr h) ),
-      write_sem x f e P PM 1 s h t (Some (s, ((mkheap hp' (get_heap_arr h)), t)))
-  | write_fail : forall P PM (s: stack) h t ref
+      write_sem x f e P PM 1 s h STs (Some (s, ((mkheap hp' (get_heap_arr h)), STs)))
+  | write_fail : forall P PM (s: stack) h STs ref
       (Sref:   s x = vptr ref)
       (Sin : ~ In (ref, f) (get_heap_ptr h)),
-      write_sem x f e P PM 1 s h t None.
+      write_sem x f e P PM 1 s h STs None.
   Program Definition write_cmd x f e := Build_semCmd (write_sem x f e) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -294,53 +294,58 @@ Require Import Compare_dec.
     destruct (sa_mul_inR HFrame_ptr Sin); intuition.
   Qed.
 
+  Import Marshall.
   Inductive send_sem (x v : var) : semCmdType :=
-  | send_ok : forall P PM (s: stack) (h mres: heap) (t t': traces) (tr: trace) (c: stptr)
+  | send_ok : forall Pr PM (s: stack) (h: heap) STs STs' (ST: ST) (c: stptr) (z : var) (P : sasn) m
     (Sref: s x = vst c)
-    (Strace: MapsTo c (tsend (s v) mres tr) t)
-    (Smarshall: marshall (s v) h mres)
-    (Sadd: t' = add c tr t),
-    send_sem x v P PM 1 s h t (Some (s, (h, t')))
-  | send_fail2 : forall P PM (s: stack) (h mres: heap) (t: traces) (tr: trace) (c: stptr)
+    (Sinitial: MapsTo c (st_send z P ST) STs)
+    (Stail: STs' = add c (subst_ST z (s v) ST) STs)
+    (SP : exists mh, marshall (s v) h mh /\ P (stack_add z (s v) (stack_empty _)) Pr m mh),
+    send_sem x v Pr PM (m+1) s h STs (Some (s, (h, STs')))
+  | send_fail2 : forall Pr PM (s: stack) (h mh: heap) STs ST (c: stptr) (z : var) (P : sasn) m
   	(Sref: s x = vst c)
-    (Strace: MapsTo c (tsend (s v) mres tr) t)
-    (Smarshalls: ~ marshall (s v) h mres),
-    (* Unable to marshall the value pointed to by (s v) in the heap h *)
-    send_sem x v P PM 1 s h t None
-  .  
+    (Sinitial: MapsTo c (st_send z P ST) STs)
+    (Serror: ~ (marshall (s v) h mh))
+    (SP: P (stack_add z (s v) (stack_empty _)) Pr m mh),
+    send_sem x v Pr PM (m+1) s h STs None
+  .
   Program Definition send_cmd x v := Build_semCmd (send_sem x v) _ _.
   Next Obligation.
-    intros H; inversion H.
+    intros H; inversion H; omega.
   Qed.
   Next Obligation.
     unfold frame_property; intros.
     inversion HSem. subst; clear HSem.
-    exists h; split; [assumption |]. 
-    assert (DisjointHeaps frame mres \/ ~DisjointHeaps frame mres) by admit (* fangel *).
+	exists h; split; [assumption |].
+	destruct SP as [mh [Smarshall SP]].
+	assert (DisjointHeaps frame mh \/ ~DisjointHeaps frame mh) by admit (* fangel *).
     destruct H.
-    * eapply send_ok; [ apply Sref | apply Strace | | reflexivity].
-      eapply marshall_into_smaller in H; [| apply HFrame | apply Smarshall].
-      destruct H; [eapply H | eapply marshall_into_unit; [ apply H | apply Smarshall]].
-    * eapply marshall_fails_outside in H; [| apply HFrame | apply Smarshall].
+	* eapply send_ok; [ apply Sref | apply Sinitial | reflexivity |].
+	  exists mh. split; [| assumption].
+	  eapply marshall_into_smaller in H; [| apply HFrame | apply Smarshall].
+	  destruct H; [ eapply H | eapply marshall_into_unit; [ apply H | apply Smarshall]]. 
+	* eapply marshall_fails_outside in H; [| apply HFrame | apply Smarshall].
       destruct H.
       + exfalso.
-        apply (HSafe 1); [omega|].
-        eapply send_fail2; [apply Sref | apply Strace | apply H].
-      + eapply send_ok; [apply Sref | apply Strace | | reflexivity].
-        eapply marshall_into_unit; [ apply H | apply Smarshall].
+        apply (HSafe (m+1)); [omega|].
+        eapply send_fail2; [apply Sref | apply Sinitial | apply H | apply SP].
+      + eapply send_ok; [apply Sref | apply Sinitial | reflexivity |].
+        exists mh.
+        split; [eapply marshall_into_unit; [ apply H | apply Smarshall ] | apply SP ].
   Qed.
 
   Inductive recv_sem (v x : var) : semCmdType :=
-  | recv_ok : forall P PM (s: stack) (h rh h': heap) (t t': traces) (tr: trace) (c: stptr) (rv : sval)
+  | recv_ok : forall Pr PM (s: stack) (h rh h': heap) STs STs' ST (c: stptr) (rv : sval) (z : var) (P : sasn)
     (Sref: s x = vst c)
-    (Strace: MapsTo c (trecv rv rh tr) t)
+    (Sinitial: MapsTo c (st_recv z P ST) STs)
     (Snewheap : sa_mul h rh h')
-    (Sadd: t' = add c tr t),
-    recv_sem v x P PM 1 s h t (Some (stack_add v rv s, (h', t')))
+    (Stail: STs' = add c (subst_ST z rv ST) STs)
+    (SP : forall m, P (stack_add z rv (stack_empty _)) Pr m rh),
+    recv_sem v x Pr PM 1 s h STs (Some (stack_add v rv s, (h', STs')))
   .
   Program Definition recv_cmd v x := Build_semCmd (recv_sem v x) _ _.
   Next Obligation.
-    intros H; inversion H.
+    intros H; inversion H; omega.
   Qed.
   Next Obligation.
     unfold frame_property; intros.
@@ -361,7 +366,7 @@ Require Import Compare_dec.
         }
         rewrite <- Heqh' in H.
         exfalso. apply Hneq. apply H.
-     * eapply recv_ok; [apply Sref | apply Strace | | reflexivity].
+     * eapply recv_ok; [apply Sref | apply Sinitial | | reflexivity | apply SP].
        rewrite Heqh'. apply DisjointHeaps_sa_mul.
        apply sa_mulC in HFrame.
        eapply sa_mulA in Snewheap; [| apply HFrame].
@@ -380,24 +385,24 @@ Require Import Compare_dec.
         
   Inductive call_sem (rvar : var) (C : open class) m es (c : cmd) (sc : semCmd)
     : semCmdType :=
-  | call_failS : forall (P : Prog_wf) PM s h t
+  | call_failS : forall (P : Prog_wf) PM s h STs
       (HLFail  : forall mrec, ~ method_lookup P (C s) m mrec),
-      call_sem rvar C m es c sc P PM 1 s h t None
-  | call_failC : forall (P : Prog_wf) PM ps rexpr (s : stack) h t n
+      call_sem rvar C m es c sc P PM 1 s h STs None
+  | call_failC : forall (P : Prog_wf) PM ps rexpr (s : stack) h STs n
       (HLookup : method_lookup P (C s) m (Build_Method ps c rexpr))
       (HLen    : length ps = length es)
-      (HFail   : sc P PM n (create_stack ps (eval_exprs s es)) h t None),
-      call_sem rvar C m es c sc P PM (S n) s h t None
-  | call_failL : forall (P : Prog_wf) PM ps rexpr s h t
+      (HFail   : sc P PM n (create_stack ps (eval_exprs s es)) h STs None),
+      call_sem rvar C m es c sc P PM (S n) s h STs None
+  | call_failL : forall (P : Prog_wf) PM ps rexpr s h STs
       (HLookup : method_lookup P (C s) m (Build_Method ps c rexpr))
       (HLen    : length ps <> length es),
-      call_sem rvar C m es c sc P PM 1 s h t None
-  | call_ok    : forall (P : Prog_wf) PM ps rexpr (s sr : stack) (h hr : heap) (t tr : traces) n
+      call_sem rvar C m es c sc P PM 1 s h STs None
+  | call_ok    : forall (P : Prog_wf) PM ps rexpr (s sr : stack) (h hr : heap) STs STs' n
       (HLookup : method_lookup P (C s) m (Build_Method ps c rexpr))
       (HLen    : length ps = length es)
-      (HSem    : sc P PM n (create_stack ps (eval_exprs s es)) h t (Some (sr, (hr, tr)))),
-      call_sem rvar C m es c sc P PM (S n) s h t
-        (Some (stack_add rvar (eval rexpr sr) s, (hr, tr))).
+      (HSem    : sc P PM n (create_stack ps (eval_exprs s es)) h STs (Some (sr, (hr, STs')))),
+      call_sem rvar C m es c sc P PM (S n) s h STs
+        (Some (stack_add rvar (eval rexpr sr) s, (hr, STs))).
   Program Definition call_cmd rvar C m es c sc := Build_semCmd (call_sem rvar C m es c sc) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -411,25 +416,26 @@ Require Import Compare_dec.
   
   Inductive start_sem (C : class) (m : method) (x : var) (p : protocol) (c : cmd) (sc : semCmd)
     : semCmdType :=
-  | start_failM   : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s: stack) (h : heap) (trs : traces) (tr : trace) (rexpr : dexpr) n
-       (HProtocol : (forall T, MapsTo p T PM -> ST_trace_strong P (T s) tr))
-       (HFresh    : ~ In chan trs)
+  | start_failM   : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s: stack) (h : heap) STs ST (rexpr : dexpr) n
+       (HProtocol : MapsTo p ST PM)
+       (HFresh    : ~ In chan STs)
        (HLookup   : method_lookup P C m (Build_Method (a::nil) c rexpr))
-       (HSem      : sc P PM n (stack_add a (vst chan) (stack_empty _)) heap_unit (add chan tr (empty _)) None),
-       start_sem C m x p c sc P PM (S n) s h trs None
-  | start_failE   : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s rs: stack) (h rh : heap) (trs rtrs : traces) (tr : trace) (rexpr : dexpr) n
-      (HProtocol : (forall T, MapsTo p T PM -> ST_trace_strong P (T s) tr)) 
-       (HFresh    : ~ In chan trs)
+       (HSem      : sc P PM n (stack_add a (vst chan) (stack_empty _)) heap_unit (add chan ST (empty _)) None),
+       start_sem C m x p c sc P PM (S n) s h STs None
+  | start_failE   : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s rs: stack) (h rh : heap) STs rSTs (ST : ST) (rexpr : dexpr) n
+       (HProtocol : MapsTo p ST PM) 
+       (HFresh    : ~ In chan STs)
        (HLookup   : method_lookup P C m (Build_Method (a::nil) c rexpr))
-       (HSem      : sc P PM n (stack_add a (vst chan) (stack_empty _)) heap_unit (add chan tr (empty _)) (Some (rs, (rh, rtrs))))
-       (HOngoing  : exists oc otr, MapsTo oc otr rtrs /\ otr <> tinit),
-       start_sem C m x p c sc P PM (S n) s h trs None
-  | start_ok      : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s rs: stack) (h rh : heap) (trs : traces) (tr : trace) (rexpr : dexpr) n
-       (HProtocol : (forall T, MapsTo p T PM -> ST_trace_strong P (T s) tr)) 
-       (HFresh    : ~ In chan trs)
+       (HSem      : sc P PM n (stack_add a (vst chan) (stack_empty _)) heap_unit (add chan ST (empty _)) (Some (rs, (rh, rSTs))))
+       (HOngoing  : exists oc oST, MapsTo oc oST rSTs /\ oST <> st_end),
+       start_sem C m x p c sc P PM (S n) s h STs None
+  | start_ok      : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s rs: stack) (h rh : heap) STs rSTs (ST : ST) (rexpr : dexpr) n
+       (HProtocol : MapsTo p ST PM)
+       (HFresh    : ~ In chan STs)
        (HLookup   : method_lookup P C m (Build_Method (a::nil) c rexpr))
-       (HSem      : sc P PM n (stack_add a (vst chan) (stack_empty _)) heap_unit (add chan tr (empty _)) (Some (rs, (rh, (add chan tinit (empty _)))))),
-       start_sem C m x p c sc P PM (S n) s h trs (Some ((stack_add x (vst chan) s), (h, (add chan (dual tr) trs)))).
+       (HDone     : forall oc, MapsTo oc st_end rSTs)
+       (HSem      : sc P PM n (stack_add a (vst chan) (stack_empty _)) heap_unit (add chan ST (empty _)) (Some (rs, (rh, rSTs)))),
+       start_sem C m x p c sc P PM (S n) s h STs (Some ((stack_add x (vst chan) s), (h, (add chan (dual ST) STs)))).
   Program Definition start_cmd C m x p c sc := Build_semCmd (start_sem C m x p c sc) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -703,6 +709,7 @@ Section StructuralRules.
     {[ P ]} c {[ Q ]} |--
     {[ P ** embed R ]} c {[ Q ** embed (subst_mod_asn R c) ]}.
   Proof.
+    unfold subst_mod_asn.
     apply rule_frame_ax_list. intros x HnotIn. apply modifies_syn_sem.
     rewrite SS'.In_elements_iff. assumption.
   Qed.

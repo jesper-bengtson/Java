@@ -7,7 +7,7 @@ Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps St
 Require Import RelationClasses Setoid Morphisms. 
 Require Import MapInterface MapFacts.
 Require Import Open Stack Lang OpenILogic Pure ILEmbed PureInsts UUSepAlg SepAlgInsts.
-Require Import Program Heap Traces.
+Require Import Program Heap.
 
 Local Existing Instance ILPre_Ops.
 Local Existing Instance ILPre_ILogic.
@@ -50,27 +50,19 @@ Local Existing Instance EmbedPropProp.
 Instance EmbedAsnPropOp : EmbedOp Prop asn := _.
 Instance EmbedAsnProp : Embed Prop asn := _.
  
-Definition tasn := ILPreFrm (@rel traces Equal) asn.
-
-Instance ILogicOpsTAsn : ILogicOps tasn := _.
-Instance ILogicTAsn : ILogic tasn := _.
-
 Instance BILOperatorsAsn1 : BILOperators asn1 := _.
 Instance BILOperatorsAsn2 : BILOperators asn2 := _.
 Instance BILOperatorsAsn  : BILOperators asn := _.
-Instance BILOperatorsTAsn : BILOperators tasn := _.
 
 Instance BILogicAsn1 : BILogic asn1 := _.
 Instance BILogicAsn2 : BILogic asn2 := _.
 Instance BILogicAsn  : BILogic asn := _.
-Instance BILogicTAsn : BILogic tasn := _.
 
 Instance IBILogicAsn1 : IBILogic asn1 := _.
 Instance IBILogicAsn2 : IBILogic asn2 := _.
 Instance IBILogicAsn  : IBILogic asn := _.
-Instance IBILogicTAsn : IBILogic tasn := _.
 
-Definition sasn := @open var _ tasn.
+Definition sasn := @open var _ asn.
  
 Instance ILOpsSAsn : ILogicOps sasn := _.
 Instance ILogicSAsn : ILogic sasn := _.
@@ -88,9 +80,6 @@ Local Existing Instance SABIOps.
 Local Existing Instance SABILogic.
 Local Existing Instance pureop_bi_sepalg.
 
-Instance EmbedTAsnPropOp : EmbedOp Prop tasn := _.
-Instance EmbedTAsnProp : Embed Prop tasn := _.
-
 Instance EmbedSasnPureOp : EmbedOp vlogic sasn := _.
 Instance EmbedSasnPure : Embed vlogic sasn := _.
  
@@ -102,8 +91,6 @@ Instance EmbedAsn2SpecOp : EmbedOp spec1 asn2 := _.
 Instance EmbedAsn2Spec   : Embed spec1 asn2 := _.
 Instance EmbedAsnSpecOp  : EmbedOp spec asn := _.
 Instance EmbedAsnSpec    : Embed spec asn := _.
-Instance EmbedTAsnSpecOp : EmbedOp spec tasn := _. 
-Instance EmbedTAsnSpec   : Embed spec tasn := _.
 Instance EmbedSAsnSpecOp : EmbedOp spec sasn := _.
 Instance EmbedSAsnSpec   : Embed spec sasn := _.
 
@@ -128,8 +115,6 @@ Local Instance PureOpAsn2 : @PureOp asn2 := _.
 Local Instance PureAsn2 : Pure PureOpAsn2 := _.
 Local Instance PureOpAsn : @PureOp asn := _.
 Local Instance PureAsn : Pure PureOpAsn := _.
-Local Instance PureOpTAsn : @PureOp tasn := _.
-Local Instance PureTAsn : Pure PureOpTAsn := _.
 Local Instance PureOpSasn : @PureOp sasn := _.
 Local Instance PureSAsn : Pure PureOpSasn := _.
 
@@ -155,14 +140,6 @@ Grab Existential Variables.
   apply IHHkk'. apply Hnat. assumption.
   intros n n' Hn'' p S; simpl in *. eapply Hnat'; eassumption.
   intros h h' Hh H. eapply Hheap; eassumption.
-Defined.
-
-Definition mk_tasn (f: traces -> asn)
-  (Hst: forall P k h tr tr', Equal tr tr' -> f tr P k h -> f tr' P k h) : tasn.
-  refine (mkILPreFrm (fun tr => f tr) _).
-Proof.
-  intros t t' Heq Pr k h H.
-  eapply Hst; eassumption.
 Defined.
 
 Program Definition pointsto_aux (x : ptr) (f : field) (v : val) : asn :=

@@ -1,9 +1,9 @@
-Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps String Rel.
+Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps String Rel ZArith.
 Require Import RelationClasses Setoid Morphisms. 
 Require Import MapInterface MapFacts.
 Require Import Open Stack Subst Lang OpenILogic Pure ILEmbed PureInsts.
 Require Import UUSepAlg SepAlgInsts.
-Require Import Heap AssertionLogic Traces Util Program.
+Require Import Heap AssertionLogic Util Program.
 
 Inductive ST : Type :=
   | st_end : ST
@@ -20,6 +20,27 @@ Fixpoint dual_ST (st : ST) : ST :=
   | st_recv v P st' => st_send v P (dual_ST st')
   end.
 
+Class Dual (A : Type) (dual : A -> A) : Prop := {
+  dual_involutive : forall a : A, dual (dual a) === a
+}.
+Definition dual {A : Type} {dual' : A -> A} {D : Dual A dual'} (a : A) : A := dual' a.
+Hint Unfold dual.
+
+Lemma dual_isomorphic_aux {A : Type} {dual' : A -> A} {D : Dual A dual'} : forall (a b : A), a === b -> dual a === dual b.
+Proof.
+  intros.
+  rewrite H; reflexivity.
+Qed.
+
+Lemma dual_isomorphic {A : Type} {dual' : A -> A} {D : Dual A dual'} : forall (a b : A), a === b <-> dual a === dual b.
+Proof.
+  split; intro H.
+  * apply dual_isomorphic_aux; assumption.
+  * apply dual_isomorphic_aux in H.
+    repeat rewrite dual_involutive in H.
+    assumption.
+Qed.
+
 Program Instance ST_Dual : Dual ST dual_ST := {
   dual_involutive := _
 }.
@@ -35,106 +56,182 @@ Fixpoint subst_ST (x : var) (v : val) (t : ST) : ST :=
   | st_recv x' A t' => st_recv x' (apply_subst A (subst1 `v x)) (subst_ST x v t')
   end.
 
-Definition subst_STs (x : var) (v : val) (t : STs) : STs := map (subst_ST x v) t.
+Module Marshall.
 
-Inductive ST_trace : Prog_wf -> ST -> trace -> Prop :=
-  | stt_init : forall (p : Prog_wf), ST_trace p st_end tinit
-  | stt_send : forall (p : Prog_wf) (t : ST) (v : val) (h : heap) (tr : trace)
-  			   (HGuard: forall (x : var) (A : sasn) (t' : ST),
-  			     t = (st_send x A t') ->
-  			     (apply_subst A (subst1 `v  x)) (stack_empty var) (empty _) p O h -> 
-  			     ST_trace p (subst_ST x v t') tr
-  			   ),
-               ST_trace p t (tsend v h tr)
-  | stt_recv : forall (p : Prog_wf) (t : ST) (v : val) (h : heap) (tr : trace)
-  			   (HGuard: forall (x : var) (A : sasn) (t' : ST),
-  			     t = (st_recv x A t') ->
-  			     (apply_subst A (subst1 `v  x)) (stack_empty var) (empty _) p O h /\ 
-  			     ST_trace p (subst_ST x v t') tr
-  			   ),
-               ST_trace p t (trecv v h tr)
-  .
+	Inductive marshall (v : sval) (big : heap) : heap -> Prop :=
+	  | marshall_int  : forall (z : Z)
+	                   (Vint : v = vint z),
+	                   marshall v big heap_unit
+	  | marshall_bool : forall (b : bool)
+	                    (Vbool : v = vbool b),
+	                    marshall v big heap_unit
+	  | marshall_ptr  : forall (ref : ptr) (f : field) (v' : sval) (m : heap)
+	                    (Vptr : v = vptr ref)
+	                    (Mmaps : MapsTo (ref, f) v' (get_heap_ptr big))
+	                    (Mmarshalls : marshall v' big m),
+	                    marshall v big (heap_add_ptr m ref f v')
+	  | marshall_arr  : forall (ref : arrptr) (i : nat) (v' : sval) (m : heap)
+	                    (Varr : v = varr ref)
+	                    (Mmaps : MapsTo (ref, i) v' (get_heap_arr big))
+	                    (Mmarshalls : marshall v' big m),
+	                    marshall v big (heap_add_arr m ref i v')
+	.
 
-Inductive ST_trace_strong : Prog_wf -> ST -> trace -> Prop :=
-  | stt_init_strong : forall (p : Prog_wf), ST_trace_strong p st_end tinit
-  | stt_send_strong : forall (p : Prog_wf) (t : ST) (v : val) (h : heap) (x : var) (A : sasn) (tr : trace)
-                      (HAsn : (apply_subst A (subst1 `v  x)) (stack_empty var) (empty _) p O h),
-                      ST_trace_strong p (subst_ST x v t) tr ->
-                      ST_trace_strong p (st_send x A t) (tsend v h tr)
-  | stt_recv_strong : forall (p : Prog_wf) (t : ST) (v : val) (h : heap) (x : var) (A : sasn) (tr : trace)
-                      (HAsn : (apply_subst A (subst1 `v  x)) (stack_empty var) (empty _) p O h),
-                      ST_trace_strong p (subst_ST x v t) tr ->
-                      ST_trace_strong p (st_recv x A t) (trecv v h tr)
-  .
+	Lemma marshall_subheap {h h' : heap} {v : sval}
+	    (Hmarshall : marshall v h h') :
+	    subheap h' h.
+	Proof.
+	  assert (sa_unit heap_unit).
+	    unfold heap_unit; split; simpl; intuition.
 
-Lemma subst_ST_dual_comm : forall (t : ST) (x : var) (v : val),
-	dual (subst_ST x v t) = subst_ST x v (dual t).
-Proof.
-  intros; unfold dual in *.
-  induction t; simpl; [reflexivity |..];
-  rewrite IHt; reflexivity.
-Qed.
+	  induction Hmarshall.
+	  + unfold subheap. exists big.
+	    apply sa_mulC.
+	    apply uusa_unit; assumption.
+	  + unfold subheap. exists big.
+	    apply sa_mulC.
+	    apply uusa_unit; assumption.
+	  + unfold subheap in IHHmarshall; destruct IHHmarshall as [h'' IHHmarshall].
+	    unfold subheap; exists (mkheap (remove (ref, f) (get_heap_ptr h'')) (get_heap_arr h'')).
+	    unfold heap_add_ptr.
+	    apply split_heap; [ repeat rewrite remove_mkheap_ptr | repeat rewrite remove_mkheap_arr ].
+	    * apply sa_mul_swapL; [apply IHHmarshall | apply Mmaps].
+	    * apply IHHmarshall. 
+	  + unfold subheap in IHHmarshall; destruct IHHmarshall as [h'' IHHmarshall].
+	    unfold subheap; exists (mkheap (get_heap_ptr h'') (remove (ref, i) (get_heap_arr h''))).
+	    unfold heap_add_arr.
+	    apply split_heap; [ repeat rewrite remove_mkheap_ptr | repeat rewrite remove_mkheap_arr ].
+	    * apply IHHmarshall.
+	    * apply sa_mul_swapL; [apply IHHmarshall | apply Mmaps].
+	Qed.
 
-Lemma ST_trace_strong_dual : forall (p : Prog_wf) (t : ST) (tr : trace),
-							 ST_trace_strong p t tr ->
-							 ST_trace_strong p (dual t) (dual tr).
-Proof.
-  intros.
-  induction H; constructor; try assumption;
-  unfold dual in *; simpl;
-  rewrite <- subst_ST_dual_comm;
-  apply IHST_trace_strong.
-Qed.
+	Lemma marshall_into_unit {m b} {v : sval}
+	    (Hempty : m === heap_unit) (Hmarshall : marshall v b m) :
+	    forall h, marshall v h m.
+	Proof.
+	  intro h.
+	  inversion Hmarshall.
+	  + eapply marshall_int; apply Vint.
+	  + eapply marshall_bool; apply Vbool.
+	  + destruct m as [m_ptr m_arr].
+	    assert (m_ptr === heap_ptr_unit) as Hempty_ptr by (apply Hempty).
+	    assert (Empty m_ptr) by (rewrite Hempty_ptr; intuition).
+	    unfold heap_add_ptr in H; simpl in H; unfold mkheap in H.
+	    inversion H.
+	    assert (MapsTo (ref, f) v' m_ptr) by (rewrite <- H2; apply add_1; reflexivity).
+	    unfold Empty in H0; specialize (H0 (ref, f) v').
+	    exfalso; auto.
+	  + destruct m as [m_ptr m_arr].
+	    assert (m_arr === heap_arr_unit) as Hempty_arr by (apply Hempty).
+	    assert (Empty m_arr) by (rewrite Hempty_arr; intuition).
+	    unfold heap_add_arr in H; simpl in H; unfold mkheap in H.
+	    inversion H.
+	    assert (MapsTo (ref, i) v' m_arr) by (rewrite <- H3; apply add_1; reflexivity).
+	    unfold Empty in H0; specialize (H0 (ref, i) v').
+	    exfalso; auto.
+	Qed.
 
-Lemma ST_trace_strong_weakening : forall (p : Prog_wf) (t : ST) (tr : trace),
-							      ST_trace_strong p t tr ->
-							      ST_trace        p t tr.
-Proof.
-  intros.
-  induction H; constructor; intros;
-  inversion H0; subst; [| split]; assumption.
-Qed.
+	Lemma marshall_into_smaller {a b c m : heap} {v : sval}
+	    (Habc : sa_mul a b c) (Hmarshall : marshall v c m)
+	    (Hdisjoint: DisjointHeaps b m) :
+	    marshall v a m \/ m === heap_unit.
+	Proof.
+	  induction Hmarshall; try auto; left.
+	  + constructor; try assumption.
+	    * eapply sa_mul_mapstoR in Mmaps; [| apply Habc].
+	      destruct Mmaps as [Mmaps | Mmaps]; destruct Mmaps as [Mmaps Mnotin]; [apply Mmaps|].
+	      unfold DisjointHeaps in Hdisjoint; destruct Hdisjoint as [Hdisjoint _].
+	      unfold Disjoint in Hdisjoint; specialize (Hdisjoint (ref, f)).
+	      exfalso; apply Hdisjoint. split.
+	      - unfold In; exists v'. assumption.
+	      - simpl. apply add_in_iff; auto. 
+	    * assert (DisjointHeaps b m). {
+	        unfold DisjointHeaps in *. destruct Hdisjoint as [Hdisjoint_ptr Hdisjoint_arr].
+	        split; [| apply Hdisjoint_arr]. simpl in Hdisjoint_ptr.
+	        unfold Disjoint in *. intro k. specialize (Hdisjoint_ptr k).
+	        intro Hcounter; apply Hdisjoint_ptr.
+	        destruct Hcounter as [Hcounter_b Hcounter_h'].
+	        split; [apply Hcounter_b|].
+	        destruct (eq_dec k (ref, f)); apply add_in_iff; auto.
+	      }
+	      apply IHHmarshall in Habc; [| apply H].
+	      destruct Habc; auto.
+	      eapply marshall_into_unit; [apply H0 | apply Hmarshall].
+	  + constructor; try assumption.
+	    * eapply sa_mul_mapstoR in Mmaps; [| apply Habc].
+	      destruct Mmaps as [Mmaps | Mmaps]; destruct Mmaps as [Mmaps Mnotin]; [apply Mmaps|].
+	      unfold DisjointHeaps in Hdisjoint; destruct Hdisjoint as [_ Hdisjoint].
+	      unfold Disjoint in Hdisjoint; specialize (Hdisjoint (ref, i)).
+	      exfalso; apply Hdisjoint. split.
+	      - unfold In; exists v'. assumption.
+	      - simpl. apply add_in_iff; auto.
+	    * assert (DisjointHeaps b m). {
+	        unfold DisjointHeaps in *. destruct Hdisjoint as [Hdisjoint_ptr Hdisjoint_arr].
+	        split; [apply Hdisjoint_ptr |]. simpl in Hdisjoint_arr.
+	        unfold Disjoint in *. intro k. specialize (Hdisjoint_arr k).
+	        intro Hcounter; apply Hdisjoint_arr.
+	        destruct Hcounter as [Hcounter_b Hcounter_h'].
+	        split; [apply Hcounter_b|].
+	        destruct (eq_dec k (ref, i)); apply add_in_iff; auto.
+	      }
+	      apply IHHmarshall in Habc; [| apply H].
+	      destruct Habc; auto.
+	      eapply marshall_into_unit; [apply H0 | apply Hmarshall].
+	Qed.
 
-Local Transparent ILPre_Ops.
-Local Transparent ILFun_Ops.
-Local Transparent BILPre_Ops.
-Local Transparent BILFun_Ops.
+	Lemma marshall_from_smaller {a b m : heap} {v : sval}
+	    (Hsubheap : subheap a b) (Hmarshall : marshall v a m) :
+	    marshall v b m.
+	Proof.
+	  induction Hmarshall.
+	  * eapply marshall_int; apply Vint.
+	  * eapply marshall_bool; apply Vbool.
+	  * eapply marshall_ptr.
+	    + apply Vptr.
+	    + unfold subheap in Hsubheap; destruct Hsubheap as [h Hsubheap].
+	      eapply sa_mul_mapstoL in Mmaps as [Mmaps Mnotin]; [| apply Hsubheap].
+	      apply Mmaps.
+	    + apply IHHmarshall; apply Hsubheap.
+	  * eapply marshall_arr.
+	    + apply Varr.
+	    + unfold subheap in Hsubheap; destruct Hsubheap as [h Hsubheap].
+	      eapply sa_mul_mapstoL in Mmaps as [Mmaps Mnotin]; [| apply Hsubheap].
+	      apply Mmaps.
+	    + apply IHHmarshall; apply Hsubheap.
+	Qed.
 
-Instance ST_trace_strong_subprog_m : Proper (Prog_wf_sub ==> eq ==> eq ==> impl) ST_trace_strong.
-Proof.
-  intros P P' HPP st st' Htreq tr tr' Hteq H; subst.
-  generalize dependent st'.
-  induction tr'; intros st' H; inversion H; subst.
-  - constructor.
-  - constructor.
-    solve_model HAsn; congruence.
-    apply IHtr'; assumption.
-  - constructor.
-    solve_model HAsn; congruence.
-    apply IHtr'; assumption.
-Qed.
+	Lemma marshall_fails_outside {a b c m : heap} {v : sval}
+	    (Habc : sa_mul a b c) (Hmarshall : marshall v c m)
+	    (Hdisjoint: ~ DisjointHeaps b m) :
+	    ~ marshall v a m \/ m === heap_unit.
+	Proof.
+	  destruct (heap_eq_dec m heap_unit) as [Heq | Hneq]; [right; assumption |].
+	  apply overlapping_exists in Hdisjoint.
+	  destruct Hdisjoint.
+	  * destruct H as [ref [f [Hinb Hinm]]].
+	    assert (sa_mul (get_heap_ptr a) (get_heap_ptr b) (get_heap_ptr c)) as Habc_ptr by (apply Habc).
+	    apply sa_mulC2 in Habc_ptr.
+	    eapply sa_mul_inL in Habc_ptr; [ |apply Hinb]; destruct Habc_ptr as [Hnotina _].
+	    left; intro Hcounter.
+	    apply marshall_subheap in Hcounter.
+	    unfold subheap in Hcounter; destruct Hcounter as [d Hcounter].
+	    apply Hnotina.
+	    eapply sa_mul_inL; [apply Hcounter | apply Hinm].
+	  * destruct H as [ref [i [Hinb Hinm]]].
+	    assert (sa_mul (get_heap_arr a) (get_heap_arr b) (get_heap_arr c)) as Habc_arr by (apply Habc).
+	    apply sa_mulC2 in Habc_arr.
+	    eapply sa_mul_inL in Habc_arr; [ |apply Hinb]; destruct Habc_arr as [Hnotina _].
+	    left; intro Hcounter.
+	    apply marshall_subheap in Hcounter.
+	    unfold subheap in Hcounter; destruct Hcounter as [d Hcounter].
+	    apply Hnotina.
+	    eapply sa_mul_inL; [apply Hcounter | apply Hinm].
+  Qed.
 
-Definition STs_traces (P : Prog_wf) (t : STs) (tr : traces) : Prop := forall k t', 
-  MapsTo k t' t -> exists tr', MapsTo k tr' tr /\ ST_trace P t' tr'.
-
-Program Definition has_ST (c : expr) (t : open ST) : sasn := 
-  fun s => mk_tasn (fun trs => mk_asn (fun P k h => forall P' tr, 
-    Prog_wf_sub P P' -> 
-    MapsTo (val_to_stptr (c s)) tr trs -> 
-    ST_trace P' (t s) tr
-  ) _ _ _) _.
-Next Obligation.
-  assert (Prog_wf_sub P P'0).
-    transitivity P'; assumption.
-  apply H0; assumption.
-Defined.
-Next Obligation.
-  rewrite <- H in H2.
-  apply H0; assumption.
-Defined.
+End Marshall.
 
 Module STNotations.
-  	Notation " x ':' t " := (has_ST x t) (at level 88, left associativity) : st_scope.
+  	(*Notation " x ':' t " := (has_ST x t) (at level 88, left associativity) : st_scope.*)
   	
 	Notation " '!' x ',{' P '}.' t " := (st_send x P t) (at level 88, left associativity) : st_scope.
 	Notation " '&' x ',{' P '}.' t " := (st_recv x P t) (at level 88, left associativity) : st_scope.
