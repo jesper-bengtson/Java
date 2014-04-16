@@ -275,3 +275,16 @@ Proof.
 	+ intros x y z Hxy Hyz; unfold Prog_wf_sub in *; transitivity y; assumption.
 Qed.
 
+Lemma field_lookup_function_sub: forall (Prog Prog' : Prog_wf) (C : class) f f',
+  Prog_wf_sub Prog Prog' -> 
+  field_lookup Prog C f -> field_lookup Prog' C f' -> SS.Equal f f'.
+Proof.
+  unfold field_lookup.
+  intros Pr Pr' C f f' Hsub HM1 HM2. destruct HM1 as [m [HM1 Hf1]]. destruct HM2 as [m' [HM2 Hf2]].
+  unfold Prog_wf_sub, Prog_sub in Hsub.
+  apply SM.find_1 in HM1; apply SM.find_1 in HM2. 
+  specialize (Hsub _ _ HM1); clear HM1.
+  destruct Hsub as [m'' [Hsub [Heqf Heqm]]].
+  rewrite Hsub in HM2; inversion HM2. rewrite H0 in *; clear H0 HM2.
+  subst. assumption.
+Qed.

@@ -212,22 +212,7 @@ Import SepAlgNotations.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros.
-    * destruct H3 as [HP [HIM HST]].
-      unfold id in *.
-      intro HFail. inversion HFail; subst.
-      assert (z = z0 /\ P = P0). {
-		apply find_mapsto_iff in Sinitial; apply find_mapsto_iff in HST.
-		rewrite Sref in HST.
-		simpl in Sinitial; simpl in HST.
-		rewrite HST in Sinitial; inversion Sinitial.
-		split; reflexivity.
-	  }
-	  destruct H3 as [Heqz HeqP].
-	  rewrite <- Heqz in SP; rewrite <- HeqP in SP.
-      apply Serror.
-      eapply HIM with (k' := m0); [ omega | reflexivity | ..].
-      rewrite subst1_trunc_singleton_stack.
-      solve_model SP.
+    * intro HFail. inversion HFail. 
     * inversion H4; subst.
       destruct H3 as [HP [_ HST]].
       unfold id in *.

@@ -296,18 +296,12 @@ Require Import Compare_dec.
 
   Import Marshall.
   Inductive send_sem (x v : var) : semCmdType :=
-  | send_ok : forall Pr PM (s: stack) (h: heap) STs STs' (ST: ST) (c: stptr) (z : var) (P : sasn) m
-    (Sref: s x = vst c)
-    (Sinitial: MapsTo c (st_send z P ST) STs)
-    (Stail: STs' = add c (subst_ST z (s v) ST) STs)
-    (SP : exists mh, marshall (s v) h mh /\ P (stack_add z (s v) (stack_empty _)) Pr m mh),
+  | send_ok          : forall Pr PM (s: stack) (h: heap) STs STs' (ST: ST) (c: stptr) (z : var) (P : sasn) m
+    (Sref            : s x = vst c)
+    (Sinitial        : MapsTo c (st_send z P ST) STs)
+    (Stail           : STs' = add c (subst_ST z (s v) ST) STs)
+    (SIsMarshallable : forall mh, marshall Pr (s v) h mh -> P (stack_add z (s v) (stack_empty _)) Pr m mh),
     send_sem x v Pr PM (m+1) s h STs (Some (s, (h, STs')))
-  | send_fail2 : forall Pr PM (s: stack) (h mh: heap) STs ST (c: stptr) (z : var) (P : sasn) m
-  	(Sref: s x = vst c)
-    (Sinitial: MapsTo c (st_send z P ST) STs)
-    (Serror: ~ (marshall (s v) h mh))
-    (SP: P (stack_add z (s v) (stack_empty _)) Pr m mh),
-    send_sem x v Pr PM (m+1) s h STs None
   .
   Program Definition send_cmd x v := Build_semCmd (send_sem x v) _ _.
   Next Obligation.
@@ -317,21 +311,12 @@ Require Import Compare_dec.
     unfold frame_property; intros.
     inversion HSem. subst; clear HSem.
 	exists h; split; [assumption |].
-	destruct SP as [mh [Smarshall SP]].
-	assert (DisjointHeaps frame mh \/ ~DisjointHeaps frame mh) by admit (* fangel *).
-    destruct H.
-	* eapply send_ok; [ apply Sref | apply Sinitial | reflexivity |].
-	  exists mh. split; [| assumption].
-	  eapply marshall_into_smaller in H; [| apply HFrame | apply Smarshall].
-	  destruct H; [ eapply H | eapply marshall_into_unit; [ apply H | apply Smarshall]]. 
-	* eapply marshall_fails_outside in H; [| apply HFrame | apply Smarshall].
-      destruct H.
-      + exfalso.
-        apply (HSafe (m+1)); [omega|].
-        eapply send_fail2; [apply Sref | apply Sinitial | apply H | apply SP].
-      + eapply send_ok; [apply Sref | apply Sinitial | reflexivity |].
-        exists mh.
-        split; [eapply marshall_into_unit; [ apply H | apply Smarshall ] | apply SP ].
+	eapply send_ok; [ apply Sref | apply Sinitial | reflexivity |..].
+	intros.
+	apply SIsMarshallable.
+	eapply marshall_from_smaller.
+	unfold subheap; exists frame. apply HFrame.
+	apply H.
   Qed.
 
   Inductive recv_sem (v x : var) : semCmdType :=
