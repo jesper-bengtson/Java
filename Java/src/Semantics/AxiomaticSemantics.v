@@ -27,8 +27,8 @@ Proof.
 Qed.
 
 Lemma rule_if_ax (e : dexpr) c1 c2 (P Q : psasn) :
-  @lentails spec _
-            (@land spec _ ({[@lembedand vlogic psasn _ _ (vlogic_eval e) P]} c1 {[Q]})
+  @lentails pspec _
+            (@land pspec _ ({[@lembedand vlogic psasn _ _ (vlogic_eval e) P]} c1 {[Q]})
                    ({[@lembedand vlogic psasn _ _ (vlogic_eval (E_not e)) P]} c2 {[Q]}))
             ({[P]} cif e c1 c2 {[Q]}).
 Proof.
@@ -114,11 +114,12 @@ Import SepAlgNotations.
   
   Lemma rule_start_sem (C : class) (m : method) (x a rv : var) (T : ST) (p : protocol) c sc 
     (HSem : semantics c sc) :
-    @lentails spec _
-      (|> (C :.: m |-> (a::nil) {{ has_ST a T}}-{{rv, all_STs st_end}}))
-      ({{ ST_exists p T }} start_cmd C m x p c sc {{ has_ST x (dual T) }}).
+    @lentails pspec _
+      ((ST_exists p T) //\\ (|> (C :.: m |-> (a::nil) {{ has_ST a T}}-{{rv, all_STs st_end}})))
+      ({{ ltrue }} start_cmd C m x p c sc {{ has_ST x (dual T) }}).
   Proof.
-  	intros P n H P' PM m' k s h STs Hsub Hm'n Hkm' HP.
+  	intros PM P n H P' m' k s h STs Hsub Hm'n Hkm' _.
+  	destruct H as [HP H].
   	destruct n; simpl in *.
   	
   	(* No fuel *) {
@@ -194,18 +195,17 @@ Import SepAlgNotations.
   Qed.
   
   Lemma rule_start (C : class) (m : method) (x a rv : var) (T : ST) (p : protocol) :
-    @lentails spec _
-      (|> (C :.: m |-> (a::nil) {{has_ST a T}}-{{rv, all_STs st_end}}))
-      ({[ ST_exists p T ]} cstart x C m p {[has_ST x (dual T)]}).
+    @lentails pspec _
+      ((ST_exists p T) //\\ (|> (C :.: m |-> (a::nil) {{has_ST a T}}-{{rv, all_STs st_end}})))
+      ({[ ltrue ]} cstart x C m p {[has_ST x (dual T)]}).
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     apply rule_start_sem. apply HSem.
   Qed.
 
-  Import IsMarshallable.
-  Lemma rule_send_ax (x y z : var) (P: sasn) (t : ST) (G : spec) :
-    G |-- {[ P[{y/V //! z}] /\\ isMarshallable y (embed P[{y/V //! z}]) //\\ has_ST x (!z,{P}.t)]}
+  Lemma rule_send_ax (x y z : var) (P: sasn) (t : ST) (G : pspec) :
+    G |-- {[ P[{y/V //! z}] /\\ isMarshallable y (P[{y/V //! z}]) //\\ has_ST x (!z,{P}.t)]}
              csend x y
           {[ P[{y/V //! z}] /\\ has_subst_ST x z y t ]}.
   Proof.
@@ -247,7 +247,7 @@ Import SepAlgNotations.
   Qed.
   *)
   
-  Lemma rule_recv (x y z : var) (P: sasn) (ST : ST) (G : spec) (Hdiff: x <> y) :
+  Lemma rule_recv (x y z : var) (P: sasn) (ST : ST) (G : pspec) (Hdiff: x <> y) :
     G |-- {[ has_ST x (&z,{P}.ST) ]} crecv y x {[ P[{y/V //! z}] /\\ has_subst_ST x z y ST ]}.
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.

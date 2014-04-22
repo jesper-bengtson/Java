@@ -10,7 +10,7 @@ Inductive ST : Type :=
   | st_send : var -> sasn -> ST -> ST
   | st_recv : var -> sasn -> ST -> ST 
   .
-
+  
 Definition STs := Map [stptr, ST].
 
 Fixpoint dual_ST (st : ST) : ST :=

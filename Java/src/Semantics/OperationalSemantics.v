@@ -613,10 +613,10 @@ Open Scope open_scope.
   Qed.
 
 
-  Lemma c_triple_zero P (p q : psasn) (c : cmd) :
-    ({[ p ]} c {[ q ]}) P 0.
+  Lemma c_triple_zero PM P (p q : psasn) (c : cmd) :
+    ({[ p ]} c {[ q ]}) PM P 0.
   Proof.
-    intros sc n Hn Q HPQ sem R PM k m s h t HQR Hk Hv Hp.
+    intros sc n Hn Q HPQ sem R k m s h t HQR Hk Hv Hp.
     assert (m = 0) by omega.
     assert (k = 0) by omega.
     subst. split.
@@ -627,9 +627,13 @@ Open Scope open_scope.
 (* Arguments swapped to please the type classes *)
 
   Definition typeof (C : class) (v : val) : Prop := exists p, v = vptr p /\ snd p = C.
+  
+  Program Definition typeof_asn (C : class) (v : val) : asn :=
+    mk_asn (fun h Pr n => typeof C v) _ _ _.
+    
+  Notation " x ':::' C " := (`typeof_asn `C x/V) (at level 60).
+  
 (*
-  Notation " x ':::' C " := 
-    (@coerce _ _ (@lift2_C _ _ _ _) typeof (@coerce _ _ (@lift0_C _ _) C) (var_expr x)) (at level 60).
 
   (* TODO: should P,Q be allowed to reference stack vars from the outside? *)
   Definition expr_spec x m (ps: list var) (r: var) (P Q: hasn) : hasn :=
@@ -642,15 +646,42 @@ Open Scope open_scope.
     (expr_spec x m ps r P Q) (at level 60).
 *)
 
+  Program Definition field_exists (C : class) (f : field) : spec :=
+    mk_spec (fun Pr n =>
+      exists fields, field_lookup Pr C fields /\ SS.In f fields
+    ) _ _.
+  Next Obligation.
+    exists H. auto.
+  Defined.
+  Next Obligation.
+    unfold field_lookup in H1; destruct H1 as [? [Hmt Heqf]].
+    unfold Prog_wf_sub, Prog_sub in H.
+    apply SM.find_1 in Hmt. specialize (H _ _ Hmt).
+    destruct H as [? [HMT [Hequivf Hequivm]]].
+    remember x0; destruct x0.
+    exists c_fields; split.
+    * exists c.
+      split; [ | subst; reflexivity].
+      apply SM.find_2; apply HMT.
+    * rewrite Heqf in H2; rewrite Hequivf in H2.
+      rewrite Heqc in H2; simpl in H2.
+      apply H2.
+  Defined.
+
+
+
+Require Import UUSepAlg.
+  
+
 Section StructuralRules.
 
-  Lemma triple_false (G : spec) (Q : psasn) c :
+  Lemma triple_false (G : pspec) (Q : psasn) c :
     G |-- {[lfalse]} c {[Q]}.
   Proof.
     intros n; simpl in *; intros; destruct H4.
   Qed.
 
-  Lemma roc (P P' Q Q' : psasn) c (G : spec)
+  Lemma roc (P P' Q Q' : psasn) c (G : pspec)
     (HPre  : P  |-- P')
     (HPost : Q' |-- Q)
     (Hc    : G  |-- {[P']} c {[Q']}) :

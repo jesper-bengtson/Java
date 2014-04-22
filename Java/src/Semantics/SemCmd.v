@@ -182,13 +182,13 @@ Section Commands.
   Qed.
 
   (* |= {p}c{q} *)
-  Program Definition sem_triple (p q : psasn) (c : semCmd) : spec :=
-    mk_spec (fun P n => forall P' PM m k s h STs, Prog_wf_sub P P' -> m <= n -> k <= m -> 
-                                           p PM STs s P' m h ->
+  Program Definition sem_triple (p q : psasn) (c : semCmd) : pspec :=
+    fun PM => mk_spec (fun P n => forall P' m k s h STs, Prog_wf_sub P P' -> m <= n -> k <= m -> 
+                                           p s PM STs P' m h ->
       (safe c P' PM k s h STs) /\
       (forall STs' h' s',  
       	c P' PM k s h STs (Some (s', (h', STs'))) ->
-      		(q PM STs' s' P' (m - k) h')
+      		(q s' PM STs' P' (m - k) h')
       		
       )
     ) _ _.
@@ -202,15 +202,15 @@ End Commands.
 
   Local Transparent ILPre_Ops.
   Local Transparent ILFun_Ops.
-
+  
   Add Parametric Morphism : sem_triple with signature
     lentails --> lentails ++> eq ==> lentails
     as sem_triple_entails_m.
   Proof.
-    intros p p' Hp q q' Hq c n x H P PM m k s h t HP Hmn Hkm Hp'.
+    intros p p' Hp q q' Hq c n PM x H P m k s h t HP Hmn Hkm Hp'.
     apply Hp in Hp'; try apply _.    
     simpl in *.
-    specialize (H _ _ _ _ _ _ t HP Hmn Hkm Hp').
+    specialize (H _ _ _ _ _ t HP Hmn Hkm Hp').
     destruct H as [Hsafe H].
     split; [assumption|].
     
