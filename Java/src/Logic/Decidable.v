@@ -185,17 +185,3 @@ Proof.
     left; apply Hentails; apply H0 | 
     right; intro Hfail; apply H0; apply Hentails; apply Hfail]).
 Defined.
-
-Lemma exists_decidable {A : Type} (P : A -> asn) (a : A) : DecidableAsn( P a ) -> DecidableAsn( Exists a, P a). 
-Proof.
-  intro H.
-  intros Pr n h.
-  specialize (H Pr n h).
-  destruct H as [H | notH].
-  left.
-  exists a; assumption.
-  right.
-  intro Hfail.
-  destruct Hfail as [? Hfail].
-  admit (* fangel, ununsed *).
-Admitted.  
