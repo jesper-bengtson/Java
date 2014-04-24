@@ -102,12 +102,12 @@ Proof.
         unfold In. exists v_a.
         rewrite find_mapsto_iff.
         congruence.
-      - admit (* fangel *).
+      - admit (* fangel, unused *).
 Admitted.
 
 Lemma heap_eq_dec : forall (a b : heap), {a === b} + {a =/= b}.
 Proof.
-  admit.
+  admit (* fangel, used *).
 Qed.
 
 Lemma sa_mul_heapResEq {a b c c' : heap}
@@ -163,33 +163,6 @@ Proof.
   unfold In in Hcounter; destruct Hcounter as [v Hcounter].
   unfold Empty in Hempty; specialize (Hempty k v).
   auto.
-Qed.
-
-Lemma empty_or_disjoint {K A : Type} {H : OrderedType K} {a b : Map [K, A]} :
-  Disjoint a b \/ (exists (k : K), In k a /\ In k b).
-Proof.
-  destruct (is_empty_dec a); [left; apply empty_is_disjoint; assumption |].
-  destruct (is_empty_dec b); [left; apply Disjoint_sym; apply empty_is_disjoint; assumption |].
-  admit.
-Admitted.
-
-Lemma overlapping_exists : forall a b, ~ DisjointHeaps a b ->
-  (exists ref f, In (ref, f) (get_heap_ptr a) /\ In (ref, f) (get_heap_ptr b))
-  \/
-  (exists ref i, In (ref, i) (get_heap_arr a) /\ In (ref, i) (get_heap_arr b)).
-Proof.
-  intros.
-  unfold not in H; unfold DisjointHeaps in H.
-  assert (Disjoint (get_heap_ptr a) (get_heap_ptr b) \/ (exists (k : (ptr * field)), In k (get_heap_ptr a) /\ In k (get_heap_ptr b))) by (apply empty_or_disjoint).
-  assert (Disjoint (get_heap_arr a) (get_heap_arr b) \/ (exists (k : (arrptr * nat)), In k (get_heap_arr a) /\ In k (get_heap_arr b))) by (apply empty_or_disjoint).
-  destruct H0; destruct H1.
-  exfalso; auto.
-  right. destruct H1 as [[ref i] H1].
-  exists ref; exists i. assumption.
-  left. destruct H0 as [[ref f] H0].
-  exists ref; exists f. assumption.
-  left. destruct H0 as [[ref f] H0].
-  exists ref; exists f. assumption.
 Qed.
 
 Lemma DisjointHeaps_sa_mul {a b : heap} (H : DisjointHeaps a b) :

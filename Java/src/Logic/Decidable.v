@@ -141,5 +141,5 @@ Proof.
   right.
   intro Hfail.
   destruct Hfail as [? Hfail].
-  admit.
+  admit (* fangel, ununsed *).
 Admitted.  
