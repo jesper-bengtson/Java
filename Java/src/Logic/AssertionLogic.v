@@ -151,7 +151,7 @@ Next Obligation.
 Qed.
 
 Definition pointsto (p : val) (f : field) (v : val) : asn := 
-  (p <> null) /\\ pointsto_aux (val_to_ptr p) f v.
+  (val_to_ptr p <> pnull) /\\ pointsto_aux (val_to_ptr p) f v.
 
 Program Definition pointsto_arr_element_aux (x : val) (path : list val) (v : val) : asn :=
   mk_asn (fun P k h => exists (h' : heap) , 

@@ -295,13 +295,20 @@ Require Import Compare_dec.
   Qed.
 
   Import Marshall.
+  Require Import Util.
   Inductive send_sem (x v : var) : semCmdType :=
-  | send_ok          : forall Pr PM (s: stack) (h: heap) STs STs' (ST: ST) (c: stptr) (z : var) (P : sasn) m
-    (Sref            : s x = vst c)
-    (Sinitial        : MapsTo c (st_send z P ST) STs)
-    (Stail           : STs' = add c (subst_ST z (s v) ST) STs)
-    (SIsMarshallable : forall mh, marshall Pr (s v) h mh -> P (stack_add z (s v) (stack_empty _)) Pr m mh),
+  | send_ok     : forall Pr PM (s: stack) (h: heap) STs STs' (ST: ST) (c: stptr) (z : var) (P : sasn) m
+    (Sref       : s x = vst c)
+    (Sinitial   : MapsTo c (st_send z P ST) STs)
+    (Stail      : STs' = add c (subst_ST z (s v) ST) STs)
+    (Ssubheap   : exists mh, subheap mh h /\ P (stack_add z (s v) (stack_empty _)) Pr m mh) 
+    (Sdecidable : forall h, P (stack_add z (s v) (stack_empty _)) Pr m h \/ ~ P (stack_add z (s v) (stack_empty _)) Pr m h),
     send_sem x v Pr PM (m+1) s h STs (Some (s, (h, STs')))
+  | send_fail : forall Pr PM (s: stack) (h: heap) STs ST (c: stptr) (z : var) (P : sasn) m
+    (Sref     : s x = vst c)
+    (Sinitial : MapsTo c (st_send z P ST) STs)
+    (Sfail    : ~ P (stack_add z (s v) (stack_empty _)) Pr m h),
+    send_sem x v Pr PM (m+1) s h STs None
   .
   Program Definition send_cmd x v := Build_semCmd (send_sem x v) _ _.
   Next Obligation.
@@ -311,12 +318,12 @@ Require Import Compare_dec.
     unfold frame_property; intros.
     inversion HSem. subst; clear HSem.
 	exists h; split; [assumption |].
-	eapply send_ok; [ apply Sref | apply Sinitial | reflexivity |..].
-	intros.
-	apply SIsMarshallable.
-	eapply marshall_from_smaller.
-	unfold subheap; exists frame. apply HFrame.
-	apply H.
+	eapply send_ok; [ apply Sref | apply Sinitial | reflexivity | | apply Sdecidable].
+	exists h; split; [ reflexivity |].
+	edestruct Sdecidable; [eassumption |].
+	exfalso; apply (HSafe (m+1)); [omega |].
+	eapply send_fail; [apply Sref | apply Sinitial |].
+	assumption.
   Qed.
 
   Inductive recv_sem (v x : var) : semCmdType :=

@@ -1,7 +1,7 @@
 Require Import Program  Heap ProtocolLogic AssertionLogic OperationalSemantics SpecLogic Util.
 Require Import MapInterface MapFacts.
 Require Import SepAlg SepAlgInsts ILInsts ILogic ILEmbed ILEmbedTac ILQuantTac OpenILogic
-               SepAlgMap UUSepAlg Open Subst Stack Lang SemCmd HeapArr ST SemCmdRules BILogic BILInsts.
+               SepAlgMap UUSepAlg Open Subst Stack Lang SemCmd HeapArr ST SemCmdRules BILogic BILInsts Rel.
 
 
 Local Transparent ILPre_Ops.
@@ -25,7 +25,8 @@ Local Transparent EmbedAsnPropOp.
 Local Transparent BILOperatorsPSasn.
 Local Transparent BILFun_Ops.
 Local Transparent BILOperatorsAsn.
-
+Local Transparent ILOpsSAsn.
+  
 Lemma pointsto_IsMarshallable (v : var) (f : field) (e : expr):
   Exists C, field_exists C f /\\ embed (@land sasn _ (v ::: C) (`pointsto v/V `f e))
   |--

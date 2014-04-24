@@ -152,3 +152,20 @@ Definition PM := Map [protocol, ST].
     eapply H0; [ | assumption | eassumption].
     transitivity h'; eassumption.
   Defined.
+
+  (*
+  Program Definition DecidableAsn (P : sasn) : sasn := 
+    fun s => mk_asn (fun Pr n h =>
+     P s Pr n h \/ ~(P s Pr n h)
+   ) _ _ _.
+  Next Obligation.
+    destruct H. left.
+    solve_model H.
+    right; intro Hfail; apply H. solve_model Hfail.
+
+  Program Definition DecidableAsn (P : sasn) : sasn := 
+    fun s' => mk_asn (fun Pr' n' h' =>
+      forall s Pr n h, P s Pr n h \/ ~(P s Pr n h)
+   ) _ _ _.
+  *)
+  Definition DecidableAsn (P : sasn) := forall s Pr n h, P s Pr n h \/ ~(P s Pr n h).

@@ -205,16 +205,31 @@ Import SepAlgNotations.
   Qed.
 
   Lemma rule_send_ax (x y z : var) (P: sasn) (t : ST) (G : pspec) :
-    G |-- {[ P[{y/V //! z}] /\\ isMarshallable y (P[{y/V //! z}]) //\\ has_ST x (!z,{P}.t)]}
+    G |-- {[ DecidableAsn P[{y/V //! z}] /\\ P[{y/V //! z}] /\\ has_ST x (!z,{P}.t)]}
              csend x y
           {[ P[{y/V //! z}] /\\ has_subst_ST x z y t ]}.
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros.
-    * intro HFail. inversion HFail. 
+    * intro HFail. inversion HFail; subst.
+      (*destruct Sfail as [? Sfail]. *)
+      apply Sfail.
+      destruct H3 as [_ [HP HST]].
+      assert (z = z0 /\ P = P0). {
+		apply find_mapsto_iff in Sinitial; apply find_mapsto_iff in HST.
+		rewrite Sref in HST.
+		simpl in Sinitial; simpl in HST.
+		rewrite HST in Sinitial; inversion Sinitial.
+		split; reflexivity.
+	  }
+	  destruct H3 as [Heqz HeqP].
+	  rewrite <- HeqP in *; clear HeqP.
+	  rewrite <- Heqz in *; clear Heqz.
+	  unfold id in HP; rewrite subst1_trunc_singleton_stack in HP.
+	  solve_model HP. 
     * inversion H4; subst.
-      destruct H3 as [HP [_ HST]].
+      destruct H3 as [_ [HP HST]].
       unfold id in *.
       split.
       - solve_model HP; congruence.

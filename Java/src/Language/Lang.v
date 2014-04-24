@@ -1,6 +1,7 @@
 Require Import DecidableType DecidableTypeEx.
 Require Import ZArith String.
 Require Import Stack Open Util OpenILogic.
+Require Import Rel.
 Require Import Compare_dec.
 Require Import OrderedType OrderedTypeEx.
 Require Import SepAlgMap.
@@ -40,6 +41,8 @@ Instance SVal : ValNull := Build_ValNull nothing.
 
 (* This lets sval unify with val *)
 Canonical Structure SVal.
+
+Definition DecSval : DecidableEq sval. Proof. split. repeat (decide equality). Qed.
 
 
 Inductive svalEq : sval -> sval -> Prop :=
