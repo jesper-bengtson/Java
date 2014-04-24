@@ -1,6 +1,6 @@
 Require Import SemCmd ILogic BILogic ILInsts BILInsts. 
 Require Import OpenILogic Later ProtocolLogic AssertionLogic SpecLogic ILEmbed Open.
-Require Import Stack Subst Lang Util List.
+Require Import Stack Subst Lang Util Lists.List.
 Require Import FunctionalExtensionality ST.
 
 Set Implicit Arguments.
@@ -34,11 +34,13 @@ Section Rules.
       + split; [apply HSafe|intros t' h' s' H].
         apply HPost. specialize (HQ _ _ _ H). apply HQ.
     Qed.
-Local Existing Instance EmbedPSasnSasnOp.
+
+	Local Existing Instance EmbedPSasnSasnOp.
+
     Definition not_modifies (c : semCmd) (x : var) : Prop :=
       forall PP PM s s' h h' STs STs' n (HSem : c PP PM n s h STs (Some (s', (h', STs')))),
         s x = s' x.
-        
+
     Lemma frame_rule : forall (P Q : psasn) (R : sasn) c (xs: list var)
       (HMod : forall x, ~ In x xs -> not_modifies c x),
       {{ P }} c {{ Q }} |--
