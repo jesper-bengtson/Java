@@ -84,6 +84,22 @@ Definition PM := Map [protocol, ST].
 
 
   Definition pasn := PM -> STs -> asn.
+  
+  Instance ILogicOpsPAsn    : ILogicOps pasn    := _.
+  Instance ILogicPAsn       : ILogic pasn       := _.
+  Instance BILOperatorsPAsn : BILOperators pasn := _.
+  Instance BILogicPAsn      : BILogic pasn      := _.
+  Instance IBILogicPAsn     : IBILogic pasn     := _.
+
+  Instance EmbedPAsnPropOp  : EmbedOp Prop pasn := _.
+  Instance EmbedPAsnProp    : Embed Prop pasn   := _.
+  
+  Instance EmbedPAsnSpecOp  : EmbedOp spec pasn := _.
+  Instance EmbedPAsnSpec    : Embed spec pasn   := _.
+  
+  Instance EmbedPAsnAsnOp   : EmbedOp asn pasn  := _.
+  Instance EmbedPAsnAsn     : Embed asn pasn    := _.
+  
   Definition psasn := @open var _ pasn.
 
   Instance ILogicOpsPSasn    : ILogicOps psasn    := _.

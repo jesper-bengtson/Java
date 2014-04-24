@@ -755,14 +755,12 @@ Section StructuralRules.
       lforallL sc. apply lpropimplL; [assumption | lforallL x; reflexivity].
   Qed.
   
-  (* fangel, psasn 
-  Lemma existentialise_triple (x : var) (P Q : sasn) c (G : spec) 
-	(H : forall (v : val), G |-- {[@lembedand vlogic sasn _ _ (open_eq (x/V) (`v)) P]} c {[Q]}) :
+  Lemma existentialise_triple (x : var) (P Q : psasn) c (G : pspec) 
+	(H : forall (v : val), G |-- {[@lembedand vlogic psasn _ _ (open_eq (x/V) (`v)) P]} c {[Q]}) :
     G |-- {[P]} c {[Q]}.
   Proof.
     eapply roc_pre; [apply existentialise_var with (x0 := x)|].
     rewrite <- exists_into_precond2. lforallR y. apply H.
   Qed.
-  *)
 
 End StructuralRules.
