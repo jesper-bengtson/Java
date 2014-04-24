@@ -184,4 +184,5 @@ Definition PM := Map [protocol, ST].
       forall s Pr n h, P s Pr n h \/ ~(P s Pr n h)
    ) _ _ _.
   *)
-  Definition DecidableAsn (P : sasn) := forall s Pr n h, P s Pr n h \/ ~(P s Pr n h).
+  Definition DecidableAsn (P : asn) := forall Pr n h, P Pr n h \/ ~(P Pr n h).
+  Definition DecidableSasn (P : sasn) := forall s, DecidableAsn (P s).
