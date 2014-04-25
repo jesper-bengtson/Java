@@ -205,7 +205,7 @@ Import SepAlgNotations.
   Qed.
 
   Lemma rule_send_ax (x y z : var) (P: sasn) (t : ST) (G : pspec) :
-    G |-- {[ DecidableAsn P[{y/V //! z}] /\\ P[{y/V //! z}] /\\ has_ST x (!z,{P}.t)]}
+    G |-- {[ DecidableSasn P[{y/V //! z}] /\\ P[{y/V //! z}] /\\ has_ST x (!z,{P}.t)]}
              csend x y
           {[ P[{y/V //! z}] /\\ has_subst_ST x z y t ]}.
   Proof.
