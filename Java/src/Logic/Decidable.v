@@ -185,3 +185,10 @@ Proof.
     left; apply Hentails; apply H0 | 
     right; intro Hfail; apply H0; apply Hentails; apply Hfail]).
 Defined.
+
+Global Instance DecidableSasn_m : Proper (lequiv ==> iff) DecidableSasn.
+Proof.
+  intros x y Hentails; split; (intros H s Pr n h; destruct (H s Pr n h); [
+    left; apply Hentails; apply H0 | 
+    right; intro Hfail; apply H0; apply Hentails; apply Hfail]).
+Defined.
