@@ -179,6 +179,15 @@ Proof.
     apply sa_mulC in Hh; apply isolate_heap_ptr in Hh; eapply sa_mul_inL in Hh; [| exists head'; eassumption]; apply Hh.
 Qed.
 
+Lemma decidable_andI (P Q : asn) : DecidableAsn P -> DecidableAsn Q -> DecidableAsn (P //\\ Q).
+Proof.
+  intros HP HQ.
+  intros Pr n h.
+  destruct (HP Pr n h); [| right; intro Hfail; apply H; apply Hfail].
+  destruct (HQ Pr n h); [| right; intro Hfail; apply H0; apply Hfail].
+  left; split; assumption.
+Qed.
+
 Global Instance DecidableAsn_m : Proper (lequiv ==> iff) DecidableAsn.
 Proof.
   intros x y Hentails; split; (intros H Pr n h; destruct (H Pr n h); [
