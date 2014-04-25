@@ -589,8 +589,8 @@ Open Scope open_scope.
       [prog] (fun X : Prog_wf => method_lookup X C m (Build_Method ps' c re)
         /\ length ps = length ps' /\
         (forall x, List.In x ps' -> ~ SS.In x (modifies c)))
-      //\\ {[ psasn_subst P (substl_trunc_aux (zip ps (List.map var_expr ps'))) ]}
-         c {[ psasn_subst Q (substl_trunc_aux (zip (rn :: ps) (eval re :: (List.map var_expr ps'))))]}
+      //\\ {[ P //! zip ps (List.map var_expr ps') ]}
+         c {[ Q //! zip (rn :: ps) (eval re :: (List.map var_expr ps'))]}
     ).
 
   Notation " C ':.:' m |-> ps {{ P }}-{{ r , Q }} " :=
