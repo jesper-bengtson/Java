@@ -394,7 +394,7 @@ Require Import Compare_dec.
       (HLen    : length ps = length es)
       (HSem    : sc P PM n (create_stack ps (eval_exprs s es)) h STs (Some (sr, (hr, STs')))),
       call_sem rvar C m es c sc P PM (S n) s h STs
-        (Some (stack_add rvar (eval rexpr sr) s, (hr, STs))).
+        (Some (stack_add rvar (eval rexpr sr) s, (hr, STs'))).
   Program Definition call_cmd rvar C m es c sc := Build_semCmd (call_sem rvar C m es c sc) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -408,13 +408,13 @@ Require Import Compare_dec.
   
   Inductive start_sem (C : class) (m : method) (x : var) (p : protocol) (c : cmd) (sc : semCmd)
     : semCmdType :=
-  | start_failM   : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s: stack) (h : heap) STs ST (rexpr : dexpr) n
+  | start_failE   : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s: stack) (h : heap) STs ST (rexpr : dexpr) n
        (HProtocol : MapsTo p ST PM)
        (HFresh    : ~ In chan STs)
        (HLookup   : method_lookup P C m (Build_Method (a::nil) c rexpr))
        (HSem      : sc P PM n (stack_add a (vst chan) (stack_empty _)) heap_unit (add chan ST (empty _)) None),
        start_sem C m x p c sc P PM (S n) s h STs None
-  | start_failE   : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s rs: stack) (h rh : heap) STs rSTs (ST : ST) (rexpr : dexpr) n
+  | start_failO   : forall (P : Prog_wf) PM (a : var) (chan : stptr) (s rs: stack) (h rh : heap) STs rSTs (ST : ST) (rexpr : dexpr) n
        (HProtocol : MapsTo p ST PM) 
        (HFresh    : ~ In chan STs)
        (HLookup   : method_lookup P C m (Build_Method (a::nil) c rexpr))
