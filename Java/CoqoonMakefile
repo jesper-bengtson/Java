@@ -16,11 +16,16 @@ override COQFLAGS += -R bin ""
 override COQFLAGS += $(DK_ITU_SDG_KOPITIAM_LP_COQ_8_4_FLAGS)
 override COQFLAGS += $(CHARGE_FLAGS)
 OBJECTS = \
+	bin/CaseStudies/List.vo \
 	bin/Language/Lang.vo \
 	bin/Language/Program.vo \
 	bin/Logic/AssertionLogic.vo \
+	bin/Logic/Decidable.vo \
+	bin/Logic/Heap.vo \
 	bin/Logic/HeapArr.vo \
-	bin/Logic/HeapST.vo \
+	bin/Logic/IsMarshallable.vo \
+	bin/Logic/ProtocolLogic.vo \
+	bin/Logic/ST.vo \
 	bin/Logic/SpecLogic.vo \
 	bin/Semantics/AxiomaticSemantics.vo \
 	bin/Semantics/OperationalSemantics.vo \
@@ -32,14 +37,19 @@ all: $(OBJECTS)
 clean:
 	rm -f $(OBJECTS)
 
+bin/CaseStudies/List.vo: src/CaseStudies/List.v bin/Language/Program.vo bin/Logic/Heap.vo bin/Logic/ProtocolLogic.vo bin/Logic/AssertionLogic.vo bin/Semantics/OperationalSemantics.vo bin/Logic/SpecLogic.vo bin/Util.vo bin/Logic/Decidable.vo bin/CaseStudies/List.vo bin/Language/Lang.vo bin/Semantics/SemCmd.vo bin/Logic/HeapArr.vo bin/Logic/ST.vo bin/Semantics/SemCmdRules.vo
 bin/Language/Lang.vo: src/Language/Lang.v bin/Util.vo
 bin/Language/Program.vo: src/Language/Program.v bin/Language/Lang.vo bin/Util.vo
-bin/Logic/AssertionLogic.vo: src/Logic/AssertionLogic.v bin/Language/Program.vo bin/Language/Lang.vo bin/Logic/HeapArr.vo bin/Logic/HeapST.vo bin/Logic/SpecLogic.vo
+bin/Logic/AssertionLogic.vo: src/Logic/AssertionLogic.v bin/Language/Lang.vo bin/Language/Program.vo bin/Logic/Heap.vo bin/Logic/SpecLogic.vo
+bin/Logic/Decidable.vo: src/Logic/Decidable.v bin/Language/Program.vo bin/Logic/Heap.vo bin/Logic/ProtocolLogic.vo bin/Logic/AssertionLogic.vo bin/Semantics/OperationalSemantics.vo bin/Logic/SpecLogic.vo bin/Util.vo bin/Language/Lang.vo bin/Semantics/SemCmd.vo bin/Logic/HeapArr.vo bin/Logic/ST.vo bin/Semantics/SemCmdRules.vo
+bin/Logic/Heap.vo: src/Logic/Heap.v bin/Language/Program.vo bin/Language/Lang.vo bin/Logic/HeapArr.vo
 bin/Logic/HeapArr.vo: src/Logic/HeapArr.v bin/Language/Program.vo bin/Language/Lang.vo
-bin/Logic/HeapST.vo: src/Logic/HeapST.v bin/Language/Program.vo bin/Language/Lang.vo
-bin/Logic/SpecLogic.vo: src/Logic/SpecLogic.v bin/Language/Program.vo
-bin/Semantics/AxiomaticSemantics.vo: src/Semantics/AxiomaticSemantics.v bin/Logic/SpecLogic.vo bin/Logic/AssertionLogic.vo bin/Language/Program.vo bin/Semantics/OperationalSemantics.vo bin/Language/Lang.vo bin/Semantics/SemCmd.vo bin/Semantics/SemCmdRules.vo bin/Logic/HeapArr.vo
-bin/Semantics/OperationalSemantics.vo: src/Semantics/OperationalSemantics.v bin/Language/Program.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo
-bin/Semantics/SemCmd.vo: src/Semantics/SemCmd.v bin/Language/Program.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo bin/Language/Lang.vo
-bin/Semantics/SemCmdRules.vo: src/Semantics/SemCmdRules.v bin/Semantics/SemCmd.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo bin/Language/Lang.vo bin/Util.vo
+bin/Logic/IsMarshallable.vo: src/Logic/IsMarshallable.v bin/Language/Program.vo bin/Logic/Heap.vo bin/Logic/ProtocolLogic.vo bin/Logic/AssertionLogic.vo bin/Semantics/OperationalSemantics.vo bin/Logic/SpecLogic.vo bin/Util.vo bin/Language/Lang.vo bin/Semantics/SemCmd.vo bin/Logic/HeapArr.vo bin/Logic/ST.vo bin/Semantics/SemCmdRules.vo
+bin/Logic/ProtocolLogic.vo: src/Logic/ProtocolLogic.v bin/Language/Lang.vo bin/Logic/ST.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo bin/Util.vo bin/Language/Program.vo
+bin/Logic/ST.vo: src/Logic/ST.v bin/Language/Lang.vo bin/Logic/Heap.vo bin/Logic/AssertionLogic.vo bin/Util.vo bin/Language/Program.vo
+bin/Logic/SpecLogic.vo: src/Logic/SpecLogic.v bin/Language/Lang.vo bin/Language/Program.vo
+bin/Semantics/AxiomaticSemantics.vo: src/Semantics/AxiomaticSemantics.v bin/Util.vo bin/Logic/SpecLogic.vo bin/Logic/ProtocolLogic.vo bin/Logic/AssertionLogic.vo bin/Language/Program.vo bin/Semantics/OperationalSemantics.vo bin/Language/Lang.vo bin/Semantics/SemCmd.vo bin/Semantics/SemCmdRules.vo bin/Logic/Heap.vo bin/Logic/ST.vo bin/Logic/HeapArr.vo
+bin/Semantics/OperationalSemantics.vo: src/Semantics/OperationalSemantics.v bin/Language/Program.vo bin/Logic/Heap.vo bin/Logic/ProtocolLogic.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo bin/Language/Lang.vo bin/Semantics/SemCmd.vo bin/Logic/HeapArr.vo bin/Logic/ST.vo bin/Semantics/SemCmdRules.vo bin/Util.vo
+bin/Semantics/SemCmd.vo: src/Semantics/SemCmd.v bin/Language/Program.vo bin/Logic/SpecLogic.vo bin/Logic/Heap.vo bin/Logic/ProtocolLogic.vo bin/Language/Lang.vo bin/Logic/ST.vo
+bin/Semantics/SemCmdRules.vo: src/Semantics/SemCmdRules.v bin/Semantics/SemCmd.vo bin/Logic/ProtocolLogic.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo bin/Language/Lang.vo bin/Util.vo bin/Logic/ST.vo
 bin/Util.vo: src/Util.v

@@ -291,10 +291,6 @@ Import SepAlgNotations.
 		apply add_1; auto.
   Qed.
   
-  (*******************************
-   * Anything after this breaks! *
-   *******************************)
-  
   Lemma rule_read_fwd (x y : var) (f : field) (e : expr) (P : psasn)
     (HPT : P |-- embed (`pointsto y/V `f e)) :
    @ltrue pspec _ |-- {[ P ]} cread x y f {[ Exists v : val, @lembedand vlogic psasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
