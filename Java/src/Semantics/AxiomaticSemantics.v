@@ -213,21 +213,24 @@ Import SepAlgNotations.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros.
     * intro HFail. inversion HFail; subst.
-      (*destruct Sfail as [? Sfail]. *)
-      apply Sfail.
-      destruct H3 as [_ [HP HST]].
-      assert (z = z0 /\ P = P0). {
-		apply find_mapsto_iff in Sinitial; apply find_mapsto_iff in HST.
-		rewrite Sref in HST.
-		simpl in Sinitial; simpl in HST.
-		rewrite HST in Sinitial; inversion Sinitial.
-		split; reflexivity.
-	  }
-	  destruct H3 as [Heqz HeqP].
-	  rewrite <- HeqP in *; clear HeqP.
-	  rewrite <- Heqz in *; clear Heqz.
-	  unfold id in HP; rewrite subst1_trunc_singleton_stack in HP.
-	  solve_model HP. 
+      - apply Sfail.
+        destruct H3 as [_ [HP HST]].
+        assert (z = z0 /\ P = P0). {
+		  apply find_mapsto_iff in Sinitial; apply find_mapsto_iff in HST.
+		  rewrite Sref in HST.
+		  simpl in Sinitial; simpl in HST.
+	      rewrite HST in Sinitial; inversion Sinitial.
+		  split; reflexivity.
+	    }
+	    destruct H3 as [Heqz HeqP].
+	    rewrite <- HeqP in *; clear HeqP.
+	    rewrite <- Heqz in *; clear Heqz.
+	    unfold id in HP; rewrite subst1_trunc_singleton_stack in HP.
+	    solve_model HP.
+	  - destruct H3 as [_ [_ HMT]].
+	    apply Sfail.
+	    rewrite Sref in HMT; simpl in HMT.
+	    exists (st_send z P ST); apply HMT.
     * inversion H4; subst.
       destruct H3 as [_ [HP HST]].
       unfold id in *.
@@ -255,7 +258,10 @@ Import SepAlgNotations.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros.
-    * intro HSafe. inversion HSafe.
+    * intro HSafe. inversion HSafe; subst.
+      apply Sfail.
+      rewrite Sref in H3; simpl in H3.
+      exists (st_recv z P ST); assumption.
     * unfold id.
       inversion H4; subst.
       exists rv.
@@ -418,22 +424,18 @@ Require Import HeapArr.
   Proof. reflexivity. Qed.
   Hint Rewrite subst_fresh0 : open.
 
-  Lemma rule_write_frame G (P : psasn) (Q : sasn) (x : var) (f : field) (e : expr) (e' : dexpr)
-        (H : P |-- (embed Q) ** embed (`pointsto x/V `f e)) :
-    @lentails pspec _ G ({[ P ]} cwrite x f e' {[ (embed Q) ** embed (`pointsto x/V `f (eval e'))]}).
+  Lemma rule_write_frame G (P Q : psasn) (x : var) (f : field) (e : expr) (e' : dexpr)
+        (H : P |-- Q ** embed (`pointsto x/V `f e)) :
+    @lentails pspec _ G ({[ P ]} cwrite x f e' {[ Q ** embed (`pointsto x/V `f (eval e'))]}).
   Proof.
     rewrite H.
     eapply roc; [rewrite sepSPC; reflexivity | rewrite sepSPC; reflexivity|].
-    assert ((@ltrue pspec _ |-- {[ embed (`pointsto x/V `f e) ]} cwrite x f e' {[ embed (`pointsto x/V `f (eval e'))]})) by (apply rule_write).
-    eapply rule_frame with (R := Q) in H0.
-    apply roc_post with (Q' := (embed (`pointsto x/V `f (eval e')) **
-        embed (subst_mod_asn Q (cwrite x f e')))). 
+    eapply roc_post. eapply rule_frame.
     transitivity (@ltrue pspec _); [apply ltrueR|].
-	apply H0.
+    eapply rule_write.
     unfold subst_mod_asn.
     rewrite sepSPC; etransitivity; [|rewrite sepSPC; reflexivity].
-    apply bilsep. simpl. intros s PM STs Pr n h H1.
-    unfold id. destruct H1. solve_model H1.
+    apply bilsep. apply lexistsL; intro vs. reflexivity.
   Qed.
 
 (*
@@ -760,7 +762,6 @@ Ltac existentialise y v :=
   	+ unfold apply_subst. solve_model H0. rewrite subst1_stack. reflexivity.
   Qed.
 
-  (*
   Lemma rule_dcall_forward C m ps (es : list dexpr) (x y r : var) G
   (P Q Pm Qm : psasn) (F : sasn) 
     (Hspec : G |-- |> C :.: m |-> ps {{ Pm }}-{{ r, Qm }})
@@ -795,17 +796,17 @@ Ltac existentialise y v :=
      destruct (@dec_eq SS.elt DecString x x); [|congruence].
      destruct (@dec_eq SS.elt DecString x y).
      destruct (@dec_eq string DecString y x); [|congruence].
-     split; [intuition congruence|].
      exists h1, h2, Hh. split.
-     solve_model H1. solve_model H4.
+     split; [intuition congruence|].
+     solve_model H1. unfold id in *. solve_model H4.
      apply functional_extensionality. intros; simpl.
      destruct (@dec_eq string DecString x0 x).
      destruct (@dec_eq SS.elt DecString x x0); congruence.
      destruct (@dec_eq SS.elt DecString x x0); [congruence | reflexivity].
      destruct (@dec_eq string DecString y x); [congruence|].
-     split. apply H3.
      exists h1, h2, Hh. split.
-     solve_model H1. solve_model H4.
+     split. apply H3.
+     solve_model H1. unfold id in *. solve_model H4.
      apply functional_extensionality. intros.
      destruct (@dec_eq SS.elt DecString x x0);
      destruct (@dec_eq string DecString x0 x); unfold var_expr; simpl;
@@ -813,7 +814,7 @@ Ltac existentialise y v :=
   Qed.
 
   Lemma rule_static_complete C m ps (es : list dexpr) (x r : var) G
-    (P Q F Pm Qm : sasn)
+    (P Q F Pm Qm : psasn)
     (HSpec : G |-- |> C :.: m |-> ps {{ Pm }}-{{ r, Qm }})
     (HPre: P |-- (Pm //! zip ps (map (fun e s => eval e s) es)) ** F)
     (HLen: length ps = length es)
@@ -826,11 +827,11 @@ Ltac existentialise y v :=
   	existentialise x v.
   	rewrite HPre.
   	eapply roc_pre with (P' := 
-  	    (@lembedand vlogic sasn _ _ (open_eq x/V `v)
+  	    (@lembedand vlogic psasn _ _ (open_eq x/V `v)
          (Pm //! zip ps (map (fun (e : dexpr) (s : Stack.stack var) => eval e s) es))) **
-        (@lembedand vlogic sasn _ _ (open_eq x/V `v) F)).
+        (@lembedand vlogic psasn _ _ (open_eq x/V `v) F)).
      clear HSpec HPre HLen HPost.
-     intros s Pr n h [H1 [h1 [h2 [Hh [H3 H4]]]]].
+     intros s PM STs Pr n h [H1 [h1 [h2 [Hh [H3 H4]]]]].
      simpl in *. exists h1, h2, Hh; (repeat split); assumption.
      eapply roc_post; [eapply rule_frame|].
      revert v. apply lforallR2.
@@ -840,7 +841,7 @@ Ltac existentialise y v :=
      simpl.      unfold SS.MSet.Raw.singleton, apply_subst, subst_fresh,
                    open_eq, liftn, lift, var_expr, substl_trunc, subst1; simpl.
      clear HPre HLen HPost HSpec.
-     intros s pr n h [h1 [h2 [Hh [H1 [H2 H3]]]]].
+     intros s pm sts pr n h [h1 [h2 [Hh [H1 [H2 H3]]]]].
      unfold stack_subst in *; simpl in *.
      destruct (@dec_eq SS.elt DecString x x); [|congruence].
      exists h1, h2, Hh. split.
@@ -849,7 +850,7 @@ Ltac existentialise y v :=
      destruct (@dec_eq SS.elt DecString x x0);
      destruct (@dec_eq string DecString x0 x); unfold var_expr; simpl;
      intuition congruence.
-  Qed. *)
+  Qed.
 
 (* TODO: move to Pwf *)
 Lemma ext_fields_same PP PP' C fields

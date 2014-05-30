@@ -14,11 +14,12 @@ Section Commands.
   Definition semCmdType := Prog_wf -> PM -> nat -> stack -> heap -> STs -> option (stack * (heap * STs)) -> Prop.
   Definition safe (c : semCmdType) Pr PM n s h STs := ~(c Pr PM n s h STs None).
   Definition frame_property (c : semCmdType) :=
-    forall Pr PM s s' (big big' frame h : heap) n STs STs'
-      (HFrame : sa_mul h frame big)
-      (HSafe  : forall m, m <= n -> safe c Pr PM m s h STs)
-      (HSem   : c Pr PM n s big STs (Some (s', (big', STs')))),
-      exists h', sa_mul h' frame big' /\ c Pr PM n s h STs (Some (s', (h', STs'))).
+    forall Pr PM s s' (big big' frame h : heap) n (bigT bigT' frameT T : STs)
+      (HFrame : @sa_mul heap HeapSepAlgOps h frame big)
+      (SFrame : @sa_mul STs STsSepAlgOps T frameT bigT) 
+      (HSafe  : forall m, m <= n -> safe c Pr PM m s h T)
+      (HSem   : c Pr PM n s big bigT (Some (s', (big', bigT')))),
+      exists h', exists T', sa_mul h' frame big' /\ sa_mul T' frameT bigT' /\ c Pr PM n s h T (Some (s', (h', T'))).
 
   Record semCmd := {
     cmd_rel   :> Prog_wf -> PM -> nat -> stack -> heap -> STs -> option (stack * (heap * STs)) -> Prop;
@@ -59,7 +60,7 @@ Section Commands.
   Next Obligation.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem.
-    exists h; auto using skip_sem.
+    exists h; exists T; auto using skip_sem.
   Qed.
 
   (* Seq *)
@@ -82,10 +83,11 @@ Section Commands.
   Next Obligation with eauto using seq_sem.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem.
-    edestruct (@cmd_frame c1) as [h0 [HFrame0 HSem0]]...
+    edestruct (@cmd_frame c1) as [h0 [T0 [HFrame0 [SFrame0 HSem0]]]]...
     + intros m HLe HFail; apply HSafe with (S m); [omega | ]... 
-    + edestruct (@cmd_frame c2) with(n:=n1) as [hr [HFrame1 HSem1]]...
+    + edestruct (@cmd_frame c2) with(n:=n1) as [hr [Tr [HFrame1 [SFrame1 HSem1]]]]...
       intros m HLe HFail; apply HSafe with (S (n0 + m)); [omega | ]...
+      exists hr; exists Tr...
   Qed.
 
   (* Nondet *)
@@ -109,10 +111,12 @@ Section Commands.
   Next Obligation with eauto using nondet_sem.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem.
-    + edestruct (@cmd_frame c1) as [h0 [HFrame0 HSem0]]...
+    + edestruct (@cmd_frame c1) as [h0 [T0 [HFrame0 [TFrame0 HSem0]]]]...
       intros m HLe HFail; apply HSafe with (S m); [omega |]...
-    + edestruct (@cmd_frame c2) as [h0 [HFrame0 HSem0]]...
+      exists h0; exists T0...
+    + edestruct (@cmd_frame c2) as [h0 [T0 [HFrame0 [TFrame0 HSem0]]]]...
       intros m HLe HFail; apply HSafe with (S m); [omega |]...
+      exists h0; exists T0...
   Qed.
 
   (* Kleene star *)
@@ -136,12 +140,13 @@ Section Commands.
   Qed.
   Next Obligation with eauto using kleene_sem.
     unfold frame_property; intros.
-    generalize dependent h; remember (Some (s', (big', STs'))) as cfg; induction HSem;
+    generalize dependent h; generalize dependent T; remember (Some (s', (big', bigT'))) as cfg; induction HSem;
       inversion Heqcfg; subst; intros; clear Heqcfg...
-    edestruct (@cmd_frame c) as [h' [HFrame0 HSem0]]...
+    edestruct (@cmd_frame c) as [h' [T' [HFrame0 [SFrame0 HSem0]]]]...
     + intros m HLe HFail; apply HSafe with (S m); [omega |]...
-    + destruct (IHHSem (eq_refl _) h' HFrame0) as [hr [HFrame1 HSem1]]...
+    + destruct (IHHSem (eq_refl _) T' SFrame0 h' HFrame0) as [hr [Tr [HFrame1 [SFrame1 HSem1]]]]...
       intros m HLe HFail; apply HSafe with (S (n + m)); [omega |]...
+      exists hr; exists Tr...
   Qed.
 
   (* TODO: update the description
@@ -154,10 +159,11 @@ Section Commands.
   Next Obligation.
     intros H; inversion H.
   Qed.
-  Next Obligation.
+  Next Obligation with eauto using assume_sem.
     unfold frame_property; simpl; intros.
-    remember (Some (s', (big', STs'))) as cfg; induction HSem.
-    inversion Heqcfg; subst; eauto using assume_sem.
+    remember (Some (s', (big', bigT'))) as cfg; induction HSem.
+    inversion Heqcfg; subst...
+    exists h; exists T...
   Qed.
 
   Lemma assume_inv Pr PM e n s s0 h h0 STs STs0 (HSem : assume_cmd e Pr PM n s h STs (Some (s0, (h0, STs0)))) : 
@@ -176,9 +182,10 @@ Section Commands.
   Next Obligation.
     intros H; inversion H.
   Qed.
-  Next Obligation.
+  Next Obligation with eauto using assert_sem.
     unfold frame_property; simpl; intros.
-    inversion HSem; subst; eauto using assert_sem.
+    inversion HSem; subst...
+    exists h; exists T...
   Qed.
 
   (* |= {p}c{q} *)

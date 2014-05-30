@@ -41,32 +41,39 @@ Section Rules.
       forall PP PM s s' h h' STs STs' n (HSem : c PP PM n s h STs (Some (s', (h', STs')))),
         s x = s' x.
 
-    Lemma frame_rule : forall (P Q : psasn) (R : sasn) c (xs: list var)
+    Lemma frame_rule : forall (P Q R : psasn) c (xs: list var)
       (HMod : forall x, ~ In x xs -> not_modifies c x),
       {{ P }} c {{ Q }} |--
-      {{ P ** embed R }} c {{ Q ** Exists vs, embed (apply_subst R (subst_fresh vs xs)) }}.
+      {{ P ** R }} c {{ Q ** Exists vs, apply_subst R (subst_fresh vs xs) }}.
     Proof.
       intros.
-      intros PM PP n HSpec PP' ? ? ? ? ? HPP' Hmn Hkm [h1 [h2 [HSub [HP HR]]]]; split.
+      (* Should have something with [T1 T2 TSub], where (T1 T2 : STs) and (TSub: sa_mul T1 T2 STs) *)
+      intros PM PP n HSpec PP' ? ? ? ? STs HPP' Hmn Hkm [h1 [h2 [HSub [HP HR]]]]; split.
       (* safety *)
       { destruct (HSpec _ m k s h STs HPP' Hmn Hkm) as [HS _]; [ | assumption].
         solve_model HP. exists h2; apply HSub.
       }
       (* correctness *)
       intros ? ? ? HSem. 
-      destruct (@cmd_frame c PP' PM s s' h h' h2 h1 k STs STs') as [h'' [HBig Hc]]. 
+      (* Should be given STs STs' T2 T1 instead *)
+      destruct (@cmd_frame c PP' PM s s' h h' h2 h1 k STs STs' (MapInterface.empty _) STs ) as [h'' [t'' [HBig [TBig Hc]]]]. 
       + assumption.
+      + apply UUSepAlg.uusa_unit; apply MapInterface.empty_1.
       + intros l Hle.
         destruct (HSpec _ m l s h1 STs HPP' Hmn) as [HS _]; [ omega | assumption |].
         apply HS.
       + assumption.
-      + destruct (HSpec _ m k s h1 STs HPP' Hmn Hkm) as [_ HC]. 
+      + (* should be T1 instead of STs *)
+        destruct (HSpec _ m k s h1 STs HPP' Hmn Hkm) as [_ HC]. 
         * apply HP.
-        * specialize (HC STs' h'' s' Hc).
-          exists h'', h2, HBig. split; [assumption |].
+        * specialize (HC _ _ _ Hc).
+          exists h'', h2, HBig.
+          (* should have an exists T'', T2, TBig *) 
+          split; [solve_model HC; admit (* fangel, used *) |].
           simpl. exists s. unfold apply_subst, id.
           simpl in HR; unfold id in HR. 
           solve_model HR.
+          - admit (* fangel, used *).
           - apply functional_extensionality. intros x.
             unfold stack_subst, subst_fresh.
             destruct (in_dec Rel.dec_eq x xs) as [|HNotIn]; [reflexivity|].

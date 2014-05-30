@@ -13,6 +13,18 @@ Inductive ST : Type :=
   
 Definition STs := Map [stptr, ST].
 
+Local Existing Instance MapSepAlgOps.
+Local Existing Instance MapSepAlg.
+Local Existing Instance MapEquiv.
+Local Existing Instance EquivPreorder.
+Local Existing Instance UUMapSepAlg.
+
+Instance RelSTs : Rel STs := _.
+Instance PreorderSTs : PreOrder (@rel STs RelSTs) := _.
+Instance STsSepAlgOps : SepAlgOps STs := _.
+Instance SepAlgSTs : SepAlg STs := _.
+Instance UUSepAlgSTs : UUSepAlg STs := _.
+
 Fixpoint dual_ST (st : ST) : ST :=
   match st with
   | st_end => st_end
