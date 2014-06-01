@@ -205,16 +205,16 @@ Import SepAlgNotations.
   Qed.
 
   Lemma rule_send (x y z : var) (P: sasn) (ST : ST) (G : pspec) :
-    G |-- {[ DecidableSasn P[{y/V //! z}] /\\ P[{y/V //! z}] /\\ has_ST x (!z,{P}.ST)]}
+    G |-- {[ embed (P[{y/V //! z}]) //\\ embed (DecidableSasn P[{y/V //! z}]) ** has_ST x (!z,{P}.ST)]}
              csend x y
-          {[ Exists v : sval, P[{y/V //! z}] /\\ @lembedand (open Prop) psasn _ _ (`eq y/V `v) (has_ST x (subst_ST z v ST)) ]}.
+          {[ Exists v : sval, embed P[{y/V //! z}] //\\ @embed (open Prop) psasn _ (`eq y/V `v) //\\ (has_ST x (subst_ST z v ST)) ]}.
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros.
     * intro HFail. inversion HFail; subst.
       - apply Sfail.
-        destruct H3 as [_ [HP HST]].
+        destruct H3 as [HP [h1 [h2 [HSub [_ HST]]]]].
         assert (z = z0 /\ P = P0). {
 		  apply find_mapsto_iff in Sinitial; apply find_mapsto_iff in HST.
 		  rewrite Sref in HST.
@@ -227,12 +227,12 @@ Import SepAlgNotations.
 	    rewrite <- Heqz in *; clear Heqz.
 	    unfold id in HP; rewrite subst1_trunc_singleton_stack in HP.
 	    solve_model HP.
-	  - destruct H3 as [_ [_ HMT]].
+	  - destruct H3 as [HP [h1 [h2 [HSub [_ HMT]]]]].
 	    apply Sfail.
 	    rewrite Sref in HMT; simpl in HMT.
 	    exists (st_send z P ST); apply HMT.
     * inversion H4; subst.
-      destruct H3 as [_ [HP HST]].
+      destruct H3 as [HP [h1 [h2 [HSub [_ HST]]]]].
       unfold id in *.
       exists (s' y).
       split; [| split].
@@ -253,7 +253,7 @@ Import SepAlgNotations.
   Qed.
 
   Lemma rule_recv (x y z : var) (P: sasn) (ST : ST) (G : pspec) (Hdiff: x <> y) :
-    G |-- {[ has_ST x (&z,{P}.ST) ]} crecv y x {[ Exists v : sval, P[{y/V //! z}] /\\ @lembedand (open Prop) psasn _ _ (`eq y/V `v) (has_ST x (subst_ST z v ST)) ]}.
+    G |-- {[ has_ST x (&z,{P}.ST) ]} crecv y x {[ Exists v : sval, embed P[{y/V //! z}] //\\ @embed (open Prop) psasn _ (`eq y/V `v) ** (has_ST x (subst_ST z v ST)) ]}.
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
@@ -265,7 +265,8 @@ Import SepAlgNotations.
     * unfold id.
       inversion H4; subst.
       exists rv.
-      split; [| split].
+      assert (sa_mul h' heap_unit h') by (apply UUSepAlg.uusa_unit; split; apply empty_1).
+      split; [| exists h', (heap_unit), H5; clear H5; split].
 	  - assert (Prog_wf_sub P' P') by reflexivity.
 	    unfold liftn, lift, var_expr in H3; simpl in H3.
         rewrite Sref in *; simpl in *.
@@ -276,7 +277,7 @@ Import SepAlgNotations.
 		  rewrite H3 in Sinitial; inversion Sinitial.
 		  split; reflexivity.
 		}
-		destruct H6 as [Heqz HeqP].
+		destruct H7 as [Heqz HeqP].
 		rewrite <- Heqz, <- HeqP in SP.
 		assert (subheap rh h') by (apply sa_mulC2 in Snewheap; exists h; assumption).
 		specialize (SP (m-1)).
