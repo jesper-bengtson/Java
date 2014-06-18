@@ -90,12 +90,13 @@ Local Existing Instance EmbedPropProp.
 Instance EmbedAsnPropOp : EmbedOp Prop asn := _.
 Instance EmbedAsnProp : Embed Prop asn := _.
 
-Definition sasn := @open var _ asn.
+Definition sasn := @open _ asn.
 
 Instance ILOpsSAsn : ILogicOps sasn := _.
 Instance ILogicSAsn : ILogic sasn := _.
 Instance BILOperatorsSAsn : BILOperators sasn := _.
 Instance BILogicSAsn : IBILogic sasn := _.
+
 
 Local Existing Instance EmbedILFunDropOp.
 Local Existing Instance EmbedILFunDrop.
@@ -110,6 +111,8 @@ Local Existing Instance pureop_bi_sepalg.
 
 Instance EmbedSasnPureOp : EmbedOp vlogic sasn := _.
 Instance EmbedSasnPure : Embed vlogic sasn := _.
+
+
 
 Require Import SpecLogic.
 
@@ -159,15 +162,14 @@ Definition mk_asn (f: Prog_wf -> nat -> heap -> Prop)
   (Hheap: forall P k h h', subheap h h' -> f P k h -> f P k h') : asn.
   refine (mkILPreFrm (fun P => mkILPreFrm (fun k => mkILPreFrm (fun h => f P k h) _) _) _).
 Proof.
-  intros P P' HP Hn h H; simpl.
-  eapply HProg; eassumption.
-Grab Existential Variables.
+  intros h h' Hh H. eapply Hheap; eassumption.
   assert (forall k' k P h, k' >= k -> f P k' h -> f P k h) as Hnat'.
-  intros k k' P' h Hkk' S.  
+  intros k' k'' P' h Hkk' S.  
   induction Hkk'. assumption.
   apply IHHkk'. apply Hnat. assumption.
   intros n n' Hn'' p S; simpl in *. eapply Hnat'; eassumption.
-  intros h h' Hh H. eapply Hheap; eassumption.
+  intros P P' HP Hn h H; simpl.
+  eapply HProg; eassumption.
 Defined.
 
 Program Definition pointsto_aux (x : ptr) (f : field) (v : val) : asn :=
@@ -508,3 +510,4 @@ Fixpoint alloc_arr_aux (h : heap_arr) (x : nat) (size : list nat)
 Definition alloc_arr (x : nat) (size : list nat) (paths : list (list nat)) : heap_arr :=
 	alloc_arr_aux (empty val) x size paths.
 *)	
+

@@ -150,6 +150,8 @@ Opaque MapSepAlgOps.
         (H : add_heap_arr arr path h' v = Some h'') (HIn : in_heap_arr arr path h) :
     exists h''', sa_mul h''' frame h'' /\ add_heap_arr arr path h v = Some h'''.
   Proof.
+    admit.
+(*
     generalize dependent arr; induction path; simpl; intros.
     + congruence.
     + destruct path.
@@ -170,6 +172,7 @@ Opaque MapSepAlgOps.
         unfold arrptr in *; simpl in *. rewrite H1 in H.
         apply IHpath. apply H.
         exists y. apply HIn.
+*)
   Qed.
 (*
   Lemma add_hear_arr_eq x path h h' v n (H : add_heap_arr x path h v = Some h') 

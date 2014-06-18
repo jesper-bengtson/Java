@@ -1,6 +1,6 @@
 Require Import Program SepAlg SepAlgInsts AssertionLogic SpecLogic SepAlgMap.
-Require Import MapInterface MapFacts.
-Require Import ILInsts ILogic ILEmbed ILEmbedTac ILQuantTac OpenILogic 
+Require Import MapInterface MapFacts Omega.
+Require Import ILInsts ILogic ILEmbed OpenILogic 
         Open Subst Stack Lang SemCmd HeapArr SemCmdRules BILogic.
 
 Import SepAlgNotations.
@@ -57,13 +57,13 @@ Require Import Compare_dec.
       + exists 0; intros x H. destruct H.
       + destruct IHlst as [n IHlst].
         destruct (gt_dec n a).
-        * exists n; intros. simpl in H.
-          destruct H. subst. assumption.
-          apply IHlst. apply H.
-        * assert (n <= a) by omega; clear n0.          
-          exists (S a); intros. simpl in H0.
-          destruct H0. subst. omega.
-          specialize (IHlst x H0). omega.
+        * exists n; intros. simpl in H0.
+          destruct H0. subst.  assumption.
+          apply IHlst. apply H0.
+        * assert (n <= a) by omega.
+          exists (S a); intros. simpl in H1.
+          destruct H1. subst. omega.
+          specialize (IHlst x H1). omega.
     }
     destruct H as [n H].                                                         
     exists n. intros Hn. 
@@ -298,10 +298,10 @@ Require Import Compare_dec.
 
   Fixpoint create_stack (ps : list var) (vs : list val) : stack :=
     match ps, vs with
-      | nil, nil => stack_empty var
+      | nil, nil => stack_empty 
       | p :: ps, v :: vs =>
         stack_add p v (create_stack ps vs)
-      | _, _ => stack_empty var
+      | _, _ => stack_empty 
     end.
         
   Inductive call_sem (rvar : var) (C : open class) m es (c : cmd) (sc : semCmd)
@@ -380,7 +380,7 @@ Require Import Compare_dec.
   Lemma modifies_syn_sem c x :
      ~ SS.In x (modifies c) -> c_not_modifies c x.
   Proof.
-    induction c; simpl in *; intros HNM; intros sc HSem; inversion_clear HSem.
+    induction c; simpl in *; intros HNM; intros sc HSem; inversion HSem.
     + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HAsgn;
       simpl in *; inversion HAsgn; subst.
       rewrite stack_lookup_add2; trivial.
@@ -392,21 +392,21 @@ Require Import Compare_dec.
       * eapply IHc2; [| eassumption | eassumption]; intros HIn; apply HNM;
         rewrite SS'.union_iff; auto.
     + intros P s s0 h h0 n HND; simpl in *; inversion HND; subst; clear HND.
-      * inversion H4; subst.
-        apply assume_inv in H6; destruct H6; subst.
+      * inversion H8; subst.
+        apply assume_inv in H5; destruct H5; subst.
         eapply IHc1; [| eassumption | eassumption]; intros HIn; apply HNM;
           rewrite SS'.union_iff; auto.
-      * inversion H4; subst.
-        apply assume_inv in H6; destruct H6; subst.
+      * inversion H8; subst.
+        apply assume_inv in H5; destruct H5; subst.
         eapply IHc2; [| eassumption | eassumption]; intros HIn; apply HNM;
         rewrite SS'.union_iff; auto.
     + intros P s s0 h h0 n HKl; simpl in *; inversion HKl; subst; clear HKl.
-      apply assume_inv in H6; destruct H6; subst; simpl in *.
-      remember (Some (s0, h0)); induction H5; subst;
+      apply assume_inv in H9; destruct H9; subst; simpl in *.
+      remember (Some (s0, h0)); induction H8; subst;
         [inversion Heqo; trivial | discriminate | discriminate |].
       transitivity (s1 x); simpl in *.
       * inversion H; subst; clear H.
-        apply assume_inv in H7; destruct H7; subst.
+        apply assume_inv in H6; destruct H6; subst.
         eapply IHc; eassumption.
       * apply IHkleene_sem; assumption.
     + intros P s s0 h h0 n HWr; simpl in *; inversion HWr; subst; reflexivity.
@@ -419,9 +419,9 @@ Require Import Compare_dec.
       inversion Hrd; subst. rewrite stack_lookup_add2; [reflexivity | assumption].
     + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HCl; simpl in *;
       inversion HCl; subst; rewrite stack_lookup_add2; trivial.
-    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HCl; simpl in *;
-      inversion HCl; subst; rewrite stack_lookup_add2; trivial.
-    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HCl; simpl in *;
+    + subst. rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HCl; simpl in *.
+      inversion HCl; subst. rewrite stack_lookup_add2; trivial.
+    + subst; rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HCl; simpl in *;
       inversion HCl; subst; rewrite stack_lookup_add2; trivial.
     + intros P s s0 h h0 n HAs; inversion HAs; subst; reflexivity.
   Qed.
@@ -487,7 +487,8 @@ Open Scope open_scope.
     (* Unravel the two almost identical sides of the entailment first because
         setoid_rewrite doesn't seem to go under these binders. *)
     apply lpropandL; intro H. apply lpropandR; [assumption|].
-    lexistsL ps' c re. lexistsR ps' c re.
+    apply lexistsL; intro ps'; apply lexistsL; intro c; apply lexistsL; intro re. 
+    apply lexistsR with ps'; apply lexistsR with c; apply lexistsR with re. 
     apply landR; [apply landL1; reflexivity | apply landL2].
     admit.
 (*    setoid_rewrite HP. setoid_rewrite HQ. reflexivity.*)
@@ -536,7 +537,7 @@ Section StructuralRules.
   Lemma triple_false (G : spec) (Q : sasn) c :
     G |-- {[lfalse]} c {[Q]}.
   Proof.
-    intros n; simpl in *; intros; destruct H4.
+    intros n; simpl in *; intros m H. intros. destruct H4.
   Qed.
 
   Lemma roc (P P' Q Q' : sasn) c (G : spec)
@@ -546,8 +547,8 @@ Section StructuralRules.
     G |-- {[P]} c {[Q]}.
   Proof.  
     rewrite Hc.
-    unfold triple. lforallR sc. apply lpropimplR; intros Hsc.
-    lforallL sc. apply lpropimplL; [assumption|]. apply rule_of_consequence; assumption.
+    unfold triple. apply lforallR; intro sc. apply lpropimplR; intros Hsc.
+    apply lforallL with sc. apply lpropimplL; [assumption|]. apply rule_of_consequence; assumption.
   Qed.
 
   Lemma roc_pre (P P' Q : sasn) c G
@@ -571,7 +572,7 @@ Section StructuralRules.
     {[ P ]} c {[ Q ]} |--
     {[ P ** R ]} c {[ Q ** Exists vs, apply_subst R (subst_fresh vs xs) ]}.
   Proof.
-    unfold triple. lforallR sc; apply lpropimplR; intro Hsc. lforallL sc. 
+    unfold triple. apply lforallR; intro  sc; apply lpropimplR; intro Hsc. apply lforallL with sc. 
     apply lpropimplL; [assumption|].
     apply frame_rule. unfold c_not_modifies in HMod. intros. apply HMod; auto.
   Qed.
@@ -599,10 +600,10 @@ Section StructuralRules.
     (Forall x, {[P x]} c {[q]}) -|- {[Exists x, P x]} c {[q]}.
   Proof.
     unfold triple; setoid_rewrite <- exists_into_precond; split.
-    + lforallR sc. apply lpropimplR; intro Hsc; lforallR x.
-      lforallL x sc. apply lpropimplL; [assumption | reflexivity].
-    + lforallR x sc. apply lpropimplR; intro Hsc.
-      lforallL sc. apply lpropimplL; [assumption | lforallL x; reflexivity].
+    + apply lforallR; intro sc. apply lpropimplR; intro Hsc; apply lforallR; intro x.
+      apply lforallL with x; apply lforallL with sc. apply lpropimplL; [assumption | reflexivity].
+    + apply lforallR; intro x; apply lforallR; intro sc. apply lpropimplR; intro Hsc.
+      apply lforallL with sc. apply lpropimplL; [assumption | apply lforallL with x; reflexivity].
   Qed.
   
   Lemma existentialise_triple (x : var) (P Q : sasn) c (G : spec) 
@@ -610,7 +611,7 @@ Section StructuralRules.
     G |-- {[P]} c {[Q]}.
   Proof.
     eapply roc_pre; [apply existentialise_var with (x0 := x)|].
-    rewrite <- exists_into_precond2. lforallR y. apply H.
+    rewrite <- exists_into_precond2. apply lforallR; intro y. apply H.
   Qed.
 
 End StructuralRules.

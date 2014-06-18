@@ -19,7 +19,7 @@ Definition var := string.
 Definition ptr := (nat * class)%type.
 Definition arrptr := nat.
 
-Inductive sval : Set :=
+Inductive sval : Type :=
 | vint :> Z -> sval
 | vbool :> bool -> sval
 | vptr :> ptr -> sval
@@ -35,7 +35,7 @@ Instance SVal : ValNull := Build_ValNull nothing.
 (* This lets sval unify with val *)
 Canonical Structure SVal.
 
-Definition stack := stack var.
+Definition stack := stack.
 
 Inductive dexpr : Type :=
 | E_val   : val -> dexpr
@@ -94,8 +94,9 @@ Fixpoint eval_aux (s : stack) (e : dexpr) : val :=
   end.
 
 Program Definition eval e : expr := fun s => eval_aux s e.
+Definition vlogic_eval (e : dexpr) : vlogic := fun s => val_to_bool (eval e s) = true.
 
-Definition vlogic_eval (e : dexpr) : vlogic := `eq (`val_to_bool (eval e)) (`true).
+
 
 Definition eval_exprs (s : stack) (es : list dexpr) :=
   map (fun e => eval_aux s e) es.

@@ -1,9 +1,13 @@
+Add Rec LoadPath "/Users/jebe/git/Java/Java/bin".
+Add Rec LoadPath "/Users/jebe/git/Charge/Charge!/bin".
+Add Rec LoadPath "/Users/jebe/coq/user-contrib/Containers" as Containers.
+
 Require Import Morphisms Setoid Rel.
-Require Import ILogic ILEmbedTac ILQuantTac ILInsts BILInsts ILEmbed Later SepAlgMap BILogic.
+Require Import ILogic ILInsts BILInsts ILEmbed Later SepAlgMap BILogic.
 Require Import SpecLogic Pure OpenILogic AssertionLogic Program Open Stack Subst.
 Require Import OperationalSemantics Lang IBILogic.
 Require Import MapInterface MapFacts SemCmd SemCmdRules.
-Require Import String List.
+Require Import String List Omega.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -11,10 +15,14 @@ Unset Strict Implicit.
 Lemma rule_seq_ax c1 c2 (P Q R : sasn) :
   ({[P]} c1 {[Q]} //\\ {[Q]} c2 {[R]}) |-- {[P]} cseq c1 c2 {[R]}.
 Proof.
-  unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
+  admit.
+(*
+  unfold triple. apply lforallR; intro sc. apply lpropimplR; intro Hsem.
   inversion Hsem; subst.
-  lforallL sc1 sc2. lpropimplL; [apply HL | apply HR|].
+  
+  apply lforallL with sc1; apply lforallL with sc2. lpropimplL; [apply HL | apply HR|].
   apply @seq_rule.
+*)
 Qed.
 
 
@@ -32,12 +40,15 @@ Lemma rule_if_ax (e : dexpr) c1 c2 (P Q : sasn) :
                    ({[@lembedand vlogic sasn _ _ (vlogic_eval (E_not e)) P]} c2 {[Q]}))
             ({[P]} cif e c1 c2 {[Q]}).
 Proof.
+  admit.
+(*
   unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
   inversion Hsem; subst. 
   lforallL scl scr. lpropimplL; [apply HL | apply HR|].
   rewrite <- @nondet_rule, <- @seq_rule, <- @seq_rule, <- @assume_rule, <- @assume_rule.
   repeat (apply landR); [apply ltrueR | apply landL1 | apply ltrueR | apply landL2];
   reflexivity.
+*)
 Qed.
 
 Lemma rule_if (e : dexpr) c1 c2 (P Q : sasn) G
@@ -52,9 +63,9 @@ Lemma rule_while_ax (e : dexpr) c (P : sasn) :
   {[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c {[P]} |--
   {[P]} cwhile e c {[@lembedand vlogic sasn _ _ (vlogic_eval (E_not e)) P]}.
 Proof.
-  unfold triple. lforallR sc. apply lpropimplR. intro Hsem.
+  unfold triple. apply lforallR; intro sc. apply lpropimplR. intro Hsem.
   inversion Hsem; subst.
-  lforallL sc0. lpropimplL; [assumption|].
+  apply lforallL with sc0. apply lpropimplL; [assumption|].
   rewrite <- @seq_rule; apply landR; [
     rewrite <- @kleene_rule, <- @seq_rule, <- @assume_rule; apply landR;
     [apply ltrueR | reflexivity] |
@@ -73,14 +84,14 @@ Lemma rule_assert (e : dexpr) P G
       (HPe : P |-- embed(vlogic_eval e)) :
   G |-- {[ P ]} cassert e {[ P ]}.
 Proof.
-  unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
+  unfold triple. apply lforallR; intro sc. apply lpropimplR; intro Hsem.
   inversion Hsem; subst.
   rewrite <- assert_rule; [apply ltrueR | apply HPe]. 
 Qed.
 
 Lemma rule_skip_ax P : |-- {[P]} cskip {[P]}.
 Proof.
-  unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
+  unfold triple. apply lforallR; intro sc. apply lpropimplR; intro Hsem.
   inversion Hsem; subst. apply @skip_rule.
 Qed.
 
@@ -112,7 +123,7 @@ Local Transparent SepAlgOps_prod.
     (HPT : P |-- `pointsto y/V `f e) :
    @ltrue spec _ |-- {[ P ]} cread x y f {[ Exists v : val, @lembedand vlogic sasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
   Proof.
-    unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
+    unfold triple in *; intros. apply lforallR; intro sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros.
     + intro HFail; inversion HFail; subst. apply Snotin; clear Snotin HFail.
@@ -163,7 +174,7 @@ Require Import HeapArr.
         (HP : P |-- `pointsto_arr_element_aux y/V (fun s => List.map (fun e => eval e s) es) e) :
         @ltrue spec _ |-- {[ P ]} carrread x y es  {[ Exists v : val, @lembedand vlogic sasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
   Proof.
-    unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
+    unfold triple in *; intros. apply lforallR; intro sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros. clear H.
     + intro HFail; inversion HFail; subst. apply Sarr; clear Sarr HFail.
@@ -197,7 +208,7 @@ Require Import HeapArr.
   Lemma rule_write (x : var) (f : field) (e : expr) (e' : dexpr) :
     (@ltrue spec _ |-- {[ `pointsto x/V `f e ]} cwrite x f e' {[ `pointsto x/V `f (eval e')]}).
   Proof.
-    unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
+    unfold triple in *; intros. apply lforallR; intro sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros; destruct H3 as [H3 H5]. clear H.
     + intros Hsafe.
@@ -266,7 +277,7 @@ Require Import HeapArr.
       exists (e s). 
       assert (val_to_nat arr = arr) by admit; rewrite <- H.
       apply H5.
-*)
+
 
   Lemma arr_write (x : var) (e : expr) (e' ei : dexpr) :
         @ltrue spec _ |-- {[ `pointsto_arr_element_aux x/V (`cons (eval ei) `nil)  e ]} carrwrite x (ei::nil) e' {[ `pointsto_arr_element_aux x/V (`cons (eval ei) `nil) (eval e') ]}.
@@ -298,7 +309,7 @@ Require Import HeapArr.
       rewrite add_mapsto_iff. left.
       split; reflexivity.
   Qed.
-
+*)
   Implicit Arguments rule_write_frame [[P] [Q] [x] [f] [e] [e']].
 
   Lemma substl_trunc_add x x' v (xs : list var) ys (s: stack) :
@@ -312,7 +323,7 @@ Require Import HeapArr.
     + destruct ys; [|discriminate].
       reflexivity.
     + destruct ys as [|yh ys]; [discriminate|].
-      simpl. destruct (dec_eq x' yh).
+      simpl. destruct (string_dec x' yh).
       * simpl. unfold var_expr. apply stack_lookup_add2. intro Hxxh. apply HnotIn.
         constructor. auto.
       * apply IHxs.
@@ -340,7 +351,7 @@ Proof.
 	  reflexivity.
 	+ destruct ps' as [|p']; [discriminate|].
 	  destruct es as [|e]; [discriminate|].
-	  simpl. destruct (dec_eq x p).
+	  simpl. destruct (string_dec x p).
 	  * unfold var_expr; simpl; autorewrite with stack; reflexivity.
       * etransitivity; [apply IHps with (ps':=ps')|].
         - inversion HND0. assumption.
@@ -356,7 +367,7 @@ Qed.
       (HND0  : NoDup ps')
       (HLen  : length ps = length ps')
       (HLen0 : length ps' = length es) :
-    stack_subst (zip ps' es :@: s +:+ stack_empty var)
+    stack_subst (zip ps' es :@: s +:+ stack_empty)
       (substl_trunc (zip ps (map var_expr ps'))) =
     stack_subst s (substl_trunc (zip ps es)).
   Proof.
@@ -369,12 +380,12 @@ Qed.
       reflexivity.
     + destruct ps' as [|p']; [discriminate|].
       destruct es as [|e]; [discriminate|].
-      simpl. destruct (dec_eq x p).
+      simpl. destruct (string_dec x p).
       * unfold var_expr. simpl. autorewrite with stack. reflexivity.
       * etransitivity; [|apply IHps with (ps':=ps')].
         - apply substl_trunc_add.
           inversion HND0. assumption.
-          inversion HLen. reflexivity.
+          inversion HLen. apply H0. 
         - inversion HND0. assumption.
         - inversion HLen. reflexivity.
         - inversion HLen0. reflexivity.
@@ -388,13 +399,13 @@ Qed.
     intro H. revert dependent ps'. induction ps; intros.
     + simpl. destruct (map var_expr ps'); reflexivity.
     + destruct ps' as [|p']; [reflexivity|].
-      simpl. destruct (dec_eq x' a).
+      simpl. destruct (string_dec x' a).
       * simpl. symmetry. apply H. auto with datatypes.
       * apply IHps. auto with datatypes.
   Qed.
  
   Lemma rule_call_sem (C : class) (m : method) (ps : list var) (r x : var) (P Q : sasn) (es : list dexpr) c sc
-    (CC : @open var _ class) (T : sasn)
+    (CC : @open _ class) (T : sasn)
     (HSem : semantics c sc)
     (HEnt :  forall PP s h n, (T s PP h n) -> (open_eq CC `C) s)
     (HLen : length ps = length es) :
@@ -403,14 +414,14 @@ Qed.
       (call_cmd x CC m es c sc)
       {{Q //! zip (r :: ps) (((x/V):expr) :: map (fun e => e[{`v // x}]) (map (fun e s => eval e s) es))}}).
   Proof.
-  	lforallR v.
+  	apply lforallR; intro v.
   	intros p n H p2 m' k s h Hsub Hm'n Hkm' [Hh [HP HT]].
   	specialize (HEnt _ _ _ _ HT). unfold open_eq, liftn, lift in HEnt. simpl in HEnt.
   	destruct n; simpl in *.
   	
   	(* No fuel *) {
    	assert (k = 0) by omega; subst. split.
-   	+ apply call_cmd_obligation_1.
+   	+ apply OperationalSemantics.call_cmd_obligation_1.
    	+ intros h' s' HCS; inversion HCS.
     }
     (* There is fuel *)
@@ -447,15 +458,15 @@ Qed.
     solve_model HP.
     unfold apply_subst. erewrite substl_trunc_subst.
     reflexivity.
-    apply prog_wf in HML. apply HML. omega. omega. 
+    apply prog_wf in HML. apply HML. apply HLen0. omega. 
     unfold apply_subst in *.
     specialize (HC _ _ HSem0).
     solve_model HC.
     (* equality of post stack *)
-    apply functional_extensionality. intros z. unfold stack_subst. simpl. destruct (dec_eq z r).
-    * case (dec_eq z r); [intros |congruence]. 
+    apply functional_extensionality. intros z. unfold stack_subst. simpl. destruct (string_dec z r).
+    * case (string_dec z r); [intros |congruence]. 
       unfold var_expr. rewrite stack_lookup_add. reflexivity.
-    * case (dec_eq z r); [congruence|intros].
+    * case (string_dec z r); [congruence|intros].
       
     rewrite call_post_stackchange with (s:= create_stack args (eval_exprs s es)).
     - apply prog_wf in HML. simpl in HML.
@@ -467,18 +478,18 @@ Qed.
       + destruct es as [|e]; [discriminate|].
         destruct args as [|p']; [discriminate|].
         simpl. destruct (string_dec z p).
-        * subst p. do 2 (case (dec_eq z z); [intro|congruence]). 
+        * subst p. do 2 (case (string_dec z z); [intro|congruence]). 
           unfold var_expr. simpl. autorewrite with stack. simpl.
           unfold subst1, liftn, var_expr. simpl.
           unfold eval. f_equal.
           apply functional_extensionality. intros. simpl.
-          case (dec_eq x0 x). intros. simpl.
+          case (string_dec x0 x). intros. simpl.
           unfold lift. subst. admit. intros.
           rewrite stack_lookup_add2. reflexivity. intuition.
-        * do 2 (case (dec_eq z p); [congruence|intro]). 
+        * do 2 (case (string_dec z p); [congruence|intro]). 
           rewrite substl_trunc_add. apply IHps. simpl in *. omega. simpl in *. omega.
           inversion HML. assumption. inversion HML. assumption.
-          simpl in *. omega.
+          simpl in *. inversion HLen0. reflexivity.
       }
     - intros p' HIn. pose modifies_syn_sem as Hmod.
       unfold c_not_modifies, not_modifies in Hmod. eapply Hmod; [| eassumption|].
@@ -491,10 +502,10 @@ Qed.
       {[ @lembedand vlogic sasn _ _ (open_eq (x /V) (`v)) (P //! zip ps (map (fun e s => eval e s) es)) ]} cscall x C m es
       {[Q //! zip (r :: ps) ((x/V) :: map (fun e => e[{`v//x}]) (map (fun e s => eval e s) es))]}).
   Proof.
-  	unfold triple. lforallR v sc. apply lpropimplR; intro HSem.
+  	unfold triple. apply lforallR; intro v; apply lforallR; intro sc. apply lpropimplR; intro HSem.
   	inversion HSem; subst. clear HSem.
   	rewrite rule_call_sem with (T := ltrue) (x := x); [|eassumption | reflexivity | eassumption].
-  	lforallL v. apply rule_of_consequence. 
+  	apply lforallL with v. apply rule_of_consequence. 
   	+ unfold lembedand. rewrite <- landA. apply landR; [reflexivity|apply ltrueR].
   	+ reflexivity.
   Qed.
@@ -507,13 +518,14 @@ Qed.
       {[Q //! zip (r :: ps)
         ((x/V) :: (y/V) [{`v // x}] :: map (fun e => e[{`v//x}]) (map (fun e s => eval e s) es)) ]})).
   Proof.
-  	unfold triple. lforallR v sc. apply lpropimplR; intro HSem.
+  	unfold triple. apply lforallR; intro v; apply lforallR; intro sc. apply lpropimplR; intro HSem.
   	inversion HSem; subst. clear HSem.
-  	rewrite rule_call_sem with (x := x) (CC := `val_class (y/V)) (T := @embed vlogic _ _ (`typeof `C y/V));
+  	rewrite rule_call_sem with (x := x) (CC := (fun s => val_class (y/V s))) 
+                                            (T := @embed vlogic _ _ ((fun s => typeof C (y/V s))));
   		 [|eassumption | | eassumption].
-    + lforallL v. apply rule_of_consequence. 
+    + apply lforallL with v. apply rule_of_consequence. 
       * unfold lembedand. rewrite <- embedland.
-        rewrite landA, (landC _ (@embed vlogic _ _ (`typeof `C y/V))); reflexivity.
+        rewrite landA, (landC _ (@embed vlogic _ _ (fun s => typeof C (y/V s)))); reflexivity.
       * reflexivity.
     + intros. unfold liftn, lift, var_expr, typeof, open_eq, val_class in *; simpl in *.
       destruct H as [p [H1 H2]]; rewrite H1; simpl; intuition.
@@ -522,7 +534,7 @@ Qed.
   Lemma xist_from_post U P c (Q : U -> sasn) :
     (Exists x:U, {[ P ]} c {[ Q x ]}) |-- {[ P ]} c {[ Exists x, Q x ]}.
   Proof.
-  	lexistsL x. eapply roc_post; [|lexistsR x]; reflexivity.
+  	apply lexistsL; intro x. eapply roc_post; [|apply lexistsR with x]; reflexivity.
   Qed.
 
 Ltac existentialise y v :=
@@ -539,14 +551,14 @@ Ltac existentialise y v :=
   Proof.
     intros. existentialise x v. 
     rewrite rule_call_dynamic; [|eapply HLen].
-    rewrite <- xist_from_post. lforallL v. lexistsR v.
+    rewrite <- xist_from_post. apply lforallL with v. apply lexistsR with v.
     unfold lembedand. rewrite <- embedland, landA. reflexivity.
   Qed.
 
   Lemma rule_assign x (e : dexpr) (P : sasn) (G : spec) :
     G |-- {[P [{(eval e) // x}]]} cassign x e {[P]}.
   Proof.
-  	unfold triple; lforallR sc; apply lpropimplR; intro Hsem.
+  	unfold triple; apply lforallR; intro sc; apply lpropimplR; intro Hsem.
   	inversion Hsem; subst. simpl; split; intros.
   	+ intro HFail. inversion HFail.
   	+ inversion H4; subst.
@@ -586,40 +598,40 @@ Ltac existentialise y v :=
   	existentialise x v.
   	rewrite HPre.
   	eapply roc_pre with (P' := 
-  	    (@lembedand vlogic sasn _ _ (@land vlogic _ (open_eq x/V `v) (`typeof `C y/V))
-         (Pm //! zip ps (map (fun (e : dexpr) (s : Stack.stack var) => eval e s) ((E_var y) :: es)))) **
-        (@lembedand vlogic sasn _ _ (open_eq x/V `v) 
-        (@lembedand vlogic sasn _ _ (`typeof `C y/V) F))).
+  	    (@lembedand vlogic sasn _ _ (@land vlogic _ (open_eq x/V (fun _ => v)) (fun s => typeof C (y/V s)))
+         (Pm //! zip ps (map (fun (e : dexpr) (s : Stack.stack) => eval e s) ((E_var y) :: es)))) **
+        (@lembedand vlogic sasn _ _ (open_eq x/V (fun _ => v)) 
+        (@lembedand vlogic sasn _ _ (fun s => typeof C (y/V s)) F))).
      clear Hspec HPre HLen HPost.
      intros s Pr n h [H1 [h1 [h2 [Hh [[H3 H4] H5]]]]].
      simpl in *. exists h1, h2, Hh; (repeat split); assumption.
      eapply roc_post; [eapply rule_frame|].
      revert v. apply lforallR2.
      rewrite Hspec. apply rule_call_dynamic.
-     assumption. rewrite <- HPost. lexistsR v.
-     unfold subst_mod_asn. rewrite bilexistsscR. lexistsL vs.
+     assumption. rewrite <- HPost. apply lexistsR with v.
+     unfold subst_mod_asn. rewrite bilexistsscR. apply lexistsL; intro vs.
      simpl.      unfold SS.MSet.Raw.singleton, apply_subst, subst_fresh,
                    open_eq, liftn, lift, var_expr, substl_trunc, subst1; simpl.
      clear HPre HLen HPost Hspec.
      intros s pr n h [h1 [h2 [Hh [H1 [H2 [H3 H4]]]]]].
      unfold stack_subst in *; simpl in *.
-     destruct (@dec_eq SS.elt DecString x x); [|congruence].
-     destruct (@dec_eq SS.elt DecString x y).
-     destruct (@dec_eq string DecString y x); [|congruence].
+     destruct (string_dec x x); [|congruence].
+     destruct (string_dec x y).
+     destruct (@string_dec y x); [|congruence].
      split; [intuition congruence|].
      exists h1, h2, Hh. split.
      solve_model H1. solve_model H4.
      apply functional_extensionality. intros; simpl.
-     destruct (@dec_eq string DecString x0 x).
-     destruct (@dec_eq SS.elt DecString x x0); congruence.
-     destruct (@dec_eq SS.elt DecString x x0); [congruence | reflexivity].
-     destruct (@dec_eq string DecString y x); [congruence|].
+     destruct (string_dec x0 x).
+     destruct (string_dec x x0); congruence.
+     destruct (string_dec x x0); [congruence | reflexivity].
+     destruct (string_dec y x); [congruence|].
      split. apply H3.
      exists h1, h2, Hh. split.
      solve_model H1. solve_model H4.
      apply functional_extensionality. intros.
-     destruct (@dec_eq SS.elt DecString x x0);
-     destruct (@dec_eq string DecString x0 x); unfold var_expr; simpl;
+     destruct (string_dec x x0);
+     destruct (string_dec x0 x); unfold var_expr; simpl;
      intuition congruence.
   Qed.
 
@@ -637,28 +649,28 @@ Ltac existentialise y v :=
   	existentialise x v.
   	rewrite HPre.
   	eapply roc_pre with (P' := 
-  	    (@lembedand vlogic sasn _ _ (open_eq x/V `v)
-         (Pm //! zip ps (map (fun (e : dexpr) (s : Stack.stack var) => eval e s) es))) **
-        (@lembedand vlogic sasn _ _ (open_eq x/V `v) F)).
+  	    (@lembedand vlogic sasn _ _ (open_eq x/V (fun _ => v))
+         (Pm //! zip ps (map (fun (e : dexpr) (s : Stack.stack) => eval e s) es))) **
+        (@lembedand vlogic sasn _ _ (open_eq x/V (fun _ => v)) F)).
      clear HSpec HPre HLen HPost.
      intros s Pr n h [H1 [h1 [h2 [Hh [H3 H4]]]]].
      simpl in *. exists h1, h2, Hh; (repeat split); assumption.
      eapply roc_post; [eapply rule_frame|].
      revert v. apply lforallR2.
      rewrite HSpec. apply rule_call_static.
-     assumption. rewrite <- HPost. lexistsR v.
-     unfold subst_mod_asn. rewrite bilexistsscR. lexistsL vs.
+     assumption. rewrite <- HPost. apply lexistsR with v.
+     unfold subst_mod_asn. rewrite bilexistsscR. apply lexistsL; intro vs.
      simpl.      unfold SS.MSet.Raw.singleton, apply_subst, subst_fresh,
                    open_eq, liftn, lift, var_expr, substl_trunc, subst1; simpl.
      clear HPre HLen HPost HSpec.
      intros s pr n h [h1 [h2 [Hh [H1 [H2 H3]]]]].
      unfold stack_subst in *; simpl in *.
-     destruct (@dec_eq SS.elt DecString x x); [|congruence].
+     destruct (string_dec x x); [|congruence].
      exists h1, h2, Hh. split.
      solve_model H1. solve_model H3.
      apply functional_extensionality. intros.
-     destruct (@dec_eq SS.elt DecString x x0);
-     destruct (@dec_eq string DecString x0 x); unfold var_expr; simpl;
+     destruct (string_dec x x0);
+     destruct (string_dec x0 x); unfold var_expr; simpl;
      intuition congruence.
   Qed.
 
@@ -678,12 +690,11 @@ Lemma equiv_alloc_same fields fields' P p
 Proof.
   apply SS'.fold_equal; [apply _ | | | assumption].
   + intros f f' EQf Q Q' HQ; subst f'. rewrite HQ; reflexivity.
-  + intros f f' Q. repeat rewrite <- sepSPA. rewrite (sepSPC (`pointsto `p `f `null)).
-    reflexivity.
+  + intros f f' Q. repeat rewrite <- sepSPA. 
+    split; apply bilsep; rewrite sepSPC; reflexivity.
 Qed.
 
 (*
-
   Lemma rule_alloc_ax (x : var) C fields :
     [prog](fun Pr => field_lookup Pr C fields) |-- {[ ltrue ]} calloc x C {[ Exists p:ptr,
       @lembedand pure sasn _ _ (@land pure _ (`typeof `C (x/V)) (open_eq x /V `(vptr p)))

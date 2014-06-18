@@ -14,6 +14,7 @@ bin/%.vo: src/%.v
 override COQFLAGS += -R src ""
 override COQFLAGS += -R bin ""
 override COQFLAGS += $(DK_ITU_SDG_KOPITIAM_LP_COQ_8_4_FLAGS)
+override COQFLAGS += -R $(CONTAINERS_PATH) Containers
 override COQFLAGS += $(CHARGE_FLAGS)
 OBJECTS = \
 	bin/Language/Lang.vo \
@@ -37,7 +38,7 @@ bin/Logic/AssertionLogic.vo: src/Logic/AssertionLogic.v bin/Language/Program.vo 
 bin/Logic/HeapArr.vo: src/Logic/HeapArr.v bin/Language/Program.vo bin/Language/Lang.vo
 bin/Logic/SpecLogic.vo: src/Logic/SpecLogic.v bin/Language/Program.vo
 bin/Semantics/AxiomaticSemantics.vo: src/Semantics/AxiomaticSemantics.v bin/Logic/SpecLogic.vo bin/Logic/AssertionLogic.vo bin/Language/Program.vo bin/Semantics/OperationalSemantics.vo bin/Language/Lang.vo bin/Semantics/SemCmd.vo bin/Semantics/SemCmdRules.vo bin/Logic/HeapArr.vo
-bin/Semantics/OperationalSemantics.vo: src/Semantics/OperationalSemantics.v bin/Language/Program.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo
-bin/Semantics/SemCmd.vo: src/Semantics/SemCmd.v bin/Language/Program.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo bin/Language/Lang.vo
+bin/Semantics/OperationalSemantics.vo: src/Semantics/OperationalSemantics.v bin/Language/Program.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo bin/Language/Lang.vo bin/Semantics/SemCmd.vo bin/Logic/HeapArr.vo bin/Semantics/SemCmdRules.vo
+bin/Semantics/SemCmd.vo: src/Semantics/SemCmd.v bin/Language/Program.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo bin/Language/Lang.vo bin/Language/Lang.vo
 bin/Semantics/SemCmdRules.vo: src/Semantics/SemCmdRules.v bin/Semantics/SemCmd.vo bin/Logic/AssertionLogic.vo bin/Logic/SpecLogic.vo bin/Language/Lang.vo bin/Util.vo
 bin/Util.vo: src/Util.v
