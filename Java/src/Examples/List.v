@@ -12,15 +12,15 @@ Open Scope string_scope.
 Open Scope cmd_scope.
 Open Scope list_scope.
 
-Print calloc.
+Definition add_body :=
+  (cseq (calloc "tn" "NodeC")
+        (cseq (cwrite "tn" "val" (E_var "n")) (* This n used to be cast to an integer *)
+              (cseq (cread "lst" "this" "head")
+                    (cseq (cwrite "tn" "next" (E_var "lst"))
+                          (cwrite "this" "head" (E_var "tn")))))).
+
   Definition AddM : Method :=
-    Build_Method ("this"::"n"::nil) 
-                 (cseq (cseq (cseq (cseq (calloc "tn" "NodeC")
-                                         (cwrite "tn" "val" (E_var "n"))) (* This n used to be cast to an integer *)
-                                   (cread "lst" "this" "head"))
-                             (cwrite "tn" "next" (E_var "lst")))
-                       (cwrite "this" "head" (E_var "tn")))
-      (E_val (vint 0)).
+    Build_Method ("this"::"n"::nil) add_body (E_val (vint 0)).
 
   Definition NodeC :=
     Build_Class (SS.add "val" (SS.add "next" SS.empty)) (SM.empty _).
@@ -49,8 +49,26 @@ Proof.
   unfold add_spec, method_spec.
   apply lforallR; intros xs.
   apply landR.
-  admit. (* Get back to this, but trivial *).
-  do 3 (eapply lexistsR). 
-  apply landR.
+  admit. (* Get back to this, but trivial *)
+  apply lexistsR with ("this"::"n"::nil).
+  apply lexistsR with add_body.
+  apply lexistsR with (E_val (vint 0)).
+  apply landR. admit. (* lookup in the maps *)
+  simpl.
+  Require Import Subst.
+  unfold apply_subst, stack_subst.
+  simpl.
+  unfold add_body.
+  
+  eapply rule_seq.
+  Check rule_alloc_ax.
+  eapply roc_pre with ltrue; [apply ltrueR|].
+  etransitivity; [|apply rule_alloc_ax with (fields := SS.add "val" (SS.add "next" SS.empty))].
+  admit. (* Automation missing *)
+
+  eapply rule_seq.
+
+
+  simpl.
 
   

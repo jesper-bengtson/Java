@@ -694,12 +694,15 @@ Proof.
     split; apply bilsep; rewrite sepSPC; reflexivity.
 Qed.
 
-(*
+Check @lembedand sasn.
   Lemma rule_alloc_ax (x : var) C fields :
     [prog](fun Pr => field_lookup Pr C fields) |-- {[ ltrue ]} calloc x C {[ Exists p:ptr,
-      @lembedand pure sasn _ _ (@land pure _ (`typeof `C (x/V)) (open_eq x /V `(vptr p)))
+      @lembedand vlogic sasn _ _ (@land vlogic _ (`typeof `C (x/V)) (open_eq x /V `(vptr p)))
       (SS.fold (fun f Q => `pointsto `(vptr p) `f `null ** Q) fields ltrue)]}.
   Proof.
+    admit.
+  Qed.
+(*
   	unfold triple. lforallR sc. apply lpropimplR; intro HSem.
   	inversion HSem; subst; clear HSem.
   	intros Pr n HLookup Pr' m k s h HPr Hm Hk _; split; [intro H; inversion H|].
