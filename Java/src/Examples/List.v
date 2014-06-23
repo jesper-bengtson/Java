@@ -44,31 +44,107 @@ Definition add_body :=
 
 
 
+  Require Import ILInsts.
+
+Program Fixpoint search_NoDup
+    {A} (A_dec: forall a b: A, {a=b}+{a<>b}) (l: list A) : option (NoDup l) :=
+  match l with
+  | nil => Some _
+  | a::l' =>
+      match search_NoDup A_dec l' with
+      | Some nodup =>
+          match In_dec A_dec a l' with
+          | left isin => None
+          | right notin => Some _
+          end
+      | None => None
+      end
+  end.
+Next Obligation.
+intros. constructor.
+Qed. Next Obligation.
+intros. subst. constructor; assumption.
+Defined.
+
+(* Funny function borrowed from Chlipala's book *)
+Definition option_proof {P: Prop} (pf': option P) :=
+  match pf' return (match pf' with Some _ => P | None => True end) with
+  | Some pf => pf
+  | None => I
+  end.
+
+(* Tactic for applying a proof search procedure *)
+Ltac search pf' := exact (option_proof pf') || fail "No proof found".
+
+Ltac search_NoDup dec :=
+  match goal with
+  |- NoDup ?l => search (search_NoDup dec l)
+  end.
+
+Ltac check_not_modifies :=
+    let x := fresh "y" in let HC := fresh "HC" in let HIn := fresh "HIn" in
+      intros x HC HIn; simpl in *;
+        repeat match goal with
+                 | [ HIn: context [SS.In x (SS.union ?S1 ?S2)] |- _] =>
+                   rewrite SS'.union_iff in HIn
+                 | [ HIn: context [SS.In x (SS.add ?e ?S)] |- _] =>
+                   rewrite SS'.add_iff in HIn
+                 | [ HIn: context [SS.In x (SS.singleton ?e)] |- _] =>
+                   rewrite SS'.singleton_iff in HIn
+                 | [ HIn: context [SS.In x SS.empty] |- _] =>
+                   rewrite SS'.empty_iff in HIn
+               end; intuition (subst; discriminate).
+
+
+Definition prog_eq Prog : spec := [prog] (fun P => P = Prog).
+
+Lemma prog_eq_to_prop P (f : Prog_wf -> Prop) (H : f P) : prog_eq P |-- [prog] f.
+Proof.
+  Transparent ILPre_Ops.
+  intros Q n HQ R HQR.
+  specialize (HQ _ HQR).
+  simpl in *. subst. apply H.
+  Opaque ILPre_Ops.
+Qed.
+
 Lemma ListCorrect : [prog] (fun P => P = Prog) |-- add_spec.
 Proof.
   unfold add_spec, method_spec.
   apply lforallR; intros xs.
   apply landR.
-  admit. (* Get back to this, but trivial *)
-  apply lexistsR with ("this"::"n"::nil).
-  apply lexistsR with add_body.
-  apply lexistsR with (E_val (vint 0)).
-  apply landR. admit. (* lookup in the maps *)
-  simpl.
+  apply embedPropR.
+  search_NoDup string_dec.
+
+  do 3 eapply lexistsR. apply landR.
+  apply prog_eq_to_prop.
+  split.
+  eexists.
+  unfold Prog, ProgAux.
+  simpl; split.
+  SM'.mapsto_tac.
+  SM'.mapsto_tac.
+  split.
+  reflexivity.
+  check_not_modifies.
+
   Require Import Subst.
   unfold apply_subst, stack_subst.
   simpl.
   unfold add_body.
-  
   eapply rule_seq.
-  Check rule_alloc_ax.
   eapply roc_pre with ltrue; [apply ltrueR|].
   etransitivity; [|apply rule_alloc_ax with (fields := SS.add "val" (SS.add "next" SS.empty))].
-  admit. (* Automation missing *)
+  apply prog_eq_to_prop.
+  unfold Prog, ProgAux.
+  simpl.
+  eexists.
+  split.
+  SM'.mapsto_tac.
+  reflexivity.
+  rewrite <- exists_into_precond2.
+  apply lforallR. intro p.
 
-  eapply rule_seq.
-
-
+  
   simpl.
 
   
