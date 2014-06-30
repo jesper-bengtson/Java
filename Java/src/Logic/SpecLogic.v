@@ -43,3 +43,12 @@ Local Existing Instance EmbedPropProp.
 
 Instance EmbedPropSpecOp : EmbedOp Prop spec := _. 
 Instance EmbedPropSpec : Embed Prop spec := _.
+
+  Program Definition prog_spec (X : Prog_wf -> Prop) : spec :=
+    mk_spec (fun (P : Prog_wf) _ => forall (Q : Prog_wf) , Prog_wf_sub P Q -> X Q) _ _.
+  Next Obligation.
+    intros; apply H0; etransitivity; eassumption.
+  Qed.
+
+  Notation "'[prog]' P"    := (prog_spec  P) (at level 65).
+

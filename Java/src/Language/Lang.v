@@ -18,6 +18,9 @@ Module SS' := WSetMore_fun (string_DT) SS.
 Module SM  := FMapWeakList.Make(string_DT).
 Module SM' := WMapMore_fun (string_DT) SM.
 
+Module NS  := FSetWeakList.Make(Nat_as_DT).
+Module NS' := WSetMore_fun (Nat_as_DT) NS.
+
 Definition class := string.
 Definition var := string.
 Definition ptr := (nat * class)%type.
@@ -43,7 +46,6 @@ Instance SVal : ValNull := Build_ValNull nothing.
 Canonical Structure SVal.
 
 Definition DecSval : DecidableEq sval. Proof. split. repeat (decide equality). Qed.
-
 
 Inductive svalEq : sval -> sval -> Prop :=
 | s_int (a b : Z) : a === b -> svalEq (vint a) (vint b)

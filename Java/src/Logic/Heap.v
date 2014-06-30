@@ -14,8 +14,10 @@ Local Existing Instance SepAlgOps_prod.
 Local Existing Instance SepAlg_prod.
 Local Existing Instance UUSepAlg_prod.
 
-Definition heap_ptr := Map [ptr * field, val].
+Definition heap := Map [ptr * field, val].
+Definition heap_unit : heap := @map_unit _ _ _ val.
 
+(*
 Definition heap := (heap_ptr * heap_arr)%type.
 
 Definition mkheap (hp: heap_ptr) (ha: heap_arr) := (hp, ha).
@@ -35,7 +37,7 @@ Instance PreorderHeapPtr : PreOrder (@rel heap_ptr RelHeapPtr) := _.
 Instance HeapPtrSepAlgOps : SepAlgOps heap_ptr := _.
 Instance SepAlgHeapPtr : SepAlg heap_ptr := _.
 Instance UUSepAlgHeapPtr : UUSepAlg heap_ptr := _.
-
+*)
 Instance RelHeap : Rel heap := _.
 Instance PreorderHeap : PreOrder (@rel heap RelHeap) := _.
 Instance HeapSepAlgOps : SepAlgOps heap := _.
@@ -109,7 +111,7 @@ Lemma heap_eq_dec : forall (a b : heap), {a === b} + {a =/= b}.
 Proof.
   admit (* fangel, used *).
 Qed.
-
+(*
 Lemma sa_mul_heapResEq {a b c c' : heap}
   (Habc : sa_mul a b c) (Habc' : sa_mul a b c') :
   c === c'.
@@ -154,7 +156,7 @@ Lemma remove_mkheap_arr : forall Hptr Harr, get_heap_arr (mkheap Hptr Harr) = Ha
   Proof. intros. reflexivity. Qed.
 
 Definition DisjointHeaps (n m : heap) := Disjoint (get_heap_ptr n) (get_heap_ptr m) /\ Disjoint (get_heap_arr n) (get_heap_arr m).
-
+*)
 Lemma empty_is_disjoint {K A : Type} {H : OrderedType K} {a : Map [K, A]} (Hempty : Empty a) : forall b, Disjoint a b.
 Proof.
   intros.
@@ -164,7 +166,7 @@ Proof.
   unfold Empty in Hempty; specialize (Hempty k v).
   auto.
 Qed.
-
+(*
 Lemma DisjointHeaps_sa_mul {a b : heap} (H : DisjointHeaps a b) :
   sa_mul a b (mkheap (update (get_heap_ptr a) (get_heap_ptr b)) (update (get_heap_arr a) (get_heap_arr b))).
 Proof.
@@ -181,3 +183,4 @@ Proof.
   [apply isolate_heap_ptr in H|apply isolate_heap_arr in H];
   eapply sa_mul_Disjoint; apply H.
 Qed.
+*)

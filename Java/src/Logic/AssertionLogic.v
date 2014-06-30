@@ -142,17 +142,44 @@ Grab Existential Variables.
   intros h h' Hh H. eapply Hheap; eassumption.
 Defined.
 
+Definition isField (Pr : Prog_wf) (ptr : ptr) (f : field) : Prop := forall (cls : class) (pos : nat), 
+	exists fields, ptr = (pos, cls) /\ field_lookup Pr cls fields /\ SS.In f fields.
+
+Lemma isField_sub : forall Pr Pr' ptr field, isField Pr ptr field -> Prog_wf_sub Pr Pr' -> isField Pr' ptr field.
+Proof.
+  intros Pr Pr' ptr f H Hsub.
+  unfold isField in *.
+  intros cls pos.
+  specialize (H cls pos); destruct H as [fields [Heq [Hlookup Hin]]].
+  unfold Prog_wf_sub, Prog_sub in Hsub.
+  unfold field_lookup in *. destruct Hlookup as [Class [Hlookup Heq']].
+  apply SM.find_1 in Hlookup.
+  specialize (Hsub cls Class Hlookup).
+  destruct Hsub as [Class' [Hlookup' [Hfields _]]].
+  remember Class'; destruct Class', Class.
+  exists c_fields.
+  split; [assumption |].
+  split.
+  - exists c; split; [apply SM.find_2; assumption | rewrite Heqc; reflexivity].
+  - subst; simpl in *; rewrite <- Hfields; assumption.
+Qed.
+
 Program Definition pointsto_aux (x : ptr) (f : field) (v : val) : asn :=
-  mk_asn (fun P k h => subheap ((empty val) [(x, f) <- v]) (get_heap_ptr h)) _ _ _.
+  mk_asn (fun P k h => isField P x f /\ subheap ((empty val) [(x, f) <- v]) h) _ _ _.
 Next Obligation.
+  split; [| assumption].
+  eapply isField_sub; eassumption.
+Qed.
+Next Obligation.
+  split; [assumption |].
   destruct h, h'; simpl in *.
-  apply subheap_prod in H as [H _].
-  setoid_rewrite H in H0. assumption.
+  setoid_rewrite H in H1. assumption.
 Qed.
 
 Definition pointsto (p : val) (f : field) (v : val) : asn := 
   (val_to_ptr p <> pnull) /\\ pointsto_aux (val_to_ptr p) f v.
 
+(*
 Program Definition pointsto_arr_element_aux (x : val) (path : list val) (v : val) : asn :=
   mk_asn (fun P k h => exists (h' : heap) , 
                          subheap h' h /\
@@ -278,6 +305,7 @@ Definition pointsto_arr (x n m : val) (vs : list val) : asn :=
   (n' <= m' /\ List.length vs = S (m' - n')) /\\ pointsto_arr_aux x n' vs.
 
 (* Gregory should be able to pull this off with his cancellation magic. *)
+*)
 
 Lemma embed_and_admit (p q : asn) (P Q : Prop) : 
   (P /\\ p) ** (Q /\\ q) -|- P /\\ Q /\\ p ** q.
@@ -285,7 +313,7 @@ Proof.
   admit.
 Qed.
 
-
+(*
 Lemma pointsto_arr_split (x i j k : val) (vs : list val) 
       (Hij : val_to_nat i <= val_to_nat j) 
       (Hjk : val_to_nat j < val_to_nat k) :
@@ -380,7 +408,7 @@ Qed.
 
 Definition update {A : Type} (lst : list A) (n : nat) (p : A) :=
   firstn n lst ++ (p::(skipn (n+1) lst)).
-(*
+  
 Lemma pointsto_arr_update (x i j k : val) (vs : list val) (v : val) 
       (Hij : val_to_nat i <= val_to_nat j) 
       (Hjk : val_to_nat j < val_to_nat k) :

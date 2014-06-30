@@ -1,8 +1,8 @@
 Require Import Morphisms Setoid Rel Util.
-Require Import ILogic ILEmbedTac ILQuantTac ILInsts BILInsts ILEmbed Later SepAlg SepAlgMap BILogic.
+Require Import ILogic ILEmbedTac ILQuantTac ILInsts BILInsts ILEmbed Later SepAlg UUSepAlg SepAlgMap BILogic.
 Require Import SpecLogic Pure OpenILogic ProtocolLogic AssertionLogic Program Open Stack Subst.
 Require Import OperationalSemantics Lang IBILogic.
-Require Import MapInterface MapFacts SemCmd SemCmdRules Heap ST.
+Require Import MapInterface MapFacts SemCmd SemCmdRules Heap Traces ST.
 Require Import String Lists.List FunctionalExtensionality.
 
 Set Implicit Arguments.
@@ -27,8 +27,8 @@ Proof.
 Qed.
 
 Lemma rule_if_ax (e : dexpr) c1 c2 (P Q : psasn) :
-  @lentails pspec _
-            (@land pspec _ ({[@lembedand vlogic psasn _ _ (vlogic_eval e) P]} c1 {[Q]})
+  @lentails spec _
+            (@land spec _ ({[@lembedand vlogic psasn _ _ (vlogic_eval e) P]} c1 {[Q]})
                    ({[@lembedand vlogic psasn _ _ (vlogic_eval (E_not e)) P]} c2 {[Q]}))
             ({[P]} cif e c1 c2 {[Q]}).
 Proof.
@@ -114,18 +114,17 @@ Import SepAlgNotations.
   
   Lemma rule_start_sem (C : class) (m : method) (x a rv : var) (T : ST) (p : protocol) c sc 
     (HSem : semantics c sc) :
-    @lentails pspec _
-      ((ST_exists p T) //\\ (|> (C :.: m |-> (a::nil) {{ has_ST a T}}-{{rv, all_STs st_end}})))
+    @lentails spec _
+      (|> (C :.: m |-> (a::nil) {{ has_ST a T}}-{{rv, all_STs st_end}}))
       ({{ ltrue }} start_cmd C m x p c sc {{ has_ST x (dual T) }}).
   Proof.
-  	intros PM P n H P' m' k s h STs Hsub Hm'n Hkm' _.
-  	destruct H as [HP H].
+  	intros P n H P' m' k s h cl pr Hsub Hm'n Hkm' _.
   	destruct n; simpl in *.
   	
   	(* No fuel *) {
    	assert (k = 0) by omega; subst. split.
-   	+ apply start_cmd_obligation_1.
-   	+ intros t' h' s' HCS. inversion HCS.
+   	+ intros. inversion H0; subst; apply cmd_zero in HSem0; exfalso; assumption.
+   	+ intros t' h' s' cl' HCS. inversion HCS; subst; apply cmd_zero in HSem0; exfalso; assumption.
     }
     (* There is fuel *)
 	specialize (H n). assert (n < S n) as Hn by omega; specialize (H Hn).
@@ -133,70 +132,64 @@ Import SepAlgNotations.
 	destruct (XXX _ Hsub) as [HML [HLen0 HNIn]]; clear XXX. 
     split.
     + (* safety *)
-      intro HFail. inversion HFail; subst.
-      - (* start_failM *)
-        assert (HPS := method_lookup_function HLookup HML);
-        inversion HPS; subst; clear HPS HLookup.
-        unfold id in HOK.
-        remember (stack_add a0 chan (stack_empty var)) as ics.
-        remember (add chan ST (empty _)) as icst.
-        edestruct HOK with (x := sc) (x2:=m'-1) (k:=n0) (h:=heap_unit)
-        (s := ics) (STs0 := icst) as [HSafe _];
-        [ eassumption | omega | assumption | reflexivity | reflexivity | omega | ..]. {
-          unfold psasn_subst; simpl; intros.
-          rewrite Heqics; unfold stack_subst, var_expr, liftn, lift; simpl.
-          destruct (dec_eq a a); [clear e | intuition].
-          rewrite stack_lookup_add, Heqicst; simpl.
-          apply find_mapsto_iff in HP; apply find_mapsto_iff in HProtocol.
-          simpl in HP; simpl in HProtocol.
-          rewrite HP in HProtocol; inversion HProtocol.
-          apply add_1; reflexivity.
-        }
-        apply HSafe; apply HSem0.
-       - (* start_failE *)
-        assert (HPS := method_lookup_function HLookup HML);
-        inversion HPS; subst; clear HPS HLookup.
-        unfold id in HOK.
-        remember (stack_add a0 chan (stack_empty var)) as ics.
-        remember (add chan ST (empty _)) as icst.
-        edestruct HOK with (x := sc) (x2:=m'-1) (k:=n0) (h:=heap_unit)
-        (s := ics) (STs0 := icst) as [_ HPost];
-        [ eassumption | omega | assumption | reflexivity | reflexivity | omega | ..]. {
-          unfold psasn_subst; simpl; intros.
-          rewrite Heqics; unfold stack_subst, var_expr, liftn, lift; simpl.
-          destruct (dec_eq a a); [clear e | intuition].
-          rewrite stack_lookup_add, Heqicst; simpl.
-          apply find_mapsto_iff in HP; apply find_mapsto_iff in HProtocol.
-          simpl in HP; simpl in HProtocol.
-          rewrite HP in HProtocol; inversion HProtocol.
-          apply add_1; reflexivity.
-        }
-        specialize (HPost _ _ _ HSem0).
-        unfold psasn_subst, substl_trunc_aux, stack_subst, var_expr, liftn, lift in HPost; simpl in HPost.
-        destruct HOngoing as [oc [otr [HOMT HOEq]]].
-        apply HOEq.
-        assert (MapInterface.In oc rSTs) by (unfold MapInterface.In; exists otr; apply HOMT).
-        specialize (HPost _ H); clear H.
-        apply find_mapsto_iff in HPost; apply find_mapsto_iff in HOMT.
-        rewrite HOMT in HPost; inversion HPost.
-        reflexivity.
+      intros ? ? HSem0.
+      inversion HSem0; subst; simpl.
+      - (* failure case *)
+        exists T.
+        assert (HR := method_lookup_function HML HLookup).
+        injection HR; intros; subst; clear HR HLookup.
+        remember (add chan T (empty _)) as icst.
+        edestruct HOK with (x := sc) (x2 := m' - 1) (k := n0) (h := heap_unit) (STs0 := icst) 
+        (s := (stack_add a0 chan (stack_empty var))) as [HSafe _]; 
+        	[eassumption | omega | assumption | reflexivity | reflexivity | omega | |]; subst.
+	    unfold apply_subst in *.
+	    unfold stack_subst, var_expr, liftn, lift; simpl.
+	    destruct (dec_eq a a); [clear e | intuition].
+	    rewrite stack_lookup_add; simpl.
+	    eapply add_1; reflexivity.
+	    specialize (HSafe _ _ HSem1).
+
+        eapply Comp_entails; [| apply HSafe].
+        intros. simpl in H. contradiction H; reflexivity.
+      - (* success case *)
+        exists T.
+        assert (HR := method_lookup_function HML HLookup).
+        injection HR; intros; subst; clear HR HLookup.
+        remember (add chan T (empty _)) as icst.
+        edestruct HOK with (x := sc) (x2 := m' - 1) (k := n0) (h := heap_unit) (STs0 := icst) 
+        (s := (stack_add a0 chan (stack_empty var))) as [_ HC]; 
+        	[eassumption | omega | assumption | reflexivity | reflexivity | omega | |]; subst.
+	    unfold apply_subst in *.
+	    unfold stack_subst, var_expr, liftn, lift; simpl.
+	    destruct (dec_eq a a); [clear e | intuition].
+	    rewrite stack_lookup_add; simpl.
+	    eapply add_1; reflexivity.
+	    specialize (HC _ _ _ _ HSem1).
+	    eapply Comp_entails; [ | apply HC].
+	    split; [apply H| congruence].
     + (* correctness *)
-      intros STs' h' s' HSem1; inversion HSem1; subst; clear HSem1.
-      intros.
-      rewrite stack_lookup_add; simpl.
-      assert (T = ST). {
-        apply find_mapsto_iff in HProtocol; apply find_mapsto_iff in HP.
-        simpl in HProtocol; simpl in HP.
-        rewrite HP in HProtocol; inversion HProtocol.
-        reflexivity.
-      }
-      rewrite H.
-      apply add_1; reflexivity.
+      intros STs' h' s' cl' HSem1; inversion HSem1; subst; clear HSem1; simpl.
+      exists T.
+      rewrite stack_lookup_add; simpl.      
+      assert (HR := method_lookup_function HML HLookup).
+      injection HR; intros; subst; clear HR HLookup.
+      remember (add chan T (empty _)) as icst.
+      edestruct HOK with (x := sc) (x2 := m' - 1) (k := n0) (h := heap_unit) (STs0 := icst) 
+      (s := (stack_add a0 chan (stack_empty var))) as [_ HC]; 
+       	[eassumption | omega | assumption | reflexivity | reflexivity | omega | |]; subst.
+	  unfold apply_subst in *.
+	  unfold stack_subst, var_expr, liftn, lift; simpl.
+	  destruct (dec_eq a a); [clear e | intuition].
+	  rewrite stack_lookup_add; simpl.
+	  eapply add_1; reflexivity.
+	  specialize (HC _ _ _ _ HSem0).
+	  eapply Comp_entails; [ | apply HC].
+	  intros. split; [apply H | apply add_1; reflexivity].
   Qed.
   
   Lemma rule_start (C : class) (m : method) (x a rv : var) (T : ST) (p : protocol) :
-    @lentails pspec _
-      ((ST_exists p T) //\\ (|> (C :.: m |-> (a::nil) {{has_ST a T}}-{{rv, all_STs st_end}})))
+    @lentails spec _
+      (|> (C :.: m |-> (a::nil) {{has_ST a T}}-{{rv, all_STs st_end}}))
       ({[ ltrue ]} cstart x C m p {[has_ST x (dual T)]}).
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
@@ -204,113 +197,91 @@ Import SepAlgNotations.
     apply rule_start_sem. apply HSem.
   Qed.
 
-  Lemma rule_send (x y z : var) (P: sasn) (ST : ST) (G : pspec) :
-    G |-- {[ embed (P[{y/V //! z}]) //\\ embed (DecidableSasn P[{y/V //! z}]) ** has_ST x (!z,{P}.ST)]}
+  Require Import Marshal.
+  Lemma rule_send (x y z : var) (P: sasn) (ST : ST) (G : spec) :
+    G |-- {[ embed (`isMarshalable P[{y/V //! z}] y/V) ** has_ST x (!z,{P}.ST)]}
              csend x y
-          {[ Exists v : sval, embed P[{y/V //! z}] //\\ @embed (open Prop) psasn _ (`eq y/V `v) //\\ (has_ST x (subst_ST z v ST)) ]}.
+          {[ Exists v : sval, embed P[{y/V //! z}] //\\ @embed (open Prop) psasn _ (`eq y/V `v) ** (has_ST x (subst_ST z v ST)) ]}.
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros.
-    * intro HFail. inversion HFail; subst.
-      - apply Sfail.
-        destruct H3 as [HP [h1 [h2 [HSub [_ HST]]]]].
-        assert (z = z0 /\ P = P0). {
-		  apply find_mapsto_iff in Sinitial; apply find_mapsto_iff in HST.
-		  rewrite Sref in HST.
-		  simpl in Sinitial; simpl in HST.
-	      rewrite HST in Sinitial; inversion Sinitial.
-		  split; reflexivity.
-	    }
-	    destruct H3 as [Heqz HeqP].
-	    rewrite <- HeqP in *; clear HeqP.
-	    rewrite <- Heqz in *; clear Heqz.
-	    unfold id in HP; rewrite subst1_trunc_singleton_stack in HP.
-	    solve_model HP.
-	  - destruct H3 as [HP [h1 [h2 [HSub [_ HMT]]]]].
-	    apply Sfail.
-	    rewrite Sref in HMT; simpl in HMT.
-	    exists (st_send z P ST); apply HMT.
+    * destruct H3 as [? [? [HSub [[mh' [HMarshal HP]] HST]]]].
+      eapply Marshal_uc_heap in HMarshal; [| exists x1; apply HSub].
+      unfold var_expr in HMarshal.
+      inversion H4; subst; simpl. 
+      - rewrite Sref in HST; simpl in HST; apply find_mapsto_iff in HST; rewrite HST.
+        split; [| congruence].
+        assert (mh === mh') by (eapply Marshal_func; eassumption).
+        rewrite subst1_trunc_singleton_stack in HP.
+        solve_model HP.
+        exists (empty _); rewrite H3; apply uusa_unit; apply empty_1.
+	  - rewrite Sref in HST; simpl in HST; apply find_mapsto_iff in HST; rewrite HST.
+	    specialize (Sfail mh'). exfalso; auto.
     * inversion H4; subst.
-      destruct H3 as [HP [h1 [h2 [HSub [_ HST]]]]].
-      unfold id in *.
-      exists (s' y).
-      split; [| split].
-      - solve_model HP; congruence.
-      - unfold liftn, lift, var_expr; simpl. reflexivity.
-      - intros.
-        rewrite Sref; simpl.
-        assert (z = z0 /\ ST = ST0). {
-		  apply find_mapsto_iff in Sinitial; apply find_mapsto_iff in HST.
-		  rewrite Sref in HST.
-		  simpl in Sinitial; simpl in HST.
-		  rewrite HST in Sinitial; inversion Sinitial.
-		  split; reflexivity.
-	    }
-	    destruct H3 as [Heqz HeqST].
-	    rewrite <- Heqz, <- HeqST.
-	    apply add_1; auto.
+      destruct H3 as [? [? [HSub [[mh' [HMarshal HP]] HST]]]].
+      eapply Marshal_uc_heap in HMarshal; [| exists x1; apply HSub].
+      assert (mh === mh') by (eapply Marshal_func; eassumption).
+      unfold var_expr in HMarshal.
+      rewrite subst1_trunc_singleton_stack in HP.
+      inversion H4; subst; simpl.
+      rewrite Sref in HST; simpl in HST; apply find_mapsto_iff in HST; rewrite HST.
+      split.
+      - solve_model HP.
+        exists (empty _); rewrite H3; apply uusa_unit; apply empty_1.
+      - assert (sa_mul h' heap_unit h') by (apply UUSepAlg.uusa_unit; apply empty_1).
+        exists (s' y); split; [| exists h', (heap_unit), H5; split].
+        + unfold id.
+          rewrite subst1_trunc_singleton_stack.
+          apply Marshal_subheap in HMarshal.
+          solve_model HP.
+        + unfold liftn, lift, var_expr; simpl. reflexivity.
+        + intros.
+          rewrite Sref; simpl.
+          apply add_1; reflexivity.
   Qed.
 
-  Lemma rule_recv (x y z : var) (P: sasn) (ST : ST) (G : pspec) (Hdiff: x <> y) :
+  Lemma rule_recv (x y z : var) (P: sasn) (ST : ST) (G : spec) (Hdiff: x <> y) :
     G |-- {[ has_ST x (&z,{P}.ST) ]} crecv y x {[ Exists v : sval, embed P[{y/V //! z}] //\\ @embed (open Prop) psasn _ (`eq y/V `v) ** (has_ST x (subst_ST z v ST)) ]}.
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros.
-    * intro HSafe. inversion HSafe; subst.
-      apply Sfail.
-      rewrite Sref in H3; simpl in H3.
-      exists (st_recv z P ST); assumption.
+    * inversion H4; subst; simpl.
+      apply find_mapsto_iff in H3; rewrite Sref in H3; simpl in H3; rewrite H3.
+      congruence.
     * unfold id.
       inversion H4; subst.
+      simpl.
+      apply find_mapsto_iff in H3; rewrite Sref in H3; simpl in H3; rewrite H3.
+      intro HP.
       exists rv.
-      assert (sa_mul h' heap_unit h') by (apply UUSepAlg.uusa_unit; split; apply empty_1).
-      split; [| exists h', (heap_unit), H5; clear H5; split].
-	  - assert (Prog_wf_sub P' P') by reflexivity.
-	    unfold liftn, lift, var_expr in H3; simpl in H3.
-        rewrite Sref in *; simpl in *.
-		rewrite subst1_trunc_singleton_stack, stack_lookup_add.
-		assert (z = z0 /\ P = P0). {
-		  apply find_mapsto_iff in Sinitial; apply find_mapsto_iff in H3.
-		  simpl in Sinitial; simpl in H3.
-		  rewrite H3 in Sinitial; inversion Sinitial.
-		  split; reflexivity.
-		}
-		destruct H7 as [Heqz HeqP].
-		rewrite <- Heqz, <- HeqP in SP.
-		assert (subheap rh h') by (apply sa_mulC2 in Snewheap; exists h; assumption).
-		specialize (SP (m-1)).
-		solve_model SP.
-	  - unfold liftn, lift, var_expr; simpl.
-	    rewrite stack_lookup_add; reflexivity.
-	  - intros.
-	    assert (z = z0 /\ ST = ST0). {
-		  apply find_mapsto_iff in Sinitial; apply find_mapsto_iff in H3.
-		  rewrite Sref in H3.
-		  simpl in Sinitial; simpl in H3.
-		  rewrite H3 in Sinitial; inversion Sinitial.
-		  split; reflexivity.
-		}
-		destruct H5 as [Heqz HeqST].
- 		rewrite stack_lookup_add2; [| auto].
- 		rewrite Sref, <- HeqST, <- Heqz; simpl.
-		apply add_1; auto.
+      split. 
+      - rewrite subst1_trunc_singleton_stack, stack_lookup_add.
+        solve_model HP.
+        exists h; apply sa_mulC; assumption.
+      - assert (sa_mul h' heap_unit h') by (apply UUSepAlg.uusa_unit; apply empty_1).
+        exists h', (heap_unit), H5; split.
+        + unfold liftn, lift, var_expr; simpl. rewrite stack_lookup_add; reflexivity.
+        + rewrite stack_lookup_add2; [| auto].
+          rewrite Sref; simpl.
+		  apply add_1; auto.
   Qed.
   
   Lemma rule_read_fwd (x y : var) (f : field) (e : expr) (P : psasn)
     (HPT : P |-- embed (`pointsto y/V `f e)) :
-   @ltrue pspec _ |-- {[ P ]} cread x y f {[ Exists v : val, @lembedand vlogic psasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
+   @ltrue spec _ |-- {[ P ]} cread x y f {[ Exists v : val, @lembedand vlogic psasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros.
-    + intro HFail; inversion HFail; subst. apply Snotin; clear Snotin HFail.
-      specialize (HPT _ _ _ _ _ _ H3); unfold pointsto in HPT;
-        simpl in HPT; destruct HPT as [Hnull [h'' HPT]].
+    + inversion H4; subst; simpl; [congruence |].
+      exfalso; inversion H4; subst. apply Snotin; clear Snotin H4.
+      specialize (HPT _ _ _ _ _ H3); unfold pointsto in HPT;
+        simpl in HPT; destruct HPT as [Hnull [HisField [h'' HPT]]].
         specialize (HPT (ref, f)). unfold var_expr in HPT. rewrite Sref in HPT.
         unfold liftn, lift in HPT; simpl in HPT.
-        remember (@MapInterface.find (ptr * field) _ _ sval (ref, f) (get_heap_ptr h)) as o.
+        remember (@MapInterface.find (ptr * field) _ _ sval (ref, f) h) as o.
 	    destruct o; [destruct HPT as [[HPT HIn] | [Hm HPT]] | destruct HPT as [HPT _]].
         * rewrite in_find_iff. unfold val; simpl. rewrite <- Heqo.
            (* TODO : Unification fails because it can't figure out the coercion to val. This must currently be done manually, which is unintuitive as implicit arguments hide these completely. *)
@@ -321,17 +292,17 @@ Import SepAlgNotations.
         	by (apply HPT; left; reflexivity); destruct HFalse.
     + inversion H4; subst.
       inversion H4; subst.
+      simpl.
       exists (s x).
       unfold open_eq.
       do 2 rewrite subst1_stack_add, subst1_val, subst_identity.
       split.
-      * specialize (HPT _ _ _ _ _ _ H3); simpl in HPT.        
-        destruct HPT as [H' [h'' HPT]].
+      * specialize (HPT _ _ _ _ _ H3); simpl in HPT.        
+        destruct HPT as [H' [HisField [h'' HPT]]].
         unfold var_expr; rewrite stack_lookup_add.
         unfold var_expr, liftn, lift in HPT; simpl in HPT.
-        apply stack_add_val_eq in H7. subst.
-        destruct h'; simpl in *.
-        specialize (HPT (ref, f)). remember (MapInterface.find (ref, f) h) as o.
+        apply stack_add_val_eq in H6. subst.
+        specialize (HPT (ref, f)). remember (MapInterface.find (ref, f) h') as o.
         simpl in Heqo; simpl in HPT; rewrite <- Heqo in HPT.
 	    destruct o; [destruct HPT as [[HPT HIn] | [Hm HPT]] | destruct HPT as [HPT _]].
         - rewrite add_mapsto_iff in HPT. destruct HPT as [[Heq HPT] | [Hneq HPT]]. 
@@ -349,7 +320,7 @@ Import SepAlgNotations.
   Qed.
 
 Require Import HeapArr.
-
+  (*
   Lemma arr_read_fwd (x y : var) (es : list dexpr) (P : psasn) (e : expr)
         (HP : P |-- embed (`pointsto_arr_element_aux y/V (fun s => List.map (fun e => eval e s) es) e)) :
         @ltrue pspec _ |-- {[ P ]} carrread x y es  {[ Exists v : val, @lembedand vlogic psasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
@@ -386,22 +357,23 @@ Require Import HeapArr.
         inversion Sfind. reflexivity.
       * solve_model H3.
   Qed.
-
+  *)
+  
   Lemma rule_write (x : var) (f : field) (e : expr) (e' : dexpr) :
-    (@ltrue pspec _ |-- {[ embed (`pointsto x/V `f e) ]} cwrite x f e' {[ embed (`pointsto x/V `f (eval e'))]}).
+    (@ltrue spec _ |-- {[ embed (`pointsto x/V `f e) ]} cwrite x f e' {[ embed (`pointsto x/V `f (eval e'))]}).
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros; destruct H3 as [H3 H5]. clear H.
-    + intros Hsafe.
-      inversion Hsafe; subst. simpl in *.
+    + inversion H4; simpl; [ congruence | subst].
+      exfalso.
       unfold var_expr in *. rewrite Sref in *. simpl in *.
       unfold liftn, lift in *; simpl in *.
       apply Sin.
-      destruct H5 as [h' H5].
+      destruct H5 as [_ [h' H5]].
       apply (@sa_mul_inL _ _ _ _ _ _ _ _ (ref, f)) in H5 as [_ H6]; [apply H6|].
       rewrite add_in_iff; left; reflexivity.
-    + inversion H4; subst; split; [apply H3|].
+    + inversion H4; subst; simpl; split; [apply H3|].
       simpl in *.
       unfold liftn, lift, var_expr in *; simpl in *.
       rewrite Sref in *. simpl in *.
@@ -415,7 +387,7 @@ Require Import HeapArr.
       }
       unfold val in *; simpl in *.
       rewrite H6.
-
+      split; [apply H5 |].
       apply subheap_add; [apply H5|].
       rewrite add_in_iff; left; reflexivity.
   Qed.
@@ -427,12 +399,12 @@ Require Import HeapArr.
 
   Lemma rule_write_frame G (P Q : psasn) (x : var) (f : field) (e : expr) (e' : dexpr)
         (H : P |-- Q ** embed (`pointsto x/V `f e)) :
-    @lentails pspec _ G ({[ P ]} cwrite x f e' {[ Q ** embed (`pointsto x/V `f (eval e'))]}).
+    @lentails spec _ G ({[ P ]} cwrite x f e' {[ Q ** embed (`pointsto x/V `f (eval e'))]}).
   Proof.
     rewrite H.
     eapply roc; [rewrite sepSPC; reflexivity | rewrite sepSPC; reflexivity|].
     eapply roc_post. eapply rule_frame.
-    transitivity (@ltrue pspec _); [apply ltrueR|].
+    transitivity (@ltrue spec _); [apply ltrueR|].
     eapply rule_write.
     unfold subst_mod_asn.
     rewrite sepSPC; etransitivity; [|rewrite sepSPC; reflexivity].
@@ -587,22 +559,22 @@ Require Import HeapArr.
   Lemma rule_call_sem (C : class) (m : method) (ps : list var) (r x : var) (P Q : psasn) (es : list dexpr) c sc
     (CC : @open var _ class) (T : psasn)
     (HSem : semantics c sc)
-    (HEnt :  forall PP PM s t h n, (T s PM t PP h n) -> (open_eq CC `C) s)
+    (HEnt :  forall PP s t h n, (T s t PP h n) -> (open_eq CC `C) s)
     (HLen : length ps = length es) :
-    |> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |-- @lforall pspec _ _ (fun v : val => 
+    |> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |-- @lforall spec _ _ (fun v : val => 
       {{@lembedand vlogic psasn _ _ (open_eq (x/V) (`v)) (P //! zip ps (map (fun e s => eval e s) es) //\\ T)}}
       (call_cmd x CC m es c sc)
       {{Q //! zip (r :: ps) (((x/V):expr) :: map (fun e => e[{`v // x}]) (map (fun e s => eval e s) es))}}).
   Proof.
   	lforallR v.
-  	intros PM p n H p2 m' k s h t Hsub Hm'n Hkm' [Hh [HP HT]].
-  	specialize (HEnt _ _ _ _ _ _ HT). unfold open_eq, liftn, lift in HEnt. simpl in HEnt.
+  	intros p n H p2 m' k s h cl t Hsub Hm'n Hkm' [Hh [HP HT]].
+  	specialize (HEnt _ _ _ _ _ HT). unfold open_eq, liftn, lift in HEnt. simpl in HEnt.
   	destruct n; simpl in *.
   	
   	(* No fuel *) {
    	assert (k = 0) by omega; subst. split.
-   	+ apply call_cmd_obligation_1.
-   	+ intros t' h' s' HCS; inversion HCS.
+   	+ intros. inversion H0. 
+   	+ intros t' h' s' cl' HCS; inversion HCS.
     }
     (* There is fuel *)
 	specialize (H n). assert (n < S n) as Hn by omega; specialize (H Hn).
@@ -611,27 +583,38 @@ Require Import HeapArr.
 	unfold open_eq, var_expr, liftn, lift in Hh; simpl in Hh.
 
     (* safety *)
-    + intro HFail. inversion HFail; subst.
-      * contradiction (HLFail _ HML).
-      * assert (HR := method_lookup_function HML HLookup).
+    + intros tr cfg HSem0.
+      inversion HSem0; subst.
+      - (* failS *)
+        specialize (HLFail ({| m_params := args; m_body := bd; m_ret := mr |})).
+        exfalso; apply HLFail; assumption.
+      - assert (HR := method_lookup_function HML HLookup).
         injection HR; intros; subst; clear HR HLookup.
         edestruct HOK with (x := sc) (x2 := m' - 1) (k := n0) (h := h) 
         (s := (create_stack ps0 (eval_exprs s es))) as [HSafe _]; 
-        	[eassumption | omega | assumption | reflexivity | reflexivity | omega | |
-        	 apply HSafe; apply HFail0].
+        	[eassumption | omega | assumption | reflexivity | reflexivity | omega | |].
 	     unfold apply_subst in *.
 	    solve_model HP.
-        erewrite <- substl_trunc_subst; [reflexivity|..]. 
-        apply prog_wf in HML. apply HML.
-        assumption. assumption. 
-      * assert (HT' := method_lookup_function HML HLookup); injection HT'; intros;
-        subst; congruence.
+        erewrite <- substl_trunc_subst; [reflexivity | apply prog_wf in HML; apply HML | assumption | assumption].
+        specialize (HSafe _ _ HFail). 
+        eapply HSafe; eassumption.
+      - assert (HT' := method_lookup_function HML HLookup); injection HT'; intros; subst; congruence.
+      - assert (HR := method_lookup_function HML HLookup).
+        injection HR; intros; subst; clear HR HLookup.
+        edestruct HOK with (x := sc) (x2 := m' - 1) (k := n0) (h := h) 
+        (s := (create_stack ps0 (eval_exprs s es))) as [HSafe _]; 
+        	[eassumption | omega | assumption | reflexivity | reflexivity | omega | |].
+	     unfold apply_subst in *.
+	    solve_model HP.
+        erewrite <- substl_trunc_subst; [reflexivity | apply prog_wf in HML; apply HML | assumption | assumption]. 
+        specialize (HSafe _ _ HSem1).
+        eapply Comp_entails; [| apply HSafe]; congruence.
     +  
     (* correctness *)
-    intros t' h' s' HSem1; inversion HSem1; subst; clear HSem1.
+    intros t' h' s' cl' HSem1; inversion HSem1; subst; clear HSem1.
     assert (HPS := method_lookup_function HLookup HML);
       inversion HPS; subst; clear HPS HLookup.
-    edestruct HOK with (x := sc) (x2:=m'-1) (k:=n0) (h:=h) (STs0 := t)
+    edestruct HOK with (x := sc) (x2:=m' - 1) (k:=n0) (h:=h) (STs0 := t)
     (s := (create_stack args (eval_exprs s es))) as [_ HC];
     	clear HOK; [eassumption | omega | assumption | reflexivity | reflexivity | omega | ..].
     unfold apply_subst in *.
@@ -640,8 +623,10 @@ Require Import HeapArr.
     reflexivity.
     apply prog_wf in HML. apply HML. omega. omega. 
     unfold apply_subst in *.
-    specialize (HC _ _ _ HSem0).
-    solve_model HC.
+    specialize (HC _ _ _ _ HSem0).
+    eapply Comp_entails; [| apply HC].
+    intros ? ? HQ; simpl in HQ.
+    solve_model HQ.
     (* equality of post stack *)
     apply functional_extensionality. intros z. unfold stack_subst. simpl. destruct (dec_eq z r).
     * case (dec_eq z r); [intros |congruence]. 
@@ -678,7 +663,7 @@ Require Import HeapArr.
 
   Lemma rule_call_static C m ps (es : list dexpr) (x r : var) P Q
     (HLen : length ps = length es) :
-    |> (C :.: m |-> ps {{ P }}-{{ r, Q }}) |-- @lforall pspec _ _ (fun v : val =>
+    |> (C :.: m |-> ps {{ P }}-{{ r, Q }}) |-- @lforall spec _ _ (fun v : val =>
       {[ @lembedand vlogic psasn _ _ (open_eq (x /V) (`v)) (P //! zip ps (map (fun e s => eval e s) es)) ]} cscall x C m es
       {[Q //! zip (r :: ps) ((x/V) :: map (fun e => e[{`v//x}]) (map (fun e s => eval e s) es))]}).
   Proof.
@@ -692,7 +677,7 @@ Require Import HeapArr.
 
   Lemma rule_call_dynamic C m ps (es : list dexpr) (x y r : var) P Q
     (HLen : length ps = length ((E_var y) :: es)) :
-    (|> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |-- @lforall pspec _ _ (fun v:val =>
+    (|> (C :.: m |-> ps {{ P }}-{{ r, Q}}) |-- @lforall spec _ _ (fun v:val =>
       {[ @lembedand vlogic psasn _ _ (@land vlogic _ (open_eq (x /V) (`v)) (`typeof `C y/V)) (P //! zip ps (map (fun e s => eval e s) ((E_var y) ::es))) ]}
       cdcall x y m es
       {[Q //! zip (r :: ps)
@@ -734,13 +719,13 @@ Ltac existentialise y v :=
     unfold lembedand. rewrite <- embedland, landA. reflexivity.
   Qed.
 
-  Lemma rule_assign x (e : dexpr) (P : psasn) (G : pspec) :
+  Lemma rule_assign x (e : dexpr) (P : psasn) (G : spec) :
     G |-- {[P [{(eval e) // x}]]} cassign x e {[P]}.
   Proof.
   	unfold triple; lforallR sc; apply lpropimplR; intro Hsem.
   	inversion Hsem; subst. simpl; split; intros.
-  	+ intro HFail. inversion HFail.
-  	+ inversion H4; subst.
+  	+ inversion H4; subst. congruence.
+  	+ inversion H4; subst; simpl.
   	  unfold apply_subst in H3. solve_model H3.
   	  rewrite subst1_stack. reflexivity.
   Qed.
@@ -750,9 +735,9 @@ Ltac existentialise y v :=
     G |-- {[ P ]} cassign x e {[ Q ]}.
   Proof.
   	eapply roc_pre; [|eapply rule_assign].
-  	intros s PM STs Pr n h HP.
-  	specialize (H (stack_add x (eval e s) s) PM STs Pr n h).
-  	simpl in *. assert ((((Q (stack_add x (eval e s) s)) PM STs Pr) n) h).
+  	intros s STs Pr n h HP.
+  	specialize (H (stack_add x (eval e s) s) STs Pr n h).
+  	simpl in *. assert ((((Q (stack_add x (eval e s) s)) STs Pr) n) h).
   	+ apply H. exists (s x). split.
   	  * unfold open_eq, var_expr. rewrite stack_lookup_add. 
   	    unfold apply_subst. rewrite subst1_stack, stack_add_overwrite.
@@ -782,7 +767,7 @@ Ltac existentialise y v :=
         (@lembedand vlogic psasn _ _ (open_eq x/V `v) 
         (@lembedand vlogic psasn _ _ (`typeof `C y/V) (embed F)))).
      clear Hspec HPre HLen HPost.
-     intros s PM STs Pr n h [H1 [h1 [h2 [Hh [[H3 H4] H5]]]]].
+     intros s STs Pr n h [H1 [h1 [h2 [Hh [[H3 H4] H5]]]]].
      simpl in *. exists h1, h2, Hh; (repeat split); assumption.
      eapply roc_post; [eapply rule_frame |].
      revert v. apply lforallR2.
@@ -792,7 +777,7 @@ Ltac existentialise y v :=
      simpl.      unfold SS.MSet.Raw.singleton, apply_subst, subst_fresh,
                    open_eq, liftn, lift, var_expr, substl_trunc, subst1; simpl.
      clear HPre HLen HPost Hspec.
-     intros s pm sts pr n h [h1 [h2 [Hh [H1 [H2 [H3 H4]]]]]].
+     intros s sts pr n h [h1 [h2 [Hh [H1 [H2 [H3 H4]]]]]].
      unfold stack_subst in *; simpl in *.
      destruct (@dec_eq SS.elt DecString x x); [|congruence].
      destruct (@dec_eq SS.elt DecString x y).
@@ -832,7 +817,7 @@ Ltac existentialise y v :=
          (Pm //! zip ps (map (fun (e : dexpr) (s : Stack.stack var) => eval e s) es))) **
         (@lembedand vlogic psasn _ _ (open_eq x/V `v) F)).
      clear HSpec HPre HLen HPost.
-     intros s PM STs Pr n h [H1 [h1 [h2 [Hh [H3 H4]]]]].
+     intros s STs Pr n h [H1 [h1 [h2 [Hh [H3 H4]]]]].
      simpl in *. exists h1, h2, Hh; (repeat split); assumption.
      eapply roc_post; [eapply rule_frame|].
      revert v. apply lforallR2.
@@ -842,7 +827,7 @@ Ltac existentialise y v :=
      simpl.      unfold SS.MSet.Raw.singleton, apply_subst, subst_fresh,
                    open_eq, liftn, lift, var_expr, substl_trunc, subst1; simpl.
      clear HPre HLen HPost HSpec.
-     intros s pm sts pr n h [h1 [h2 [Hh [H1 [H2 H3]]]]].
+     intros s sts pr n h [h1 [h2 [Hh [H1 [H2 H3]]]]].
      unfold stack_subst in *; simpl in *.
      destruct (@dec_eq SS.elt DecString x x); [|congruence].
      exists h1, h2, Hh. split.
