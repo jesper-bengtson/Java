@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>Java</name>
+	<comment></comment>
+	<projects>
+		<project>Charge!</project>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>dk.itu.sdg.kopitiam.CoqBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>dk.itu.sdg.kopitiam.CoqNature</nature>
+	</natures>
+</projectDescription>
