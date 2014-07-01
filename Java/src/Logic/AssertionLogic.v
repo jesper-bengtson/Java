@@ -70,10 +70,22 @@ Definition asn := ILPreFrm Prog_wf_sub asn2.
 Instance ILogicOpsAsn : ILogicOps asn := _.
 Instance ILogicAsn : ILogic asn := _.
 
-Instance BILOperatorsAsn1 : BILOperators asn1 := _.
-Instance BILOperatorsAsn2 : BILOperators asn2 := _.
-Instance BILOperatorsAsn : BILOperators asn := _.
 
+Instance BILOperatorsAsn1 : BILOperators asn1. Admitted.
+Instance BILOperatorsAsn2 : BILOperators asn2. Admitted.
+Instance BILOperatorsAsn : BILOperators asn. Admitted.
+(*Instance BILOperatorsAsn1 : BILOperators asn1 := _. This will work in Coq 8.5
+Instance BILOperatorsAsn2 : BILOperators asn2 := _.
+Instance BILOperatorsAsn : BILOperators asn := _.*)
+
+Instance BILogicAsn1 : BILogic asn1. Admitted.
+Instance BILogicAsn2 : BILogic asn2. Admitted. 
+Instance BILogicAsn  : BILogic asn. Admitted.
+
+Instance IBILogicAsn1 : IBILogic asn1. Admitted.
+Instance IBILogicAsn2 : IBILogic asn2. Admitted.
+Instance IBILogicAsn  : IBILogic asn. Admitted.
+ (*
 Instance BILogicAsn1 : BILogic asn1 := _.
 Instance BILogicAsn2 : BILogic asn2 := _.
 Instance BILogicAsn  : BILogic asn := _.
@@ -81,7 +93,7 @@ Instance BILogicAsn  : BILogic asn := _.
 Instance IBILogicAsn1 : IBILogic asn1 := _.
 Instance IBILogicAsn2 : IBILogic asn2 := _.
 Instance IBILogicAsn  : IBILogic asn := _.
-
+*)
 Local Existing Instance EmbedILPreDropOp.
 Local Existing Instance EmbedILPreDrop.
 Local Existing Instance EmbedOpPropProp.
@@ -134,9 +146,8 @@ Local Existing Instance PureBILPreOp.
 Local Existing Instance PureBILFun.
 Local Existing Instance PureBILFunOp.
 
-Set Printing All.
 Print pureop_bi_sepalg.
-
+(*
 Local Instance PureOpAsn1 : @PureOp asn1 := _.
 Local Instance PureAsn1 : Pure PureOpAsn1 := _.
 Local Instance PureOpAsn2 : @PureOp asn2 := _.
@@ -145,11 +156,14 @@ Local Instance PureOpAsn : @PureOp asn := _.
 Local Instance PureAsn : Pure PureOpAsn := _.
 Local Instance PureOpSasn : @PureOp sasn := _.
 Local Instance PureSAsn : Pure PureOpSasn := _.
+*)
 
+(*
 Instance pure_prop (p : Prop) : pure (@embed Prop sasn _ p) := _.
 Instance pure_vlogic (p : vlogic) : pure (@embed vlogic sasn _ p) := _.
 Instance pure_spec_asn (p : spec) : pure (@embed spec asn _ p) := _.
 Instance pure_spec (p : spec) : pure (@embed spec sasn _ p) := _.
+*)
 
 Local Transparent ILPre_Ops.
 
@@ -274,7 +288,7 @@ Proof.
 Qed.
       
 
-
+(*
 Lemma pointsto_arr_aux_app (x : val) (n : nat) (xs ys : list val) :
   pointsto_arr_aux x n (xs++ys) -|- pointsto_arr_aux x n xs ** pointsto_arr_aux x (n + List.length xs) ys.
 Proof.
@@ -408,7 +422,7 @@ Qed.
 
 Definition update {A : Type} (lst : list A) (n : nat) (p : A) :=
   firstn n lst ++ (p::(skipn (n+1) lst)).
-(*
+
 Lemma pointsto_arr_update (x i j k : val) (vs : list val) (v : val) 
       (Hij : val_to_nat i <= val_to_nat j) 
       (Hjk : val_to_nat j < val_to_nat k) :
