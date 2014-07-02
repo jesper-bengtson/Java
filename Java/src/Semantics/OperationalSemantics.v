@@ -691,7 +691,7 @@ Section StructuralRules.
   Proof.
   	eapply roc; eassumption || reflexivity.
   Qed.
-
+ 
   Lemma roc_post (P Q Q' : psasn) c G
     (Hc : G  |-- {[P]} c {[Q']})
     (HPost : Q' |-- Q) :
@@ -699,13 +699,160 @@ Section StructuralRules.
   Proof.
     eapply roc; eassumption || reflexivity.
   Qed.
+  Check mk_asn.
+SearchAbout stptr.
+Require Import EqNat.
+ Program Definition eq_asn Pr n h := mk_asn (fun Pr' m h' => Prog_wf_sub Pr Pr' /\ m <= n /\ (h <= h')%sa) _ _ _.
+ Next Obligation.
+	repeat split; try assumption; omega.
+ Qed.
+	Next Obligation.
+	repeat split; try assumption; transitivity P; assumption.
+	Qed.
+	Next Obligation.
+	repeat split; try assumption; transitivity h0; assumption.
+	Qed.
+	
+ Fixpoint trace_to_st (z : var) (x : stptr) (n : nat) (Pr : Prog_wf) (tr : trace) : ST :=
+  	match tr with 
+  		| t_end => st_end
+  		| t_send y v h tr' =>
+  			if beq_nat x y then
+  				st_send z (fun s => (eq_asn Pr n h)) (trace_to_st z x n Pr tr')
+  			else
+  				trace_to_st z x n Pr tr'
+  		| t_recv y v h tr' =>
+  			if beq_nat x y then
+  				st_recv z (fun s => (eq_asn Pr n h)) (trace_to_st z x n Pr tr')
+  			else
+  				trace_to_st z x n Pr tr'
+  		| t_start y tr' tr'' => trace_to_st z x n Pr tr''
+  		| t_tau tr' => trace_to_st z x n Pr tr'
+  	end.  
+
+  Fixpoint trim_protocol (Pr : Prog_wf) (n : nat) (pr : STs) (tr : trace) : option (nat * STs) :=
+    match tr with
+      | t_end => Some (n, pr)
+      | t_send x v h tr' => match (find x pr) with
+          | Some (st_send z P T) => trim_protocol Pr (n - 1) (add x (subst_ST z v T) pr) tr'
+          | _ => None
+        end
+      | t_recv x v h tr' => match (find x pr) with
+          | Some (st_recv z P T) => trim_protocol Pr (n - 1) (add x (subst_ST z v T) pr) tr'
+          | _ => None
+        end
+      | t_start x tr' tr'' => trim_protocol Pr (n - 1) (add x (trace_to_st "v" x n Pr tr'') pr) tr''
+      | t_tau tr' => trim_protocol Pr (n - 1) pr tr'
+    end.
   
+  Lemma trim_protocol_dc (Pr : Prog_wf) (n m k : nat) (pr pr' : STs) (tr : trace) 
+ 	(H: trim_protocol Pr n pr tr = Some (m, pr')) (Hnm: n >= k) :
+ 	exists t, trim_protocol Pr k pr tr = Some (t, pr') /\ m >= t.
+  Proof.
+    generalize dependent n; generalize dependent pr; generalize dependent k; induction tr; intros.
+    + simpl in *. inversion H; subst.
+      exists k. intuition congruence.
+    + simpl in *. destruct (find s pr); [|congruence].
+      destruct s0. 
+      * congruence.
+      * eapply IHtr; [eapply H|omega].
+      * congruence.
+    + simpl in *. destruct (find s pr); [|congruence].
+      destruct s0; try congruence.
+      eapply IHtr; [eapply H|omega].
+    + admit.
+    + simpl in *. eapply IHtr; [eassumption | omega].
+  Qed.
+ 
+  Lemma test : ((True /\ True) /\ True ) /\ True.
+  Proof.
+    split.
+    {
+    split.
+    {
+    split.
+    {
+    apply I.
+    }
+    apply I.
+    }
+    apply I.
+    }
+    apply I.
+  Qed.
+      apply I.
+    } {
+      split. {
+        apply I.
+      } {
+        split. {
+          apply I.
+        }
+        apply I.
+      }
+    }
+  Qed.
+    -
+    apply I.
+    -
+    apply I.
+  Qed.
+ 
+  Program Definition cfg_asn (cfg : stack * (heap * NS.t)) (tr : trace) (pr : STs) (Pr : Prog_wf) (n : nat) : psasn := 
+    fun s pr' => mk_asn (fun P m h =>  
+    	match trim_protocol Pr n pr tr with
+    		| Some (k, pr'') => fst cfg = s /\ (h <= fst (snd cfg))%sa /\ pr = pr'' /\ m <= k /\ Prog_wf_sub Pr P
+    		| None           => False
+    	end) _ _ _.
+  Next Obligation.
+    remember (trim_protocol Pr n pr tr).
+    symmetry in Heqo.
+    destruct o; [|inversion H].
+    destruct p.
+    simpl in *.
+    intuition; subst.
+  Qed.
+  Next Obligation.
+    admit.
+  Qed.
+  Next Obligation.
+    admit.
+  Qed.
   
   Lemma rule_frame_ax_list (P Q R : psasn) c (xs: list var)
     (HMod : forall x, ~ List.In x xs -> c_not_modifies c x) :
     {[ P ]} c {[ Q ]} |--
     {[ P ** R ]} c {[ Q ** Exists vs, apply_subst R (subst_fresh vs xs) ]}.
   Proof.
+    clear HMod.
+    generalize dependent Q. generalize dependent P.
+    induction c; intros P Q PP n H.
+    admit.
+    admit.
+    intros sc PP' HPP' m Hmn HSpec PP'' k t s h cl pr HPP'' Hkm Htk [h1 [h2 [HSub [HP HR]]]].
+    inversion HSpec; subst.
+    (*
+    specialize (H (seq_cmd sc1 sc2) PP' HPP' m Hmn HSpec PP'' k t s h cl pr HPP'' Hkm Htk).
+    *)
+    split. admit.
+    intros tr h' s' cl' HSem.
+    inversion HSem; subst.
+    
+    specialize (H (seq_cmd sc1 sc2) PP' HPP' m Hmn HSpec PP'' k (n0 + n1)).
+    Check @Comp_partial.
+    apply @Comp_partial with (P := cfg_asn (s1, (h3, cl1)) tr0 pr PP'' k s pr PP'') (n := n) (m := m).
+    specialize (IHc1 P ltrue PP n).
+    specialize (IHc2 ltrue Q PP n).
+    simpl in H.
+    
+    
+    Local Opaque ILPre_Ops.
+    Local Opaque ILFun_Ops.
+    
+    simpl in *.
+    intros.
+    inversion H0; subst; simpl in *.
+    unfold embed in H0.
     unfold triple. lforallR sc; apply lpropimplR; intro Hsc. lforallL sc. 
     apply lpropimplL; [assumption|].
 	(*generalize dependent sc; induction c; intros; inversion Hsc; subst. *)
@@ -713,6 +860,30 @@ Section StructuralRules.
     - destruct (HSpec _ m k s h cl pr HPP' Hmn Hkm) as [HS _]; [ | assumption].
       solve_model HP. exists h2; apply HSub.
     - intros.
+      specialize (HSpec PP' m k s h1 cl pr HPP' Hmn Hkm HP).
+      destruct HSpec as [HSafe HComp].
+      specialize (HSafe tr); specialize (HComp tr).
+      clear -HSafe HComp HSub HR HSub Hsc HMod H.
+      Local Opaque ILPre_Ops.
+      Local Opaque ILFun_Ops.
+
+      induction Hsc; simpl in *.
+      + admit.
+      + admit.
+      + admit.
+      + admit.
+      + admit.
+      + inversion H; subst.
+        
+      + admit.
+      + admit.
+      + admit.
+      + admit.
+      + admit.
+      + admit.
+      + admit.
+      + 
+      inversion H. subst. simpl.
      (*
       destruct (@cmd_frame sc PP' s s' h h' h2 h1 cl cl' k tr) as [h'' [HBig Hc]]; [ assumption | | apply H |].
       + clear HMod.

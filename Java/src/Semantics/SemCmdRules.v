@@ -59,12 +59,22 @@ Section Rules.
       intros ? ? ? ? HSem. 
       
       (* Should be given STs STs' T2 T1 instead *)
+      unfold sem_triple in HSpec. simpl in HSpec.
+      destruct (HSpec PP' m k s h1 cl pr HPP' Hmn Hkm HP) as [HSafe HComp]; clear HSpec.
+      specialize (HSafe tr). specialize (HComp tr). clear -HSafe HComp HR HSub HSem.
+      
+      induction c; simpl in *.
+      
+      
+      
+      destruct (HSpec _ m l s h1 cl pr HPP' Hmn) as [HS _]; [ omega | solve_model HP; exists h2; assumption | ].
       destruct (@cmd_frame c PP' s s' h h' h2 h1 cl cl' k tr) as [h'' [HBig Hc]]. 
       + assumption.
       + intros l Hle.
-        destruct (HSpec _ m l s h1 pr HPP' Hmn) as [HS _]; [ omega | solve_model HP; exists h2; assumption | ].
+        destruct (HSpec _ m l s h1 cl pr HPP' Hmn) as [HS _]; [ omega | solve_model HP; exists h2; assumption | ].
         intros ? ? Htr Hfail.
         specialize (HS _ _ Hfail).
+        
         admit (* fangel, used, frame-rule, oh-boy-safety-fun *).
         (*
         rewrite Htr in HSem.
