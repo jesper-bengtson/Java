@@ -41,7 +41,8 @@ Definition add_body :=
 
 
   Require Import ILInsts.
-Check NoDup.
+
+
 Program Fixpoint search_NoDup
     {A} (A_dec: forall a b: A, {a=b}+{a<>b}) (l: list A) : option (NoDup l) :=
   match l with
@@ -103,9 +104,9 @@ Proof.
   Opaque ILPre_Ops.
 Qed.
 
-Lemma ListCorrect : [prog] (fun P => P = Prog) |-- add_spec.
+Lemma ListCorrect : prog_eq Prog|-- add_spec.
 Proof.
-  unfold add_spec, method_spec.
+  unfold add_spec. unfold method_spec.
   apply lforallR; intros xs.
   apply landR.
   apply embedPropR.
@@ -121,6 +122,7 @@ Proof.
   SM'.mapsto_tac.
   split.
   reflexivity.
+  unfold add_body. simpl.
   check_not_modifies.
 
   Require Import Subst.
