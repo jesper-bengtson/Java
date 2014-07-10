@@ -28,6 +28,8 @@ Definition add_body :=
 
   Program Definition Prog := @Build_Prog_wf ProgAux _ .
   Next Obligation.
+	unfold uniq_params. intros.
+	unfold ProgAux in H. simpl in *.
     admit. (* I think we have automation for this *)
   Qed.
   
@@ -91,21 +93,25 @@ Ltac check_not_modifies :=
                  | [ HIn: context [SS.In x SS.empty] |- _] =>
                    rewrite SS'.empty_iff in HIn
                end; intuition (subst; discriminate).
-
-
-Definition prog_eq Prog : spec := [prog] (fun P => P = Prog).
-
-Lemma prog_eq_to_prop P (f : Prog_wf -> Prop) (H : f P) : prog_eq P |-- [prog] f.
+               
+Lemma ListCorrect : prog_eq Prog |-- add_spec.
 Proof.
-  Transparent ILPre_Ops.
-  intros Q n HQ R HQR.
-  specialize (HQ _ HQR).
-  simpl in *. subst. apply H.
-  Opaque ILPre_Ops.
-Qed.
+  unfold add_spec.
+  apply lforallR; intros xs.
+  unfold add_spec.
+  unfold ProgAux. unfold ListC, NodeC.
 
-Lemma ListCorrect : prog_eq Prog|-- add_spec.
-Proof.
+  apply landR.
+  
+  apply embedPropR. search_NoDup string_dec.
+  do 3 eapply lexistsR.
+  apply landR.
+  Print prog_eq_to_prop.
+  apply prog_eq_to_prop.
+  unfold method_spec.
+  Check Build_Class.
+  unfold method_lookup.
+  unfold Prog. simpl. ProgAux. simpl.
   unfold add_spec. unfold method_spec.
   apply lforallR; intros xs.
   apply landR.
@@ -115,7 +121,9 @@ Proof.
   do 3 eapply lexistsR. apply landR.
   apply prog_eq_to_prop.
   split.
+  unfold method_lookup. simpl.
   eexists.
+  unfold ListC.
   unfold Prog, ProgAux.
   simpl; split.
   SM'.mapsto_tac.

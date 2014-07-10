@@ -1,4 +1,6 @@
-Require Import AxiomaticSemantics String AssertionLogic ILogic ILEmbed BILogic Lang Stack ZArith List.
+Require Import AxiomaticSemantics String AssertionLogic.
+Require Import ILogic ILEmbed.
+Require Import Charge.Logics.BILogic Lang Stack ZArith List.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

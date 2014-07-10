@@ -51,3 +51,12 @@ Local Existing Instance EmbedPropProp.
 
 Instance EmbedPropSpecOp : EmbedOp Prop spec := _. 
 Instance EmbedPropSpec : Embed Prop spec := _.
+
+Definition prog_eq Prog : spec := [prog] (fun P => P = Prog).
+
+Lemma prog_eq_to_prop P (f : Prog_wf -> Prop) (H : f P) : prog_eq P |-- [prog] f.
+Proof.
+  intros Q n HQ R HQR.
+  specialize (HQ _ HQR).
+  simpl in *. subst. apply H.
+Qed.
