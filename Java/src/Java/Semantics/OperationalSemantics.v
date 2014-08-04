@@ -13,35 +13,40 @@ Section Commands.
   Inductive assign_sem (x : var) (e : dexpr) : semCmdType :=
   | assign_ok : forall P s h cl v
                        (He: eval e s = v),
-      assign_sem x e P 1 s h cl (t_tau t_end) (Some (stack_add x v s, (h, cl))).
+      assign_sem x e P s h cl (t_tau (stack_add x v s) h cl t_end).
   Program Definition assign_cmd x e := Build_semCmd (assign_sem x e) _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
-  Next Obligation with eauto using assign_sem.
+  Next Obligation with eauto using assign_sem, frame_trace.
     unfold frame_property; intros.
-    inversion HSem; subst; clear HSem; exists h...
+    inversion HSem; subst; clear HSem. exists (t_tau (stack_add x (eval e s) s) h cl t_end)...
   Qed.
 
   Inductive read_sem (x y : var) (f : field) : semCmdType :=
   | read_ok : forall ref v P (s : stack) (h : heap) cl
       (Rref  : s y = vptr ref)
       (Rmaps : MapsTo (ref,f) v h),
-      read_sem x y f P 1 s h cl (t_tau t_end) (Some (stack_add x v s, (h, cl)))
+      read_sem x y f P s h cl (t_tau (stack_add x v s) h cl t_end)
   | read_fail : forall ref P s (h : heap) cl
       (Sref   : s y = vptr ref)
       (Snotin : ~ In (ref,f) h),
-      read_sem x y f P 1 s h cl (t_tau t_end) None.
+      read_sem x y f P s h cl t_fail.
   Program Definition read_cmd x y f := Build_semCmd (read_sem x y f) _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
-  Next Obligation with eauto using read_sem.
+  Next Obligation with eauto using read_sem, frame_trace.
     unfold frame_property; intros.
-    inversion HSem; subst n s0 h0 s' big'; clear HSem; exists h; intuition.
-    apply read_ok with ref; [assumption |]. specialize (HSafe _ (le_n _) _ _ (trace_appendEndR _)).
-    destruct (sa_mul_mapstoR HFrame Rmaps) as [[H1 H2] | [H1 H2]]; [assumption|subst].
-    contradiction HSafe...
+    inversion HSem; subst; clear HSem.
+    destruct (sa_mul_mapstoRT HFrame Rmaps) as [[H1 H2] | [H1 H2]].
+    exists (t_tau (stack_add x v s) h cl t_end)...
+    exists t_fail...
+    exists t_fail...
+    split; [constructor|].
+    apply read_fail with ref; [assumption|].
+    intros H; apply Snotin.
+    destruct (sa_mul_inL HFrame H); assumption.
   Qed.
 
 Require Import Compare_dec.
@@ -237,7 +242,7 @@ Require Import Compare_dec.
       (Sh0      : sa_mul h
         (SS.fold (fun f h' => add ((n, C), f) (pnull : val) h') fields heap_unit) hp')
       (Ss0      : s' = stack_add x (vptr (n, C)) s),
-      alloc_sem x C P 1 s h cl (t_tau t_end) (Some (s', (hp', cl))).
+      alloc_sem x C P s h cl (t_tau s' hp' cl t_end).
   Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _ _.
   Next Obligation.
     intros H; inversion H.
@@ -245,6 +250,7 @@ Require Import Compare_dec.
   Next Obligation.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem.
+    exists (t_tau (stack_add x (n, C0 s)
     destruct (sa_mulA HFrame Sh0) as [h5 [H1 H2]].
     apply sa_mulC in H2; destruct (sa_mulA H1 H2) as [h6 [H3 H5]].
     exists h6.
@@ -257,6 +263,7 @@ Require Import Compare_dec.
     destruct (sa_mul_inR Sh0 H9) as [[H10 H11] | [H10 H11]]; [assumption|].
     apply sa_mulC in H1; destruct (sa_mul_inL H1 H10); intuition.
   Qed.
+*)
 
   Inductive write_sem (x:var) (f:field) (e:dexpr) : semCmdType := 
   | write_ok : forall P (s: stack) (h : heap) (hp' : heap) ref v cl
@@ -264,15 +271,16 @@ Require Import Compare_dec.
       (Sin:  In (ref,f) h )
       (Heval : eval e s = v)
       (Sadd: hp' = add (ref,f) v h ),
-      write_sem x f e P 1 s h cl (t_tau t_end) (Some (s, (hp', cl)))
+      write_sem x f e P s h cl (t_tau s hp' cl t_end)
   | write_fail : forall P (s: stack) h ref cl
       (Sref:   s x = vptr ref)
       (Sin : ~ In (ref, f) h),
-      write_sem x f e P 1 s h cl (t_tau t_end) None.
-  Program Definition write_cmd x f e := Build_semCmd (write_sem x f e) _ _.
+      write_sem x f e P s h cl t_fail.
+  Program Definition write_cmd x f e := Build_semCmd (write_sem x f e) _.
   Next Obligation.
     intros H; inversion H.
   Qed.
+(*
   Next Obligation.
     unfold frame_property; intros.
     inversion HSem. subst; clear HSem.
@@ -287,22 +295,23 @@ Require Import Compare_dec.
     eapply write_ok; try eassumption; try reflexivity.
     destruct (sa_mul_inR HFrame Sin); intuition.
   Qed.
-
+*)
   Require Import Util Marshal.
   Inductive send_sem (x v : var) : semCmdType :=
   | send_ok     : forall Pr (s: stack) (h mh: heap) (c: stptr) cl
     (Sref       : s x = vst c)
     (Smarshal   : Marshal Pr (s v) h mh),
-    send_sem x v Pr 1 s h cl (t_send c (s v) mh t_end) (Some (s, (h, cl)))
+    send_sem x v Pr s h cl (t_send c (s v) mh (t_tau s h cl t_end))
   | send_failP : forall Pr (s: stack) (h mh: heap) (c: stptr) cl
     (Sref     : s x = vst c)
     (Sfail    : forall mh', ~ Marshal Pr (s v) h mh'),
-    send_sem x v Pr 1 s h cl (t_send c (s v) mh t_end) None
+    send_sem x v Pr s h cl t_fail
   .
-  Program Definition send_cmd x v := Build_semCmd (send_sem x v) _ _.
+  Program Definition send_cmd x v := Build_semCmd (send_sem x v) _.
   Next Obligation.
     intros H; inversion H.
   Qed.
+(*
   Next Obligation with auto using send_sem.
     unfold frame_property; intros.
     inversion HSem. subst; clear HSem.
@@ -317,14 +326,17 @@ Require Import Compare_dec.
 	exfalso; eapply HSafe; [reflexivity | apply trace_appendEndR |].
 	eapply send_failP; eassumption.
   Qed.
+*)
+
 
   Inductive recv_sem (v x : var) : semCmdType :=
   | recv_ok : forall Pr (s: stack) (h rh h': heap) (c: stptr) (rv : sval) cl
-    (Sref: s x = vst c)
-    (Snewheap : sa_mul h rh h'),
-    recv_sem v x Pr 1 s h cl (t_recv c rv rh t_end) (Some (stack_add v rv s, (h', cl)))
+    (Sref: s x = vst c),
+    recv_sem v x Pr s h cl 
+      (t_recv c (fun rv rh => let (rv', h') := dmerge_heap rv rh h in 
+                                  (t_tau (stack_add v (vptr rv') s) h' cl t_end)))
   .
-  Program Definition recv_cmd v x := Build_semCmd (recv_sem v x) _ _.
+  Program Definition recv_cmd v x := Build_semCmd (recv_sem v x) _.
   Next Obligation.
     intros H; inversion H.
   Qed.

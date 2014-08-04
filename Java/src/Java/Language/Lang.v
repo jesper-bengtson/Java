@@ -1,10 +1,10 @@
 Require Import DecidableType DecidableTypeEx.
-Require Import ZArith String.
 Require Import Stack Open Util OpenILogic.
 Require Import Rel.
 Require Import Compare_dec.
 Require Import OrderedType OrderedTypeEx.
 Require Import SepAlgMap.
+Require Import ZArith Strings.String.
 
 Module string_DT' <: MiniDecidableType.
   Definition t := string.

@@ -1,4 +1,4 @@
-Require Import Lists.List String RelationClasses Morphisms Setoid.
+Require Import Lists.List Strings.String RelationClasses Morphisms Setoid.
 Require Import Lang Util.
 
 Set Implicit Arguments.

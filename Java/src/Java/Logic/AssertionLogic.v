@@ -3,7 +3,7 @@
    make this easier. Ideally, this file should not be larger than a few tens of lines
    at most. *)
 
-Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps String Rel.
+Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Containers.Maps Strings.String Rel.
 Require Import RelationClasses Setoid Morphisms. 
 Require Import MapInterface MapFacts.
 Require Import Open Stack Lang OpenILogic Pure ILEmbed PureInsts UUSepAlg SepAlgInsts.
@@ -165,7 +165,7 @@ Proof.
 Qed.
 
 Program Definition pointsto_aux (x : ptr) (f : field) (v : val) : asn :=
-  mk_asn (fun P k h => isField P x f /\ subheap ((empty val) [(x, f) <- v]) h) _ _ _.
+  mk_asn (fun P k h => isField P x f /\ subheap (add (x, f) v (empty val)) h) _ _ _.
 Next Obligation.
   split; [| assumption].
   eapply isField_sub; eassumption.

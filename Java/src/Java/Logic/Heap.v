@@ -1,4 +1,4 @@
-Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps String Rel.
+Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Containers.Maps Strings.String Rel.
 Require Import RelationClasses Setoid Morphisms Program. 
 Require Import MapInterface MapFacts.
 Require Import Open Stack Lang OpenILogic Pure ILEmbed PureInsts.
@@ -16,6 +16,25 @@ Local Existing Instance UUSepAlg_prod.
 
 Definition heap := Map [ptr * field, val].
 Definition heap_unit : heap := @map_unit _ _ _ val.
+
+Definition max_key (h : heap) : nat :=
+	@fold (ptr * field) _ _ _ _ (fun p _ x => max (fst (fst p)) x) h 0.
+
+Definition offset_val (v : val) (n : nat) : sval :=
+	match v with
+	  | vptr (x, C) => vptr (x + n, C)
+	  | _ => v
+	end.
+
+Definition offset_heap (h : heap) (n : nat) : heap :=
+	@fold (ptr * field) _ _ _ _ (fun p v acc => add ((((fst (fst p)) + n), snd (fst p)), snd p) (offset_val v n) acc)
+		  h (@empty (ptr * field) _ _ _).
+		  
+Definition merge_heap (h1 h2 : heap) : heap :=
+	@fold (ptr * field) _ _ _ _ add h1 h2.
+	
+Definition dmerge_heap (p : ptr) (h1 h2 : heap) : ptr * heap :=
+    let n := max_key h2 in ((fst p + n, snd p), merge_heap (offset_heap h1 n) h2).
 
 (*
 Definition heap := (heap_ptr * heap_arr)%type.

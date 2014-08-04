@@ -25,11 +25,48 @@ Qed.
 
 Inductive trace : Type :=
   | t_end   : trace
+  | t_fail  : trace
   | t_send  : stptr -> val -> heap -> trace -> trace
-  | t_recv  : stptr -> val -> heap -> trace -> trace
+  | t_recv  : stptr -> (ptr -> heap -> trace) -> trace
   | t_start : stptr -> trace -> trace -> trace
-  | t_tau : trace -> trace
+  | t_tau : Lang.stack -> heap -> NS.t -> trace -> trace
   .
+  
+Fixpoint trace_wf (tr : trace) : Prop :=
+	match tr with
+		| t_end => True
+		| t_fail => True
+		| t_send _ _ _ (t_tau _ _ _ tr') => trace_wf tr'
+		| t_recv _ ftr => forall v h, match ftr v h with
+							            | t_tau _ _ _ tr' => trace_wf tr'
+							            | _ => False
+							          end
+		| t_start _ _ tr' => trace_wf tr'
+		| t_tau _ _ _ tr' => trace_wf tr'
+		| _ => False
+	end.
+
+Fixpoint trace_safe (tr : trace) : Prop :=
+	match tr with
+		| t_end => True
+		| t_fail => False
+		| t_send _ _ _ tr' => trace_safe tr'
+		| t_recv _ ftr => forall v h, trace_safe (ftr v h)
+		| t_start _ _ tr' => trace_safe tr'
+		| t_tau _ _ _ tr' => trace_safe tr'
+	end.
+
+Fixpoint fail_trace (tr : trace) : Prop :=
+	match tr with
+		| t_end => False
+		| t_fail => True
+		| t_send _ _ _ tr' => fail_trace tr'
+		| t_recv _ ftr => exists v h, fail_trace (ftr v h)
+		| t_start _ _ tr' => fail_trace tr'
+		| t_tau _ _ _ tr' => fail_trace tr'
+	end.
+	
+(*
 
 Fixpoint dual_trace (t : trace) : trace := 
   match t with
@@ -80,4 +117,4 @@ Lemma trace_appendLength : forall tr tr', trace_length (trace_append tr tr') >= 
 Proof.
   intros; induction tr; intros; simpl; omega.
 Qed.
-  
+*)  

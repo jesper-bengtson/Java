@@ -1,7 +1,7 @@
 Require Import Rel Open Later ILogic ILInsts BILogic BILInsts IBILogic SepAlg SepAlgMap
                UUSepAlg SepAlgInsts OpenILogic Pure ILEmbed PureInsts Subst Stack.
 Require Import Maps MapInterface MapFacts.
-Require Import Lang ST AssertionLogic SpecLogic Util Program.
+Require Import Lang ST SpecLogic Util Program.
 
 Definition PM := Map [protocol, ST].
 
@@ -53,22 +53,26 @@ Definition PM := Map [protocol, ST].
   Local Transparent BILPre_Ops.
   Local Transparent BILFun_Ops.
 
-  Definition pasn := STs -> asn.
+Require Import AssertionLogic.
+
+Check (@Equal protocol _ _ ST).
+
+  Definition pasn := ILPreFrm (@rel PM (@Equal protocol _ _ ST)) asn.
   
   Instance ILogicOpsPAsn    : ILogicOps pasn    := _.
-  Instance ILogicPAsn       : ILogic pasn       := _.
-  Instance BILOperatorsPAsn : BILOperators pasn := _.
-  Instance BILogicPAsn      : BILogic pasn      := _.
-  Instance IBILogicPAsn     : IBILogic pasn     := _.
-
-  Instance EmbedPAsnPropOp  : EmbedOp Prop pasn := _.
-  Instance EmbedPAsnProp    : Embed Prop pasn   := _.
+  Instance ILogicPAsn       : ILogic pasn       := _.  
+  Instance BILOperatorsPAsn : BILOperators pasn := @SABIOps2 PM Equal _ _ asn _ _ _.
   
-  Instance EmbedPAsnSpecOp  : EmbedOp spec pasn := _.
-  Instance EmbedPAsnSpec    : Embed spec pasn   := _.
+  Instance BILogicPAsn      : BILogic pasn := @SABILogic2 PM Equal _ _ asn _ _ _ _ _.
+Print EmbedAsnProp.
+  Instance EmbedPAsnPropOp  : EmbedOp Prop pasn := @EmbedILPreDropOp PM Equal Prop asn _ _ _.
+  Instance EmbedPAsnProp    : Embed Prop pasn   := @EmbedILPreDrop PM Equal _ Prop _ asn _ _ _ _.
   
-  Instance EmbedPAsnAsnOp   : EmbedOp asn pasn  := _.
-  Instance EmbedPAsnAsn     : Embed asn pasn    := _.
+  Instance EmbedPAsnSpecOp  : EmbedOp spec pasn := @EmbedILPreDropOp PM Equal spec asn _ _ _.
+  Instance EmbedPAsnSpec    : Embed spec pasn   := @EmbedILPreDrop PM Equal _ spec _ asn _ _ _ _.
+  
+  Instance EmbedPAsnAsnOp   : EmbedOp asn pasn  := @EmbedILPreDropOp PM Equal asn asn _ _ _.
+  Instance EmbedPAsnAsn     : Embed asn pasn    := @EmbedILPreDrop PM Equal _ asn _ asn _ _ _ _.
   
   Definition psasn := @open var _ pasn.
 
@@ -76,7 +80,7 @@ Definition PM := Map [protocol, ST].
   Instance ILogicPSasn       : ILogic psasn       := _.
   Instance BILOperatorsPSasn : BILOperators psasn := _.
   Instance BILogicPSasn      : BILogic psasn      := _.
-  Instance IBILogicPSasn     : IBILogic psasn     := _.
+  Instance IBILogicPSasn     : BILogic psasn     := _.
 
   Instance EmbedPSasnPropOp : EmbedOp Prop psasn := _.
   Instance EmbedPSasnProp   : Embed Prop psasn   := _.
@@ -93,20 +97,44 @@ Definition PM := Map [protocol, ST].
   Instance EmbedPSasnSasnOp : EmbedOp sasn psasn := _. 
   Instance EmbedPSasnSasn   : Embed sasn psasn := _.
   
+Require Import Heap.  
+
+Definition mk_pasn (f: PM -> Prog_wf -> nat -> heap -> Prop)
+  (HProt: forall Pr Pr' P k h, Pr === Pr' -> f Pr P k h -> f Pr' P k h)
+  (Hnat: forall Pr P k h, f Pr P (S k) h -> f Pr P k h)
+  (HProg: forall Pr P P' k h, Prog_wf_sub P P' -> f Pr P k h -> f Pr P' k h)
+  (Hheap: forall Pr P k h h', subheap h h' -> f Pr P k h -> f Pr P k h') : pasn.
+  refine (mkILPreFrm (fun Pr => mk_asn (f Pr) (Hnat Pr) (HProg Pr) (Hheap Pr)) _).
+Proof.
+  intros Pr Pr' HPr.
+  simpl; intros; eapply HProt; eassumption.
+Defined.
+
   Program Definition has_ST (v : var) (T : ST) : psasn :=
-    fun s STs => mk_asn (fun P k h =>
+    fun s => mk_pasn (fun STs P k h =>
       MapsTo (val_to_stptr (s v)) T STs
-    ) _ _ _.
+    ) _ _ _ _.
+  Next Obligation.
+	intros.
+	rewrite <- H.
+	assumption.
+  Defined.
 
   Program Definition has_subst_ST (x z y : var) (T : ST) : psasn :=
-    fun s STs => mk_asn (fun P k h =>
+    fun s => mk_pasn (fun STs P k h =>
       MapsTo (val_to_stptr (s x)) (subst_ST z (s y) T) STs
-    ) _ _ _.
+    ) _ _ _ _.
+  Next Obligation.
+    rewrite <- H; assumption.
+  Defined.
 
   Program Definition all_STs (T : ST) : psasn :=
-    fun s STs => mk_asn (fun P k h =>
+    fun s => mk_pasn (fun STs P k h =>
       forall c, In c STs -> MapsTo c T STs
-    ) _ _ _.
+    ) _ _ _ _.
+  Next Obligation.
+	rewrite <- H; apply H0; rewrite H. assumption.
+  Qed.
   
   (*
   Import Marshall.
