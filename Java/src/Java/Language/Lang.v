@@ -1,6 +1,7 @@
 Require Import DecidableType DecidableTypeEx.
 Require Import ZArith String.
 Require Import Stack Open Util OpenILogic.
+Require Import Bool.
 
 Module string_DT' <: MiniDecidableType.
   Definition t := string.
@@ -19,12 +20,28 @@ Definition var := string.
 Definition ptr := (nat * class)%type.
 Definition arrptr := nat.
 
+Definition beq_string s1 s2 := if string_dec s1 s2 then true else false.
+
+Definition beq_ptr (p1 p2 : ptr) :=
+	match p1, p2 with
+		| (x, c), (y, d) => beq_nat x y && beq_string c d
+	end.
+
 Inductive sval : Set :=
 | vint :> Z -> sval
 | vbool :> bool -> sval
 | vptr :> ptr -> sval
 | varr :> arrptr -> sval
 | nothing : sval.
+
+Definition beq_val v1 v2 :=
+	match v1, v2 with
+	  | vint x, vint y => Z.eqb x y
+	  | vbool a, vbool b => eqb a b
+	  | vptr p, vptr q => beq_ptr p q
+	  | varr p, varr q => beq_nat p q
+	  | _, _ => false
+	end.
 
 Definition pnull := (0, EmptyString) : ptr.
 Definition null := vptr pnull.
@@ -48,6 +65,29 @@ Inductive dexpr : Type :=
 | E_not   : dexpr -> dexpr
 | E_lt    : dexpr -> dexpr -> dexpr
 | E_eq    : dexpr -> dexpr -> dexpr.
+
+Fixpoint beq_dexpr e1 e2 :=
+	match e1, e2 with
+	  | E_val v1, E_val v2 => beq_val v1 v2
+	  | E_var x, E_var y => beq_string x y
+	  | E_plus e1 e2, E_plus e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+	  | E_minus e1 e2, E_minus e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+	  | E_times e1 e2, E_times e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+	  | E_and e1 e2, E_and e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+	  | E_or e1 e2, E_or e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+	  | E_not e1, E_not e2 => beq_dexpr e1 e2
+	  | E_lt e1 e2, E_lt e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+	  | E_eq e1 e2, E_eq e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+	  | _, _ => false
+	end.
+	
+Fixpoint beq_dexprs es1 es2 :=
+	match es1, es2 with
+		| nil, nil => true
+		| e1::es1, e2::es2 => beq_dexpr e1 e2 && beq_dexprs es1 es2
+		| _, _ => false
+	end.
+	
 
 Definition val_to_int (v : val) : Z :=
   match v with
@@ -119,6 +159,25 @@ Inductive cmd :=
 | cscall    : var -> class -> method -> list dexpr -> cmd
 | cassert   : dexpr -> cmd
 .
+
+Fixpoint beq_cmd c1 c2 :=
+	match c1, c2 with 
+	    | cassign v1 e1, cassign v2 e2 => beq_string v1 v2 && beq_dexpr e1 e2
+		| cskip, cskip => true
+		| cseq c1 c2, cseq c3 c4 => beq_cmd c1 c3 && beq_cmd c2 c4
+		| cif e1 c1 c2, cif e2 c3 c4 => beq_dexpr e1 e2 && beq_cmd c1 c3 && beq_cmd c2 c4
+		| cwhile e1 c1, cwhile e2 c2 => beq_dexpr e1 e2 && beq_cmd c1 c2
+		| cwrite v1 f1 e1, cwrite v2 f2 e2 => beq_string v1 v2 && beq_string f1 f2 && beq_dexpr e1 e2
+		| cread v1 v2 f1, cread v3 v4 f2 => beq_string v1 v3 && beq_string v2 v4 && beq_string f1 f2
+		| carrread v1 v2 es1, carrread v3 v4 es2 => beq_string v1 v3 && beq_string v2 v4 && beq_dexprs es1 es2
+		| carrwrite v1 es1 e1, carrwrite v2 es2 e2 => beq_string v1 v2 && beq_dexprs es1 es2 && beq_dexpr e1 e2
+		| calloc v1 c1, calloc v2 c2 => beq_string v1 v2 && beq_string c1 c2
+		| cdcall v1 v2 m1 es1, cdcall v3 v4 m2 es2 => beq_string v1 v3 && beq_string v2 v3 && beq_string m1 m2 && beq_dexprs es1 es2 
+		| cscall v1 c1 m1 es1, cdcall v2 c2 m2 es2 => beq_string v1 v2 && beq_string c1 c2 && beq_string m1 m2 && beq_dexprs es1 es2 
+		| cassert e1, cassert e2 => beq_dexpr e1 e2
+		| _, _ => false
+    end.
+
 
 (* The set of stack variables potentially modified by a command *)
 Fixpoint modifies (c: cmd) :=
