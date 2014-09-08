@@ -4,6 +4,7 @@ Require Import SpecLogic Pure OpenILogic AssertionLogic Program Open Stack Subst
 Require Import OperationalSemantics Lang IBILogic.
 Require Import MapInterface MapFacts SemCmd SemCmdRules.
 Require Import String List.
+Require Import Model.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -113,6 +114,11 @@ Local Transparent ILFun_Ops.
 Local Transparent EmbedILFunDropOp.
 Local Transparent EmbedILFunOp.
 Local Transparent SepAlgOps_prod.
+
+Local Existing Instance ILPre_Ops.
+Local Existing Instance ILPre_ILogic.
+Local Existing Instance ILFun_Ops.
+Local Existing Instance ILFun_ILogic.
 
   Lemma rule_read_fwd (x y : var) (f : field) (e : expr) (P : sasn)
     (HPT : P |-- `pointsto y/V `f e) :

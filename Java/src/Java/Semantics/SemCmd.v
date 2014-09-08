@@ -224,7 +224,6 @@ End Commands.
     + rewrite <- H, <- H0; reflexivity.
   Qed.
 
-
 Implicit Arguments Build_semCmd [].
 
 Notation "{{ p }} c {{ q }}" := (sem_triple p q c) (at level 89,

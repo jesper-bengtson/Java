@@ -7,12 +7,7 @@ Local Existing Instance ILLaterPreOps.
 Local Existing Instance ILPre_Ops.
 Local Existing Instance ILPre_ILogic.
 
-Definition spec1 := ILPreFrm ge Prop.
-Definition spec := ILPreFrm Prog_wf_sub spec1.
-
-Global Instance ILLOperatorsSpec1 : ILLOperators spec1 := _.
-Global Instance ILogicOpsSpec1 : ILogicOps spec1 := _. 
-Global Instance ILSpec1 : ILLater spec1 := _.
+Definition spec := ILPreFrm Prog_wf_sub (ILPreFrm ge Prop).
 
 Global Instance ILLOperatorsSpec : ILLOperators spec := _.
 Global Instance ILogicOpsSpec : ILogicOps spec := _. 

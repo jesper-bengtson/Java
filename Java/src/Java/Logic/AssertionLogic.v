@@ -42,12 +42,14 @@ Definition heap_add_ptr (h : heap) (p : ptr) (f : field) (v : val) : heap :=
 Definition heap_add_arr (h : heap) (n m : nat) (v : val) : heap :=
   (fst h, add (n, m) v (snd h)).
 
+
 Instance RelHeapPtr : Rel heap_ptr := _.
 Instance PreorderHeapPtr : PreOrder (@rel heap_ptr RelHeapPtr) := _.
 Instance HeapPtrSepAlgOps : SepAlgOps heap_ptr := _.
 Instance SepAlgHeapPtr : SepAlg heap_ptr := _.
 Instance UUSepAlgHeapPtr : UUSepAlg heap_ptr := _.
 
+(*
 Instance SepAlgArrPtr : SepAlg heap_arr := _.
 
 
@@ -56,44 +58,16 @@ Instance PreorderHeap : PreOrder (@rel heap RelHeap) := _.
 Instance HeapSepAlgOps : SepAlgOps heap := _.
 Instance SepAlgHeap : SepAlg heap := _.
 Instance UUSepAlgHeap : UUSepAlg heap := _.
-
-Definition asn1 := ILPreFrm (@rel heap subheap) Prop.
-Instance ILogicOpsAsn1 : ILogicOps asn1 := _.
-Instance ILogicAsn1 : ILogic asn1 := _.
-
-
-Definition asn2 := ILPreFrm ge asn1.
-Instance ILogicOpsAsn2 : ILogicOps asn2 := _.
-Instance ILogicAsn2 : ILogic asn2 := _.
-
-Definition asn := ILPreFrm Prog_wf_sub asn2.
-Instance ILogicOpsAsn : ILogicOps asn := _.
-Instance ILogicAsn : ILogic asn := _.
-
-
-Instance BILOperatorsAsn1 : BILOperators asn1. Admitted.
-Instance BILOperatorsAsn2 : BILOperators asn2. Admitted.
-Instance BILOperatorsAsn : BILOperators asn. Admitted.
-(*Instance BILOperatorsAsn1 : BILOperators asn1 := _. This will work in Coq 8.5
-Instance BILOperatorsAsn2 : BILOperators asn2 := _.
-Instance BILOperatorsAsn : BILOperators asn := _.*)
-
-Instance BILogicAsn1 : BILogic asn1. Admitted.
-Instance BILogicAsn2 : BILogic asn2. Admitted. 
-Instance BILogicAsn  : BILogic asn. Admitted.
-
-Instance IBILogicAsn1 : IBILogic asn1. Admitted.
-Instance IBILogicAsn2 : IBILogic asn2. Admitted.
-Instance IBILogicAsn  : IBILogic asn. Admitted.
- (*
-Instance BILogicAsn1 : BILogic asn1 := _.
-Instance BILogicAsn2 : BILogic asn2 := _.
-Instance BILogicAsn  : BILogic asn := _.
-
-Instance IBILogicAsn1 : IBILogic asn1 := _.
-Instance IBILogicAsn2 : IBILogic asn2 := _.
-Instance IBILogicAsn  : IBILogic asn := _.
 *)
+
+Instance HeapSepAlgOps : SepAlgOps heap := _.
+Instance UUSepAlgHeap : UUSepAlg heap := _.
+
+Definition asn := ILPreFrm Prog_wf_sub (ILPreFrm ge (ILPreFrm (@rel heap subheap) Prop)).
+Instance ILogicOpsAsn : ILogicOps asn := _.
+Instance BILogicOpsAsn : BILOperators asn := _.
+Instance BILogicAsn : IBILogic asn := _.
+
 Local Existing Instance EmbedILPreDropOp.
 Local Existing Instance EmbedILPreDrop.
 Local Existing Instance EmbedOpPropProp.
@@ -104,9 +78,8 @@ Instance EmbedAsnProp : Embed Prop asn := _.
 
 Definition sasn := @open var _ asn.
 
-Instance ILOpsSAsn : ILogicOps sasn := _.
-Instance ILogicSAsn : ILogic sasn := _.
-Instance BILOperatorsSAsn : BILOperators sasn := _.
+Instance ILogicOpsSAsn : ILogicOps sasn := _.
+Instance BILogicOpsSAsn : BILOperators sasn := _.
 Instance BILogicSAsn : IBILogic sasn := _.
 
 Local Existing Instance EmbedILFunDropOp.
@@ -125,10 +98,6 @@ Instance EmbedSasnPure : Embed vlogic sasn := _.
 
 Require Import SpecLogic.
 
-Instance EmbedAsn1PropOp : EmbedOp Prop asn1 := _.
-Instance EmbedAsn1Prop   : Embed Prop asn1 := _.
-Instance EmbedAsn2SpecOp : EmbedOp spec1 asn2 := _.
-Instance EmbedAsn2Spec   : Embed spec1 asn2 := _.
 Instance EmbedAsnSpecOp  : EmbedOp spec asn := _.
 Instance EmbedAsnSpec    : Embed spec asn := _.
 Instance EmbedSAsnSpecOp : EmbedOp spec sasn := _.
@@ -222,8 +191,6 @@ Fixpoint pointsto_arr_aux (x : val) (n : nat) (vs : list val) : asn :=
     | v::vs => pointsto_arr_element x (vint (Z_of_nat n)) v ** 
                                     pointsto_arr_aux x (S n) vs
   end.
-
-Opaque ILogicOpsAsn.
 
 Lemma firstn_nil {A : Type} (n : nat) : firstn n (@nil A) = nil.
 Proof.

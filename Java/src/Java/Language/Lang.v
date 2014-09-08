@@ -42,6 +42,8 @@ Definition beq_val v1 v2 :=
 	  | varr p, varr q => beq_nat p q
 	  | _, _ => false
 	end.
+	
+Lemma beq_val_sound v1 v2 (H: beq_val v1 v2 = true) : v1 = v2. admit. Qed.
 
 Definition pnull := (0, EmptyString) : ptr.
 Definition null := vptr pnull.
@@ -135,7 +137,7 @@ Fixpoint eval_aux (s : stack) (e : dexpr) : val :=
 
 Program Definition eval e : expr := fun s => eval_aux s e.
 
-Definition vlogic_eval (e : dexpr) : vlogic := `eq (`val_to_bool (eval e)) (`true).
+Definition vlogic_eval (e : dexpr) : vlogic := `eq ((eval e)) (`true).
 
 Definition eval_exprs (s : stack) (es : list dexpr) :=
   map (fun e => eval_aux s e) es.
@@ -159,9 +161,9 @@ Inductive cmd :=
 | cscall    : var -> class -> method -> list dexpr -> cmd
 | cassert   : dexpr -> cmd
 .
-
-Fixpoint beq_cmd c1 c2 :=
-	match c1, c2 with 
+(* Possible bug in Coq when c1 and c2 matches in the cases *)
+Fixpoint beq_cmd cmd1 cmd2 :=
+	match cmd1, cmd2 with 
 	    | cassign v1 e1, cassign v2 e2 => beq_string v1 v2 && beq_dexpr e1 e2
 		| cskip, cskip => true
 		| cseq c1 c2, cseq c3 c4 => beq_cmd c1 c3 && beq_cmd c2 c4
@@ -177,8 +179,15 @@ Fixpoint beq_cmd c1 c2 :=
 		| cassert e1, cassert e2 => beq_dexpr e1 e2
 		| _, _ => false
     end.
-
-
+(*
+Lemma beq_cmd_sound c1 c2 (H: beq_cmd c1 c2 = true) : c1 = c2.
+Proof.
+  generalize dependent c2. 
+  induction c1; intros; destruct c2; simpl in *; try congruence.
+	admit.  
+	rewrite andb_true_iff in H. destruct H.
+	SearchAbout andb.
+*)
 (* The set of stack variables potentially modified by a command *)
 Fixpoint modifies (c: cmd) :=
   match c with

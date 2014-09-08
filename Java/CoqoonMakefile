@@ -14,7 +14,6 @@ bin/%.vo: src/%.v
 override COQFLAGS += -R src ""
 override COQFLAGS += -R bin ""
 override COQFLAGS += $(DK_ITU_SDG_KOPITIAM_LP_COQ_8_4_FLAGS)
-override COQFLAGS += -R $(CONTAINERS_PATH) Containers
 override COQFLAGS += $(CHARGE_FLAGS)
 OBJECTS = \
 	bin/Java/Examples/ListClass.vo \
