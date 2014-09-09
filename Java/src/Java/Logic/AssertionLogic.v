@@ -65,8 +65,8 @@ Instance UUSepAlgHeap : UUSepAlg heap := _.
 
 Definition asn := ILPreFrm Prog_wf_sub (ILPreFrm ge (ILPreFrm (@rel heap subheap) Prop)).
 Instance ILogicOpsAsn : ILogicOps asn := _.
-Instance BILogicOpsAsn : BILOperators asn := _.
-Instance BILogicAsn : IBILogic asn := _.
+Instance BILogicOpsAsn : BILOperators asn. Admitted.
+Instance BILogicAsn : IBILogic asn. Admitted.
 
 Local Existing Instance EmbedILPreDropOp.
 Local Existing Instance EmbedILPreDrop.
