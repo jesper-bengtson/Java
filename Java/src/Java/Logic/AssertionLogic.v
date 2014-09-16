@@ -64,6 +64,7 @@ Instance HeapSepAlgOps : SepAlgOps heap := _.
 Instance UUSepAlgHeap : UUSepAlg heap := _.
 
 Definition asn := ILPreFrm Prog_wf_sub (ILPreFrm ge (ILPreFrm (@rel heap subheap) Prop)).
+
 Instance ILogicOpsAsn : ILogicOps asn := _.
 Instance BILogicOpsAsn : BILOperators asn. Admitted.
 Instance BILogicAsn : IBILogic asn. Admitted.

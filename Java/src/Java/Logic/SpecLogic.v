@@ -1,17 +1,21 @@
 Require Import Later Program ILogic ILEmbed ILInsts.
 
+(*
 Local Existing Instance ILLaterNat.
 Local Existing Instance ILLaterNatOps.
 Local Existing Instance ILLaterPre.
 Local Existing Instance ILLaterPreOps.
 Local Existing Instance ILPre_Ops.
 Local Existing Instance ILPre_ILogic.
+*)
 
 Definition spec := ILPreFrm Prog_wf_sub (ILPreFrm ge Prop).
 
+(*
 Global Instance ILLOperatorsSpec : ILLOperators spec := _.
 Global Instance ILogicOpsSpec : ILogicOps spec := _. 
 Global Instance ILSpec : ILLater spec := _.
+*)
 
 Local Transparent ILPre_Ops.
 Require Import Compare_dec.

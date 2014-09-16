@@ -12,13 +12,13 @@ Unset Strict Implicit.
 Lemma rule_seq_ax c1 c2 (P Q R : sasn) :
   ({[P]} c1 {[Q]} //\\ {[Q]} c2 {[R]}) |-- {[P]} cseq c1 c2 {[R]}.
 Proof.
-  admit.
   (*
   unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
   inversion Hsem; subst.
   lforallL sc1 sc2. lpropimplL; [apply HL | apply HR|].
-  apply @seq_rule.
-*)
+  apply @seq_rule. (* Universe inconsistency, is fixed in trunk *)
+  *)
+  admit.
 Qed.
 
 
@@ -99,7 +99,7 @@ Proof.
 Qed.
 
 Require Import SepAlgInsts.
-	
+
 Local Transparent ILPre_Ops.
 Local Transparent EmbedSasnPureOp.
 Local Transparent EmbedILFunOp.
@@ -125,7 +125,7 @@ Local Existing Instance ILFun_ILogic.
    @ltrue spec _ |-- {[ P ]} cread x y f {[ Exists v : val, @lembedand vlogic sasn _ _ (open_eq (x /V) (e [{`v//x}])) (P[{`v//x}])]}.
   Proof.
     unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
-    inversion Hsem; subst.
+    inversion Hsem; subst; clear Hsem.
     unfold sem_triple; simpl; split; intros.
     + intro HFail; inversion HFail; subst. apply Snotin; clear Snotin HFail.
       specialize (HPT _ _ _ _ H3); unfold pointsto in HPT;
