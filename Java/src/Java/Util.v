@@ -1,29 +1,6 @@
 Require Import DecidableType DecidableTypeEx.
 Require Import FSetWeakList FSetFacts FSetProperties.
 Require Import FMapWeakList FMapFacts.
-Require Import MapInterface MapFacts.
-Require Import ILogic BILogic ILInsts BILInsts. 
-
-Ltac solve_atom :=
-	match goal with 
-		| |- ?P => first [has_evar P | reflexivity | omega | assumption | idtac]
-	end.
-    
-Ltac solve_model_aux := 
-	match goal with
-		| |- ?P ?a |-- ?Q ?b =>
-			 first [apply ILPreFrm_fold_entails; [solve_atom|solve_model_aux] | 
-			        apply ILFun_fold_entails; [solve_atom|solve_model_aux]]
-	    | |- ?P |-- ?Q => try reflexivity
-	end.
-
-Ltac solve_model x :=
-	let H := fresh "H" in
-	match goal with 
-		| |- ?Q => let P := type of x in
-						assert (P |-- Q) as H; [solve_model_aux|apply H; apply x]
-						
-    end.
 
 Definition search_cast {P': Prop} (P: Prop) (imp: P -> P') (search: option P) : option P' :=
   match search with
@@ -296,21 +273,3 @@ Proof.
 Qed.
 
 End WSetMore_fun.
-
-Lemma map_remove_add_eq {A B: Type} `{H: FMap A} {Spec: FMapSpecs H} (k : A) (v: B) (m: Map[A, B]) : remove k (add k v m) === remove k m.
-Proof.
-  unfold "===", Equal.
-  intro k'.
-  destruct (eq_dec k' k).
-  repeat (rewrite remove_eq_o; [| auto]); reflexivity.
-  repeat (rewrite remove_neq_o; [| symmetry; apply H1]).
-  rewrite add_neq_o; [| symmetry; apply H1].
-  reflexivity.
-Qed.
-
-Lemma map_mapsto_add_eq {A B: Type} `{H: FMap A} {Spec: FMapSpecs H} (k : A) (v v': B) (m: Map[A, B]) (Hmt: MapsTo k v (add k v' m)) : v = v'.
-Proof.
-  rewrite find_mapsto_iff, add_eq_o in Hmt; [| auto].
-  inversion Hmt.
-  reflexivity.  
-Qed.

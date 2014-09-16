@@ -30,17 +30,11 @@ Local Existing Instance SepAlgOps_prod.
 Local Existing Instance SepAlg_prod.
 Local Existing Instance UUSepAlg_prod.
 
-Definition asn1 := ILPreFrm (@rel heap subheap) Prop.
-Instance ILogicOpsAsn1 : ILogicOps asn1 := _.
-Instance ILogicAsn1 : ILogic asn1 := _.
 
-Definition asn2 := ILPreFrm ge asn1.
-Instance ILogicOpsAsn2 : ILogicOps asn2 := _.
-Instance ILogicAsn2 : ILogic asn2 := _.
-
-Definition asn := ILPreFrm Prog_wf_sub asn2.
+Definition asn := ILPreFrm Prog_wf_sub (ILPreFrm ge (ILPreFrm (@rel heap subheap) Prop)).
 Instance ILogicOpsAsn : ILogicOps asn := _.
-Instance ILogicAsn : ILogic asn := _.
+Instance BILogicOpsAsn : BILOperators asn. Admitted.
+Instance BILogicAsn : IBILogic asn. Admitted.
 
 Local Existing Instance EmbedILPreDropOp.
 Local Existing Instance EmbedILPreDrop.
@@ -50,18 +44,6 @@ Local Existing Instance EmbedPropProp.
 Instance EmbedAsnPropOp : EmbedOp Prop asn := _.
 Instance EmbedAsnProp : Embed Prop asn := _.
  
-Instance BILOperatorsAsn1 : BILOperators asn1 := _.
-Instance BILOperatorsAsn2 : BILOperators asn2 := _.
-Instance BILOperatorsAsn  : BILOperators asn := _.
-
-Instance BILogicAsn1 : BILogic asn1 := _.
-Instance BILogicAsn2 : BILogic asn2 := _.
-Instance BILogicAsn  : BILogic asn := _.
-
-Instance IBILogicAsn1 : IBILogic asn1 := _.
-Instance IBILogicAsn2 : IBILogic asn2 := _.
-Instance IBILogicAsn  : IBILogic asn := _.
-
 Definition sasn := @open var _ asn.
  
 Instance ILOpsSAsn : ILogicOps sasn := _.
@@ -85,10 +67,6 @@ Instance EmbedSasnPure : Embed vlogic sasn := _.
  
 Require Import SpecLogic.
 
-Instance EmbedAsn1PropOp : EmbedOp Prop asn1 := _.
-Instance EmbedAsn1Prop   : Embed Prop asn1 := _.
-Instance EmbedAsn2SpecOp : EmbedOp spec1 asn2 := _.
-Instance EmbedAsn2Spec   : Embed spec1 asn2 := _.
 Instance EmbedAsnSpecOp  : EmbedOp spec asn := _.
 Instance EmbedAsnSpec    : Embed spec asn := _.
 Instance EmbedSAsnSpecOp : EmbedOp spec sasn := _.
@@ -109,18 +87,14 @@ Local Existing Instance PureBILFunOp.
 (* Set Printing All. *)
 Print pureop_bi_sepalg.
 
-Local Instance PureOpAsn1 : @PureOp asn1 := _.
-Local Instance PureAsn1 : Pure PureOpAsn1 := _.
-Local Instance PureOpAsn2 : @PureOp asn2 := _.
-Local Instance PureAsn2 : Pure PureOpAsn2 := _.
-Local Instance PureOpAsn : @PureOp asn := _.
-Local Instance PureAsn : Pure PureOpAsn := _.
+Local Instance PureOpAsn : @PureOp asn. Admitted.
+Local Instance PureAsn : Pure PureOpAsn. Admitted.
 Local Instance PureOpSasn : @PureOp sasn := _.
 Local Instance PureSAsn : Pure PureOpSasn := _.
 
-Instance pure_prop (p : Prop) : pure (@embed Prop sasn _ p) := _.
-Instance pure_vlogic (p : vlogic) : pure (@embed vlogic sasn _ p) := _.
-Instance pure_spec_asn (p : spec) : pure (@embed spec asn _ p) := _.
+Instance pure_prop (p : Prop) : pure (@embed Prop sasn _ p). Admitted.
+Instance pure_vlogic (p : vlogic) : pure (@embed vlogic sasn _ p). Admitted.
+Instance pure_spec_asn (p : spec) : pure (@embed spec asn _ p). Admitted.
 Instance pure_spec (p : spec) : pure (@embed spec sasn _ p) := _.
 
 Local Transparent ILPre_Ops.

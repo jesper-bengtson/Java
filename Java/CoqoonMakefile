@@ -15,7 +15,6 @@ override COQFLAGS += -R src ""
 override COQFLAGS += -R bin ""
 override COQFLAGS += $(DK_ITU_SDG_KOPITIAM_LP_COQ_8_4_FLAGS)
 override COQFLAGS += $(CHARGE_FLAGS)
-override COQFLAGS += -R $(EXTLIB_PATH) ExtLib
 OBJECTS = \
 	bin/Java/Language/Lang.vo \
 	bin/Java/Language/Program.vo \

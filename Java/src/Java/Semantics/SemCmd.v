@@ -176,7 +176,7 @@ Section Commands.
 
   Inductive skip_sem : semCmdType :=
   | s_ok : forall Pr s h cl, skip_sem Pr s h cl (t_tau s h cl t_end).
-  Program Definition skip_cmd := @Build_semCmd skip_sem _ _.
+  Program Definition skip_cmd := @Build_semCmd skip_sem _.
   Next Obligation.
     intros H. inversion H.
   Qed.

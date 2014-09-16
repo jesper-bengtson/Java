@@ -143,10 +143,15 @@ Proof.
   admit (* fangel, todo *).
 Admitted.
 
+Require Import Charge.Tactics.Model.
+
+
+
 Program Definition isMarshalable (P : asn) (v : val) : asn := mk_asn (fun Pr n h =>
   exists h', Marshal Pr v h h' /\ P Pr n h') _ _ _. 
 Next Obligation.
-  exists H. split; [assumption |]. solve_model H1.
+  exists H. split; [assumption |]. 
+  solve_model H1.
 Qed.
 Next Obligation.
   exists H0. split.
