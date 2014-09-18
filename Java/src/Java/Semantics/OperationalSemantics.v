@@ -13,34 +13,34 @@ Section Commands.
   Inductive assign_sem (x : var) (e : dexpr) : semCmdType :=
   | assign_ok : forall P s h cl v
                        (He: eval e s = v),
-      assign_sem x e P s h cl (t_tau (stack_add x v s) h cl t_end).
-  Program Definition assign_cmd x e := Build_semCmd (assign_sem x e) _ _.
-  Next Obligation.
+      assign_sem x e P s h cl (t_end (stack_add x v s) h cl).
+  Program Definition assign_cmd x e := Build_semCmd (assign_sem x e) _.
+(*  Next Obligation.
     intros H; inversion H.
-  Qed.
+  Qed.*)
   Next Obligation with eauto using assign_sem, frame_trace.
     unfold frame_property; intros.
-    inversion HSem; subst; clear HSem. exists (t_tau (stack_add x (eval e s) s) h cl t_end)...
+    inversion HSem; subst; clear HSem. exists (t_end (stack_add x (eval e s) s) h cl)...
   Qed.
 
   Inductive read_sem (x y : var) (f : field) : semCmdType :=
   | read_ok : forall ref v P (s : stack) (h : heap) cl
       (Rref  : s y = vptr ref)
       (Rmaps : MapsTo (ref,f) v h),
-      read_sem x y f P s h cl (t_tau (stack_add x v s) h cl t_end)
+      read_sem x y f P s h cl (t_end (stack_add x v s) h cl)
   | read_fail : forall ref P s (h : heap) cl
       (Sref   : s y = vptr ref)
       (Snotin : ~ In (ref,f) h),
       read_sem x y f P s h cl t_fail.
-  Program Definition read_cmd x y f := Build_semCmd (read_sem x y f) _ _.
-  Next Obligation.
+  Program Definition read_cmd x y f := Build_semCmd (read_sem x y f) _.
+(*  Next Obligation.
     intros H; inversion H.
-  Qed.
+  Qed.*)
   Next Obligation with eauto using read_sem, frame_trace.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem.
     destruct (sa_mul_mapstoRT HFrame Rmaps) as [[H1 H2] | [H1 H2]].
-    exists (t_tau (stack_add x v s) h cl t_end)...
+    exists (t_end (stack_add x v s) h cl)...
     exists t_fail...
     exists t_fail...
     split; [constructor|].
@@ -242,28 +242,26 @@ Require Import Compare_dec.
       (Sh0      : sa_mul h
         (SS.fold (fun f h' => add ((n, C), f) (pnull : val) h') fields heap_unit) hp')
       (Ss0      : s' = stack_add x (vptr (n, C)) s),
-      alloc_sem x C P s h cl (t_tau s' hp' cl t_end).
-  Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _ _.
-  Next Obligation.
+      alloc_sem x C P s h cl (t_end s' hp' cl).
+  Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _.
+(*  Next Obligation.
     intros H; inversion H.
-  Qed.
+  Qed.*)
   Next Obligation.
     unfold frame_property; intros.
     inversion HSem; subst; clear HSem.
-    exists (t_tau (stack_add x (n, C0 s)
     destruct (sa_mulA HFrame Sh0) as [h5 [H1 H2]].
     apply sa_mulC in H2; destruct (sa_mulA H1 H2) as [h6 [H3 H5]].
-    exists h6.
-    split.
-    apply sa_mulC; apply H5.
-    eapply alloc_ok; [eassumption | | eassumption | apply sa_mulC; assumption | reflexivity].
-    intros f H6; apply (Sfresh_h f).
-    apply sa_mulC in H2.
-    destruct (sa_mul_inL H2 H6) as [H8 H9].    
-    destruct (sa_mul_inR Sh0 H9) as [[H10 H11] | [H10 H11]]; [assumption|].
-    apply sa_mulC in H1; destruct (sa_mul_inL H1 H10); intuition.
+	exists (t_end (stack_add x (vptr (n, C)) s) h6 cl).
+	split.
+	- constructor. apply sa_mulC. apply H5.
+	- eapply alloc_ok; [eassumption | | eassumption | apply sa_mulC; assumption | reflexivity].
+      intros f H6; apply (Sfresh_h f).
+      apply sa_mulC in H2.
+      destruct (sa_mul_inL H2 H6) as [H8 H9].    
+      destruct (sa_mul_inR Sh0 H9) as [[H10 H11] | [H10 H11]]; [assumption|].
+      apply sa_mulC in H1; destruct (sa_mul_inL H1 H10); intuition.
   Qed.
-*)
 
   Inductive write_sem (x:var) (f:field) (e:dexpr) : semCmdType := 
   | write_ok : forall P (s: stack) (h : heap) (hp' : heap) ref v cl
@@ -271,19 +269,21 @@ Require Import Compare_dec.
       (Sin:  In (ref,f) h )
       (Heval : eval e s = v)
       (Sadd: hp' = add (ref,f) v h ),
-      write_sem x f e P s h cl (t_tau s hp' cl t_end)
+      write_sem x f e P s h cl (t_end s hp' cl)
   | write_fail : forall P (s: stack) h ref cl
       (Sref:   s x = vptr ref)
       (Sin : ~ In (ref, f) h),
       write_sem x f e P s h cl t_fail.
   Program Definition write_cmd x f e := Build_semCmd (write_sem x f e) _.
-  Next Obligation.
+(*  Next Obligation.
     intros H; inversion H.
-  Qed.
-(*
+  Qed.*)
   Next Obligation.
     unfold frame_property; intros.
-    inversion HSem. subst; clear HSem.
+    inversion HSem; subst.
+    inversion HSem; subst; clear HSem.
+    - exists (t_tau s (add (ref, f) (eval e s) h) cl t_end); split.
+      * repeat constructor. apply sa_mul_add; [assumption|].
     assert (~ In (ref, f) frame). {
 	    intros H. 
 	    eapply HSafe; [reflexivity | apply trace_appendEndR |].

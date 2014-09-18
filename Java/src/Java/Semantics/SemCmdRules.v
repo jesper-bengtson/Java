@@ -2,7 +2,6 @@ Require Import SemCmd ILogic BILogic ILInsts BILInsts.
 Require Import OpenILogic Later ProtocolLogic AssertionLogic SpecLogic ILEmbed Open.
 Require Import Stack Subst Lang Util Lists.List.
 Require Import FunctionalExtensionality ST Traces.
-Require Import ExtLib.Tactics.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -51,13 +50,9 @@ Section Rules.
 
 	Fixpoint trace_not_modifies (s : stack) (x : var) (tr : trace) :=
         match tr with
-          | t_end => False
+          | t_end s' _ _ => s x = s' x
           | t_fail => True
-          | t_tau s' _ _ tr => 
-          	match tr with 
-          	  | t_end => s x = s' x
-          	  | _ => trace_not_modifies s x tr
-            end
+          | t_tau _ _ _ tr => trace_not_modifies s x tr
           | t_send c v h tr => trace_not_modifies s x tr
           | t_recv c f => forall v h, trace_not_modifies s x (f v h)
           | t_start c tr tr' => trace_not_modifies s x tr'
@@ -78,16 +73,17 @@ Section Rules.
       intros.
       intros P' n HSem P'' m s big cl STs HP'P'' Hmn HPR tr Hc. 
       destruct HPR as [pr [prframe [HPRFrame [h [frame [HFrame [HP HR]]]]]]].
-      edestruct (@cmd_frame c)... destruct p as [H1 H2].
+      edestruct (@cmd_frame c)... destruct H as [H1 H2].
       specialize (HSem P'' m s h cl pr HP'P'' Hmn HP _ H2).
       specialize (HMod P'' s big cl tr Hc).
       clear -HSem HR H1 HPRFrame HFrame HMod.
-      generalize dependent m; generalize dependent STs. generalize dependent pr. induction H1; intros.
+      generalize dependent m; generalize dependent STs. generalize dependent pr. induction H1; intros; admit.
+      (*
       + inversion HSem.
       + inversion HSem.
       + simpl in HSem. destruct tr.
         - inversion H1; subst.
-          exists pr, prframe, HPRFrame, h0, frame, s1.
+          exists pr, prframe, HPRFrame, h0, frame, H.
           split; [apply HSem|]. simpl.
           exists s. unfold apply_subst.
           solve_model HR.
@@ -112,19 +108,19 @@ Section Rules.
       + unfold stptr, protocol in *.
         simpl in HSem.
         opt_destruct; [|destruct HSem].
-		destruct s1; destruct HSem. pose proof HPRFrame.
+		destruct s0; destruct HSem. pose proof HPRFrame.
         simpl in HPRFrame. specialize (HPRFrame x). opt_destruct.
-        destruct HPRFrame as [[H3 H4] | [H3 H4]].
-        rewrite Maps.MF.find_mapsto_iff in H3.
+        destruct HPRFrame as [[H4 H5] | [H4 H5]].
+        rewrite Maps.MF.find_mapsto_iff in H4.
         unfold stptr in *.
-        rewrite H3 in Heqo. inversion Heqo; subst.
+        rewrite H4 in Heqo. inversion Heqo; subst.
         simpl. unfold stptr. rewrite <- Heqo0. 
-        split. solve_model H. exists frame. assumption.
+        split. solve_model H0. exists frame. assumption.
         eapply IHframe_trace; try eassumption.
         Require Import Charge.SepAlg.SepAlgMap.
         apply sa_mul_add. assumption. assumption.
         solve_model HR.
-        rewrite Maps.MF.in_find_iff in H4. contradict H4. intros HNone.
+        rewrite Maps.MF.in_find_iff in H5. contradict H5. intros HNone.
         unfold stptr in *. rewrite HNone in Heqo. congruence.
         destruct HPRFrame as [H9 _]. contradict H9.
         rewrite Maps.MF.in_find_iff. intros HNone. unfold stptr in *. rewrite HNone in Heqo. 
@@ -134,15 +130,15 @@ Section Rules.
         opt_destruct; [|destruct HSem].
         destruct s0; try destruct HSem.
         assert (MapInterface.find c STs = Some (st_recv v s0 s1)) by admit.
-        simpl. unfold stptr, protocol in *. rewrite H0.
-        intros; eapply H; try eassumption; [intros; eapply HMod; eassumption| | eapply HSem; apply H1| solve_model HR].
+        simpl. unfold stptr, protocol in *. rewrite H1.
+        intros; eapply H0; try eassumption; [intros; eapply HMod; eassumption| | eapply HSem; apply H2 | solve_model HR].
 		apply sa_mul_add; try assumption.
 		specialize (HPRFrame c). 
 		opt_destruct.
-		destruct HPRFrame as [HPRFrame | [H2 H3]]; [tauto|].
-		contradict H3. rewrite Maps.MF.in_find_iff. intros HNone. rewrite HNone in Heqo. congruence.
+		destruct HPRFrame as [HPRFrame | [H3 H4]]; [tauto|].
+		contradict H4. rewrite Maps.MF.in_find_iff. intros HNone. rewrite HNone in Heqo. congruence.
 		tauto.
-      + admit.
+      + admit.*)
    Qed.
       
 (*    
@@ -168,7 +164,7 @@ Section Rules.
     Proof.
       intros n Pr HPP Pr' m s h cl pr _ Hmn HP tr HSem.
       inversion HSem; subst; simpl.
-      apply HP.
+      solve_model HP.
     Qed.
 
       Lemma trace_append_cmd_Comp Pr Pr' m n P Q tr tr' pr c
@@ -177,7 +173,12 @@ Section Rules.
           Comp Pr' m pr tr' Q.
       Proof.
       generalize dependent tr'; generalize dependent pr; generalize dependent m; induction tr; intros.
-      + inversion Htrace.
+      + inversion Htrace; subst.
+        simpl in H.
+        assert (P s pr Pr' (m - 1) h) by solve_model H.
+		assert (m - 1 <= n) by omega.
+        specialize (HTriple _ (m - 1) s h t pr HPr H1 H0 _ H4).
+		simpl; destruct tr; simpl in *; try congruence.
       + simpl in H. destruct H.
       + inversion Htrace; subst.
         simpl in H. 
@@ -191,22 +192,18 @@ Section Rules.
         opt_destruct; [|inversion H0].
         destruct s0; try destruct H0.
         simpl; rewrite <- Heqo. intros.
-        eapply H; try omega. apply H0. eassumption. apply X.
-      + inversion Htrace.
+        eapply H; try omega. apply H0. eassumption. apply H4.
+      + inversion Htrace. admit.
       + inversion Htrace; subst.
-        * clear IHtr. simpl in H.
-          assert (P s pr Pr' (m - 1) h) by solve_model H.
-		  assert (m - 1 <= n) by omega.
-          specialize (HTriple _ (m - 1) s h t pr HPr H1 H0 _ H5).
-		  simpl; destruct tr0; simpl in *; try congruence. destruct HTriple.
-        * assert (m - 1 <= n) by omega.
-          specialize (IHtr _ H0).
-          destruct tr; simpl in *; inversion X; subst. 
-          - simpl in *. destruct H.
-		  - apply IHtr; assumption. 
-          - apply IHtr; assumption.
-          - apply IHtr; assumption.
-		  - apply IHtr; assumption.       
+        assert (m - 1 <= n) by omega.
+        specialize (IHtr _ H0).
+        destruct tr; simpl in *; inversion H5; subst. 
+        - simpl in *. eapply HTriple; try eassumption. omega.
+		- apply IHtr; assumption. 
+        - apply IHtr; assumption.
+        - apply IHtr; assumption.
+		- apply IHtr; assumption.
+		- apply IHtr; assumption.
       Qed.
 
     Lemma seq_rule c1 c2 P Q R :
@@ -233,7 +230,7 @@ Section Rules.
       intros Pr n Hc Pr' m k s h cl pr HPP' Hmn tr HSem. 
       generalize dependent pr; generalize dependent m.
       induction HSem; simpl; intros.
-      - apply Hmn.
+      - solve_model Hmn.
       - eapply trace_append_cmd_Comp; try eassumption.
         simpl in Hc. eapply Hc; eassumption.
     Qed.
@@ -251,7 +248,7 @@ Section Rules.
     Proof.
       intros n Pr Hc Pr' m s h cl pr HPP' Hmn Hp tr Hcmd. 
 	  specialize (HPe _ _ _ _ _ Hp).
-	  inversion Hcmd; subst. simpl. apply Hp.
+	  inversion Hcmd; subst. simpl. solve_model Hp.
 	  simpl in *. apply HNP. apply HPe.
     Qed.
     
