@@ -116,10 +116,10 @@ End Compatability.
 
 Section Commands.
 
-  Definition semCmdType := Prog_wf -> stack -> heap -> NS.t -> trace -> Type.
+  Definition semCmdType := Prog_wf -> stack -> heap -> NS.t -> trace -> Prop.
   Definition safe (c : semCmdType) Pr s h cl := forall tr, c Pr s h cl tr -> trace_safe tr.
 
-  Inductive frame_trace (frame : heap) : trace -> trace -> Type :=
+  Inductive frame_trace (frame : heap) : trace -> trace -> Prop :=
   	| ft_end : frame_trace frame t_end t_end
   	| ft_fail tr : frame_trace frame t_fail tr
   	| ft_tau tr tr' s big cl h : frame_trace frame tr tr' ->
@@ -129,11 +129,11 @@ Section Commands.
   	| ft_recv f g c : (forall x h, frame_trace frame (f x h) (g x h)) -> frame_trace frame (t_recv c f) (t_recv c g)
   	| ft_start c tr tr' tr'' : frame_trace frame tr tr' -> frame_trace frame (t_start c tr'' tr) (t_start c tr'' tr').
 
-  Definition frame_property (c : semCmdType) : Type :=
+  Definition frame_property (c : semCmdType) : Prop :=
     forall Pr s (big frame h : heap) cl tr
       (HFrame : @sa_mul heap HeapSepAlgOps h frame big) 
       (HSem   : c Pr s big cl tr),
-      sigT (fun tr' => (frame_trace frame tr' tr * c Pr s h cl tr')%type).
+      exists tr',  frame_trace frame tr' tr /\ c Pr s h cl tr'.
 (*
   Definition frame_property (c : semCmdType) :=
     forall Pr s s' (big big' frame h : heap) cl cl' tr
@@ -176,19 +176,19 @@ Section Commands.
 
   Inductive skip_sem : semCmdType :=
   | s_ok : forall Pr s h cl, skip_sem Pr s h cl (t_tau s h cl t_end).
-  Program Definition skip_cmd := @Build_semCmd skip_sem _.
+  Program Definition skip_cmd := @Build_semCmd skip_sem _ _.
   Next Obligation.
     intros H. inversion H.
   Qed.
   Next Obligation.
 	unfold frame_property.
 	intros. inversion HSem; subst.
-	admit.
+	exists (t_tau s h cl t_end); split; repeat constructor; assumption.
   Qed.
 
   (* Seq *)
 
-  Inductive trace_append_cmd (Pr : Prog_wf) (c : semCmd) : trace -> trace -> Type :=
+  Inductive trace_append_cmd (Pr : Prog_wf) (c : semCmd) : trace -> trace -> Prop :=
     | ta_fail : trace_append_cmd Pr c t_fail t_fail
   	| ta_send p v h tr tr' : trace_append_cmd Pr c tr tr' ->
   	                         trace_append_cmd Pr c (t_send p v h tr) (t_send p v h tr')
@@ -200,7 +200,7 @@ Section Commands.
   
     Lemma trace_append_cmd_frame_trace Pr c tr tr' tr'' frame
     	(Hc : trace_append_cmd Pr c tr tr') (HFrame : frame_trace frame tr'' tr) :
-    	sigT (fun tr''' => (trace_append_cmd Pr c tr'' tr''' * frame_trace frame tr''' tr')%type).
+    	exists tr''', trace_append_cmd Pr c tr'' tr''' /\ frame_trace frame tr''' tr'.
     Proof with eauto.
       generalize dependent tr'. induction HFrame; intros.
       + inversion Hc.
@@ -213,20 +213,41 @@ Section Commands.
         constructor; assumption.
         constructor; assumption.
         exists (t_tau s h cl t_fail). split; try repeat constructor. assumption.
-        specialize (IHHFrame _ X).
+        specialize (IHHFrame _ H5).
         destruct IHHFrame as [tr''' [H1 H2]].
         exists (t_tau s h cl tr'''). 
         split; constructor; assumption.
       + inversion Hc; subst.
-        specialize (IHHFrame _ X).
+        specialize (IHHFrame _ H5).
         destruct IHHFrame as [tr''' [H1 H2]].
         exists (t_send x v h tr''').
         split; constructor; assumption.
       + inversion Hc; subst.
-        exists (t_recv c0 (fun x h => match X x h (g0 x h) (X0 x h) with existT w P => w end)).
-	    split; constructor; intros.
-	    - destruct (X v h (g0 v h) (X0 v h)) as [tr2 [H _]]; apply H.
-	    - destruct (X x h (g0 x h) (X0 x h)) as [tr2 [_ H]]; apply H.
+		assert (forall x h, exists tr''', trace_append_cmd Pr c (f x h) tr''' /\ frame_trace frame tr''' (g0 x h))
+			by (intros; apply H0; apply H4).
+		clear H0.
+		
+        Require Import Coq.Logic.ChoiceFacts.
+		Axiom fc : FunctionalChoice.
+
+		assert (forall x : ptr, exists tr''', forall h : heap,
+       trace_append_cmd Pr c (f x h) (tr''' h) /\
+       frame_trace frame (tr''' h) (g0 x h)).
+       
+       intros. specialize (H1 x). apply fc in H1. apply H1.
+       apply fc in H0.
+	   
+	   destruct H0.
+	   exists (t_recv c0 x).
+	   split.
+	   constructor.
+	   intros.
+	   specialize (H0 v h).
+	   destruct H0. assumption.
+	   constructor.
+	   intros.
+	   specialize (H0 x0 h).
+	   destruct H0. assumption.
       + inversion Hc.
    Qed.
 
@@ -238,15 +259,15 @@ Section Commands.
     	seq_sem c1 c2 Pr s h cl tr'.
   Program Definition seq_cmd c1 c2 := @Build_semCmd (seq_sem c1 c2) _ _.
   Next Obligation.
-	intros H; inversion H; subst. inversion X.
+	intros H; inversion H; subst. inversion H1.
   Qed.
   Next Obligation with eauto using seq_sem.
     unfold frame_property; intros.
     inversion HSem; subst.
     edestruct (@cmd_frame c1) as [tr1 [HFrame1 Hsem1]]...
             
-    pose proof (trace_append_cmd_frame_trace X HFrame1).
-    destruct X0 as [tr' [H1 H2]].
+    pose proof (trace_append_cmd_frame_trace H0 HFrame1).
+    destruct H1 as [tr' [H1 H2]].
     exists tr'. split; [assumption|].
     eapply seq_ok; eassumption.
   Qed.
@@ -268,10 +289,10 @@ Section Commands.
 	intros Pr s big frame h cl tr HFrame HSem.
 	inversion HSem; subst.
 	+ edestruct (@cmd_frame c1)...
-	  exists x. destruct p as [H1 H2]. split; [assumption|].
+	  exists x. destruct H0 as [H1 H2]. split; [assumption|].
 	  apply nondetL; assumption.
 	+ edestruct (@cmd_frame c2)...
-	  exists x; destruct p as [H1 H2]; split; [assumption|].
+	  exists x; destruct H0 as [H1 H2]; split; [assumption|].
 	  apply nondetR; assumption.
   Qed.
 
@@ -286,16 +307,16 @@ Section Commands.
       kleene_sem c Pr s h cl tr1.
   Program Definition kleene_cmd c := @Build_semCmd (kleene_sem c) _ _.
   Next Obligation.
-	intros H; inversion H; subst. inversion X. 
+	intros H; inversion H; subst. inversion H1. 
   Qed.
   Next Obligation with eauto using kleene_sem.
     unfold frame_property; intros.
     generalize dependent h. induction HSem; intros.
     + exists (t_tau s h0 cl t_end).
       split; try repeat constructor; assumption.
-    + edestruct (@cmd_frame c) as [tr2 [HFrame1 Hsem1]]...            
-      pose proof (trace_append_cmd_frame_trace t HFrame1).
-      destruct X as [tr' [H1 H2]].
+    + edestruct (@cmd_frame c) as [tr2 [HFrame1 Hsem1]]...   
+      pose proof (trace_append_cmd_frame_trace H0 HFrame1).
+      destruct H1 as [tr' [H1 H2]].
       exists tr'. split; [assumption|].
       eapply kleene_step_ok; eassumption.
   Qed.
