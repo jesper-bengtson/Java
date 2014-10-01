@@ -93,7 +93,7 @@ Ltac check_not_modifies :=
                  | [ HIn: context [SS.In x SS.empty] |- _] =>
                    rewrite SS'.empty_iff in HIn
                end; intuition (subst; discriminate).
-               
+             (*  
 Lemma ListCorrect : prog_eq Prog |-- add_spec.
 Proof.
   unfold add_spec.
@@ -154,3 +154,4 @@ Proof.
   simpl.
   admit.
 Qed.
+*)

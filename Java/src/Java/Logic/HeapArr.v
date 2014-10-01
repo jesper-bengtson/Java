@@ -1,4 +1,4 @@
-Require Import RelationClasses Setoid Morphisms Program. 
+Require Import RelationClasses Setoid Morphisms Program.
 Require Import MapInterface MapFacts.
 Require Import SepAlg SepAlgMap UUSepAlg SepAlgInsts Stack Lang Rel.
 
@@ -70,12 +70,12 @@ Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
     + right. intros [v H]. congruence.
     + destruct path; simpl in *.
       * remember (find (x, a) h) as o; simpl in *.
-        rewrite <- Heqo in *; destruct o.
-        - left. exists s. reflexivity.
+      	destruct o; subst.
+        - left. exists v. reflexivity.
         - right. intros [v H]. congruence.
-      * remember (find (x, a) h) as o; simpl in *; rewrite <- Heqo in *. 
-        destruct o; [|right; intros [v H]; congruence].
-        destruct s; try (right; intros [v H]; congruence).
+      * remember (find (x, a) h) as o; simpl in *. 
+        destruct o; subst; [|right; intros [v H]; congruence].
+        destruct v; try (right; intros [v H]; congruence).
         apply IHpath.
   Qed.
 
@@ -103,9 +103,8 @@ Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
         unfold in_heap_arr in HValid; simpl in *.
         destruct HValid as [y HValid].
         remember (find (arr, a) h') as o.
-        unfold val in *; simpl in *; destruct o;
-        rewrite <- Heqo in HValid; rewrite <- Heqo; [|congruence].
-        destruct s; try congruence.
+		destruct o; subst; [|congruence].
+        destruct v0; try congruence.
         apply IHpath.
         assert (In (arr, a) h'). rewrite in_find_iff. 
         unfold arrptr in *; simpl in *. rewrite <- Heqo. congruence.
@@ -113,7 +112,7 @@ Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
         rewrite in_find_iff in H2.
         symmetry in Heqo. rewrite <- find_mapsto_iff in Heqo.
         destruct (sa_mul_mapstoL HFrame Heqo).
-        rewrite find_mapsto_iff in H3. unfold val in *; simpl in *.
+        rewrite find_mapsto_iff in H3.
         unfold arrptr in *. rewrite H3 in H. (* TODO investigate unfold arrptr. *)
         apply H. 
         unfold in_heap_arr. exists y.
@@ -136,12 +135,12 @@ Opaque MapSepAlgOps.
         rewrite <- find_mapsto_iff.
         apply H0.
       * remember (find (x, a) h) as o; destruct o; 
-        unfold val in *; simpl in *; rewrite <- Heqo in H; [|congruence].
+        subst; [|congruence].
         destruct v0; try congruence.
         symmetry in Heqo; rewrite <- find_mapsto_iff in Heqo.        
         destruct (sa_mul_mapstoL Hh Heqo).
         rewrite find_mapsto_iff in H0. 
-        unfold arrptr, val in *; simpl in *.
+        unfold arrptr in *; simpl in *.
         rewrite H0.
         apply IHpath; apply H.
   Qed.
@@ -161,9 +160,8 @@ Opaque MapSepAlgOps.
         destruct (sa_mul_mapstoL HFrame HIn). apply H1. apply H.
       * destruct HIn as [y HIn]; simpl in HIn. 
         remember (find (arr, a) h) as o; simpl in *.
-        rewrite <- Heqo in *.
-        destruct o; [|congruence].
-        destruct s; try congruence.
+        destruct o; subst; [|congruence].
+        destruct v0; try congruence.
         symmetry in Heqo; rewrite <- find_mapsto_iff in Heqo.
         edestruct (sa_mul_mapstoL HFrame Heqo) as [H1 _].
         rewrite find_mapsto_iff in H1. 

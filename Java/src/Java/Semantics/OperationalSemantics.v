@@ -298,10 +298,10 @@ Require Import Compare_dec.
 
   Fixpoint create_stack (ps : list var) (vs : list val) : stack :=
     match ps, vs with
-      | nil, nil => stack_empty var
+      | nil, nil => stack_empty var val
       | p :: ps, v :: vs =>
         stack_add p v (create_stack ps vs)
-      | _, _ => stack_empty var
+      | _, _ => stack_empty var val
     end.
         
   Inductive call_sem (rvar : var) (C : open class) m es (c : cmd) (sc : semCmd)
@@ -468,7 +468,7 @@ Open Scope open_scope.
   Definition method_spec C m (ps : list var) (rn : var) (P Q : sasn) := (
     NoDup (rn :: ps) /\\
     Exists ps' : (list var), Exists c : cmd, Exists re : dexpr,
-      [prog] (fun X : Prog_wf => method_lookup X C m (Build_Method ps' c re)
+      [prog] (fun X : Program => method_lookup X C m (Build_Method ps' c re)
         /\ length ps = length ps' /\
         (forall x, List.In x ps' -> ~ SS.In x (modifies c)))
       //\\ {[ P //! zip ps (List.map var_expr ps') ]}

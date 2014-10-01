@@ -1,11 +1,13 @@
 Require Import DecidableType DecidableTypeEx.
-Require Import ZArith String.
+Require Import ZArith Coq.Strings.String.
 Require Import Stack Open Util OpenILogic.
-Require Import Bool.
+Require Import Coq.Bool.Bool.
+
+Require Import Subst.
 
 Module string_DT' <: MiniDecidableType.
-  Definition t := string.
-  Definition eq_dec := string_dec.
+  Definition t := String.string.
+  Definition eq_dec := Coq.Strings.String.string_dec.
 End string_DT'.
 Module string_DT <: UsualDecidableType := Make_UDT string_DT'.
 
@@ -15,8 +17,8 @@ Module SS' := WSetMore_fun (string_DT) SS.
 Module SM  := FMapWeakList.Make(string_DT).
 Module SM' := WMapMore_fun (string_DT) SM.
 
-Definition class := string.
-Definition var := string.
+Definition class := String.string.
+Definition var := String.string.
 Definition ptr := (nat * class)%type.
 Definition arrptr := nat.
 
@@ -24,20 +26,20 @@ Definition beq_string s1 s2 := if string_dec s1 s2 then true else false.
 
 Definition beq_ptr (p1 p2 : ptr) :=
 	match p1, p2 with
-		| (x, c), (y, d) => beq_nat x y && beq_string c d
+		| (x, c), (y, d) => (beq_nat x y && beq_string c d)%bool
 	end.
 
-Inductive sval : Set :=
-| vint :> Z -> sval
-| vbool :> bool -> sval
-| vptr :> ptr -> sval
-| varr :> arrptr -> sval
-| nothing : sval.
+Inductive val : Set :=
+| vint :> Z -> val
+| vbool :> bool -> val
+| vptr :> ptr -> val
+| varr :> arrptr -> val
+| nothing : val.
 
 Definition beq_val v1 v2 :=
 	match v1, v2 with
 	  | vint x, vint y => Z.eqb x y
-	  | vbool a, vbool b => eqb a b
+	  | vbool a, vbool b => Bool.eqb a b
 	  | vptr p, vptr q => beq_ptr p q
 	  | varr p, varr q => beq_nat p q
 	  | _, _ => false
@@ -48,13 +50,13 @@ Lemma beq_val_sound v1 v2 (H: beq_val v1 v2 = true) : v1 = v2. admit. Qed.
 Definition pnull := (0, EmptyString) : ptr.
 Definition null := vptr pnull.
 
-(* From here on, val will be (roughly) synonymous with sval *)
-Instance SVal : ValNull := Build_ValNull nothing.
+(* From here on, val will be (roughly) synonymous with val *)
+Instance Val : ValNull val := Build_ValNull nothing.
 
-(* This lets sval unify with val *)
-Canonical Structure SVal.
+(* This lets val unify with val *)
+Canonical Structure Val.
 
-Definition stack := stack var.
+Definition stack := stack var val.
 
 Inductive dexpr : Type :=
 | E_val   : val -> dexpr
@@ -121,18 +123,27 @@ Definition val_to_nat (v : val) : nat :=
   
 Definition val_class : val -> class := fun v => snd(val_to_ptr v).
 
+Definition eplus e1 e2 := vint (val_to_int e1 + val_to_int e2).
+Definition eminus e1 e2 := vint (val_to_int e1 - val_to_int e2).
+Definition etimes e1 e2 := vint (val_to_int e1 * val_to_int e2).
+Definition eand e1 e2 := vbool (val_to_bool e1 && val_to_bool e2).
+Definition eor e1 e2 := vbool (val_to_bool e1 || val_to_bool e2).
+Definition enot e := vbool (negb (val_to_bool e)).
+Definition elt e1 e2 := vbool (Zlt_bool (val_to_int e1) (val_to_int e2)).
+Definition eeq e1 e2 := vbool (beq_val e1 e2).
+
 Fixpoint eval_aux (s : stack) (e : dexpr) : val :=
   match e with
     | E_val v => v
     | E_var v => s v
-    | E_plus e1 e2 => vint (val_to_int (eval_aux s e1) + val_to_int (eval_aux s e2))
-    | E_minus e1 e2 => vint (val_to_int (eval_aux s e1) - val_to_int (eval_aux s e2))
-    | E_times e1 e2 => vint (val_to_int (eval_aux s e1) * val_to_int (eval_aux s e2))
-    | E_and e1 e2 => vbool (val_to_bool (eval_aux s e1) && val_to_bool (eval_aux s e2))
-    | E_or e1 e2 => vbool (val_to_bool (eval_aux s e1) || val_to_bool (eval_aux s e2))
-    | E_not e => vbool (negb (val_to_bool (eval_aux s e)))
-    | E_lt e1 e2 => vbool (Zlt_bool (val_to_int (eval_aux s e1)) (val_to_int (eval_aux s e2)))
-    | E_eq e1 e2 => vbool true
+    | E_plus e1 e2 => eplus (eval_aux s e1) (eval_aux s e2)
+    | E_minus e1 e2 => eminus (eval_aux s e1) (eval_aux s e2)
+    | E_times e1 e2 => etimes (eval_aux s e1) (eval_aux s e2)
+    | E_and e1 e2 => eand (eval_aux s e1) (eval_aux s e2)
+    | E_or e1 e2 => eor (eval_aux s e1) (eval_aux s e2)
+    | E_not e => enot (eval_aux s e)
+    | E_lt e1 e2 => elt (eval_aux s e1) (eval_aux s e2)
+    | E_eq e1 e2 => eeq (eval_aux s e1) (eval_aux s e2)
   end.
 
 Program Definition eval e : expr := fun s => eval_aux s e.

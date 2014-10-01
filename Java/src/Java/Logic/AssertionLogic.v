@@ -9,6 +9,9 @@ Require Import MapInterface MapFacts.
 Require Import Open Stack Lang OpenILogic Pure ILEmbed PureInsts.
 Require Import UUSepAlg SepAlgInsts HeapArr.
 
+Require Import ExtLib.Core.RelDec.
+Require Import ExtLib.Data.String.
+
 Local Existing Instance ILPre_Ops.
 Local Existing Instance ILPre_ILogic.
 
@@ -77,7 +80,9 @@ Local Existing Instance EmbedPropProp.
 Instance EmbedAsnPropOp : EmbedOp Prop asn := _.
 Instance EmbedAsnProp : Embed Prop asn := _.
 
-Definition sasn := @open var _ asn.
+Instance RelDec_var : RelDec (@eq var) := _.
+
+Definition sasn := @open var val asn.
 
 Instance ILogicOpsSAsn : ILogicOps sasn := _.
 Instance BILogicOpsSAsn : BILOperators sasn := _.
@@ -155,7 +160,7 @@ Grab Existential Variables.
 Defined.
 
 Program Definition pointsto_aux (x : ptr) (f : field) (v : val) : asn :=
-  mk_asn (fun P k h => subheap ((empty val) [(x, f) <- v]) (fst h)) _ _ _.
+  mk_asn (fun P k h => subheap (add (x, f) v (empty val)) (fst h)) _ _ _.
 Next Obligation.
   destruct h, h'; simpl in *.
   apply subheap_prod in H as [H _].

@@ -35,8 +35,8 @@ Proof.
     * subst. apply S'.
 Defined.
 
-Program Definition prog_spec (X : Prog_wf -> Prop) : spec :=
-  mk_spec (fun (P : Prog_wf) _ => forall (Q : Prog_wf) , Prog_wf_sub P Q -> X Q) _ _.
+Program Definition prog_spec (X : Program -> Prop) : spec :=
+  mk_spec (fun (P : Prog_wf) _ => forall (Q : Prog_wf) , Prog_sub P Q -> X Q) _ _.
 Next Obligation.
   intros; apply H0; etransitivity; eassumption.
 Qed.
@@ -53,7 +53,7 @@ Instance EmbedPropSpec : Embed Prop spec := _.
 
 Definition prog_eq Prog : spec := [prog] (fun P => P = Prog).
 
-Lemma prog_eq_to_prop P (f : Prog_wf -> Prop) (H : f P) : prog_eq P |-- [prog] f.
+Lemma prog_eq_to_prop P (f : Program -> Prop) (H : f P) : prog_eq P |-- [prog] f.
 Proof.
   intros Q n HQ R HQR.
   specialize (HQ _ HQR).

@@ -132,9 +132,9 @@ Local Existing Instance ILFun_ILogic.
         simpl in HPT; destruct HPT as [Hnull [h'' HPT]].
         specialize (HPT (ref, f)). unfold var_expr in HPT. rewrite Sref in HPT.
         unfold liftn, lift in HPT; simpl in HPT.
-        remember (@MapInterface.find (ptr * field) _ _ sval (ref, f) h0) as o.
+        remember (@MapInterface.find (ptr * field) _ _ val (ref, f) h0) as o.
 	    destruct o; [destruct HPT as [[HPT HIn] | [Hm HPT]] | destruct HPT as [HPT _]].
-        * rewrite in_find_iff. unfold val; simpl. rewrite <- Heqo.
+        * rewrite in_find_iff. rewrite <- Heqo.
            (* TODO : Unification fails because it can't figure out the coercion to val. This must currently be done manually, which is unintuitive as implicit arguments hide these completely. *)
            intuition congruence.
         * rewrite add_in_iff in HPT. assert False as HFalse 
@@ -158,7 +158,6 @@ Local Existing Instance ILFun_ILogic.
         - rewrite add_mapsto_iff in HPT. destruct HPT as [[Heq HPT] | [Hneq HPT]]. 
           rewrite Rref0 in Heq. simpl in Heq.
           rewrite <- HPT in Heqo. rewrite find_mapsto_iff in Rmaps.
-          unfold val in Heqo, Rmaps; simpl in *.
           rewrite Rmaps in Heqo. inversion Heqo. reflexivity.
           assert False as HFalse. apply Hneq. rewrite Rref. reflexivity.
           destruct HFalse.
@@ -224,15 +223,14 @@ Require Import HeapArr.
       simpl in *.
       unfold liftn, lift, var_expr in *; simpl in *.
       rewrite Sref in *. simpl in *.
-      assert (add (ref, f) (eval e' s') (empty sval) ===
-              add (ref, f) (eval e' s') (add (ref, f) (e s') (empty sval))). {
+      assert (add (ref, f) (eval e' s') (empty val) ===
+              add (ref, f) (eval e' s') (add (ref, f) (e s') (empty val))). {
         unfold Equivalence.equiv, Equal. intros.
         destruct (eq_dec y (ref, f)).
         + symmetry in H6; do 2 (rewrite add_eq_o; [|apply H6]); reflexivity.
         + do 3 (rewrite add_neq_o; [|intros Hfail; symmetry in Hfail; apply H6; apply Hfail]);
           reflexivity.
       }
-      unfold val in *; simpl in *.
       rewrite H6.
 
       apply subheap_add; [apply H5|].
@@ -313,6 +311,9 @@ Require Import HeapArr.
 *)
   Implicit Arguments rule_write_frame [[P] [Q] [x] [f] [e] [e']].
 
+Require Import ExtLib.Core.RelDec.
+Require Import ExtLib.Tactics.Consider.
+
   Lemma substl_trunc_add x x' v (xs : list var) ys (s: stack) :
     ~ List.In x xs ->
     List.length ys = List.length xs ->
@@ -324,7 +325,8 @@ Require Import HeapArr.
     + destruct ys; [|discriminate].
       reflexivity.
     + destruct ys as [|yh ys]; [discriminate|].
-      simpl. destruct (dec_eq x' yh).
+      simpl. 
+      consider (x' ?[ eq ] yh); intros.
       * simpl. unfold var_expr. apply stack_lookup_add2. intro Hxxh. apply HnotIn.
         constructor. auto.
       * apply IHxs.
@@ -352,8 +354,8 @@ Proof.
 	  reflexivity.
 	+ destruct ps' as [|p']; [discriminate|].
 	  destruct es as [|e]; [discriminate|].
-	  simpl. destruct (dec_eq x p).
-	  * unfold var_expr; simpl; autorewrite with stack; reflexivity.
+	  simpl. consider (x ?[ eq ] p); intros; subst.
+	  * unfold var_expr; simpl; autorewrite with stack. reflexivity. apply _.
       * etransitivity; [apply IHps with (ps':=ps')|].
         - inversion HND0. assumption.
         - inversion HLen. reflexivity.
@@ -368,7 +370,7 @@ Qed.
       (HND0  : NoDup ps')
       (HLen  : length ps = length ps')
       (HLen0 : length ps' = length es) :
-    stack_subst (zip ps' es :@: s +:+ stack_empty var)
+    stack_subst (zip ps' es :@: s +:+ stack_empty var val)
       (substl_trunc (zip ps (map var_expr ps'))) =
     stack_subst s (substl_trunc (zip ps es)).
   Proof.
@@ -381,8 +383,8 @@ Qed.
       reflexivity.
     + destruct ps' as [|p']; [discriminate|].
       destruct es as [|e]; [discriminate|].
-      simpl. destruct (dec_eq x p).
-      * unfold var_expr. simpl. autorewrite with stack. reflexivity.
+      simpl. consider (x ?[ eq ] p); intros; subst.
+      * unfold var_expr. simpl. autorewrite with stack. reflexivity. apply _.
       * etransitivity; [|apply IHps with (ps':=ps')].
         - apply substl_trunc_add.
           inversion HND0. assumption.
@@ -400,7 +402,7 @@ Qed.
     intro H. revert dependent ps'. induction ps; intros.
     + simpl. destruct (map var_expr ps'); reflexivity.
     + destruct ps' as [|p']; [reflexivity|].
-      simpl. destruct (dec_eq x' a).
+      simpl. consider (x' ?[ eq ] a); intros; simpl.
       * simpl. symmetry. apply H. auto with datatypes.
       * apply IHps. auto with datatypes.
   Qed.
@@ -465,9 +467,9 @@ Qed.
     solve_model HC.
     (* equality of post stack *)
     apply functional_extensionality. intros z. unfold stack_subst. simpl. destruct (dec_eq z r).
-    * case (dec_eq z r); [intros |congruence]. 
+    * consider (z ?[ eq ] r); [intros; subst |congruence]. 
       unfold var_expr. rewrite stack_lookup_add. reflexivity.
-    * case (dec_eq z r); [congruence|intros].
+    * consider (z ?[ eq ] r); [congruence|intros].
       
     rewrite call_post_stackchange with (s:= create_stack args (eval_exprs s es)).
     - apply prog_wf in HML. simpl in HML.
@@ -478,16 +480,16 @@ Qed.
         reflexivity.
       + destruct es as [|e]; [discriminate|].
         destruct args as [|p']; [discriminate|].
-        simpl. destruct (string_dec z p).
-        * subst p. do 2 (case (dec_eq z z); [intro|congruence]). 
+        simpl. consider (z ?[ eq ] p); intros.
+        * subst p. 
           unfold var_expr. simpl. autorewrite with stack. simpl.
           unfold subst1, liftn, var_expr. simpl.
           unfold eval. f_equal.
           apply functional_extensionality. intros. simpl.
-          case (dec_eq x0 x). intros. simpl.
+          consider (x0 ?[ eq ] x); intros; subst.
           unfold lift. subst. admit. intros.
-          rewrite stack_lookup_add2. reflexivity. intuition.
-        * do 2 (case (dec_eq z p); [congruence|intro]). 
+          rewrite stack_lookup_add2. reflexivity. intuition. apply _.
+        * consider (z ?[ eq ] p); [congruence|intro]. 
           rewrite substl_trunc_add. apply IHps. simpl in *. omega. simpl in *. omega.
           inversion HML. assumption. inversion HML. assumption.
           simpl in *. omega.
