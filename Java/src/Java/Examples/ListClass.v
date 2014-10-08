@@ -19,88 +19,29 @@ Definition add_body :=
     Build_Method ("this"::"n"::nil) add_body (E_val (vint 0)).
 
   Definition NodeC :=
-    Build_Class (SS.add "val" (SS.add "next" SS.empty)) (SM.empty _).
+    Build_Class ("val"::"next"::nil) nil.
   
-  Definition ListC := Build_Class (SS.add "head" SS.empty) (SM.add "add" AddM (SM.empty _)).
+  Definition ListC := Build_Class ("head"::nil) (("add", AddM)::nil).
 
-  Definition ProgAux := Build_Program
-    (SM.add "List" ListC (SM'.singleton "NodeC" NodeC)).
-
-  Program Definition Prog := @Build_Prog_wf ProgAux _ .
-  Next Obligation.
-	unfold uniq_params. intros.
-	unfold ProgAux in H. simpl in *.
-    admit. (* I think we have automation for this *)
-  Qed.
-  
+  Definition ListProg := Build_Program
+    (("List", ListC)::("NodeC", NodeC)::nil).  
 
   Definition add_spec : spec :=
     Forall xs : list Z, method_spec "List" "add" ("this"::"n"::nil) "" 
                                     (fun s => List (s "this") xs) 
                                     (fun s => List (s "this") ((val_to_int (s "n"))::xs)).
 
-
-
-
-  Require Import ILInsts.
-
-
-Program Fixpoint search_NoDup
-    {A} (A_dec: forall a b: A, {a=b}+{a<>b}) (l: list A) : option (NoDup l) :=
-  match l with
-  | nil => Some _
-  | a::l' =>
-      match search_NoDup A_dec l' with
-      | Some nodup =>
-          match In_dec A_dec a l' with
-          | left isin => None
-          | right notin => Some _
-          end
-      | None => None
-      end
-  end.
-Next Obligation.
-intros. constructor.
-Qed. Next Obligation.
-intros. subst. constructor; assumption.
-Defined.
-
-(* Funny function borrowed from Chlipala's book *)
-Definition option_proof {P: Prop} (pf': option P) :=
-  match pf' return (match pf' with Some _ => P | None => True end) with
-  | Some pf => pf
-  | None => I
-  end.
-
-(* Tactic for applying a proof search procedure *)
-Ltac search pf' := exact (option_proof pf') || fail "No proof found".
-
-Ltac search_NoDup dec :=
-  match goal with
-  |- NoDup ?l => search (search_NoDup dec l)
-  end.
-
-Ltac check_not_modifies :=
-    let x := fresh "y" in let HC := fresh "HC" in let HIn := fresh "HIn" in
-      intros x HC HIn; simpl in *;
-        repeat match goal with
-                 | [ HIn: context [SS.In x (SS.union ?S1 ?S2)] |- _] =>
-                   rewrite SS'.union_iff in HIn
-                 | [ HIn: context [SS.In x (SS.add ?e ?S)] |- _] =>
-                   rewrite SS'.add_iff in HIn
-                 | [ HIn: context [SS.In x (SS.singleton ?e)] |- _] =>
-                   rewrite SS'.singleton_iff in HIn
-                 | [ HIn: context [SS.In x SS.empty] |- _] =>
-                   rewrite SS'.empty_iff in HIn
-               end; intuition (subst; discriminate).
-             (*  
-Lemma ListCorrect : prog_eq Prog |-- add_spec.
+            
+Lemma ListCorrect : prog_eq ListProg |-- add_spec.
 Proof.
+  admit.
+Qed.
+(*
   unfold add_spec.
   apply lforallR; intros xs.
   unfold add_spec.
   unfold ProgAux. unfold ListC, NodeC.
-
+  
   apply landR.
   
   apply embedPropR. search_NoDup string_dec.

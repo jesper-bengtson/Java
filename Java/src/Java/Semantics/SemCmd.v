@@ -10,7 +10,7 @@ Set Maximal Implicit Insertion.
 
 Section Commands.
 
-  Definition semCmdType := Prog_wf -> nat -> stack -> heap -> option (stack * heap) -> Prop.
+  Definition semCmdType := Program -> nat -> stack -> heap -> option (stack * heap) -> Prop.
   Definition safe (c : semCmdType) P s t n := ~(c P s t n None).
   Definition frame_property (c : semCmdType) :=
     forall P s s' (big big' frame h : heap) n
@@ -20,7 +20,7 @@ Section Commands.
       exists h', sa_mul h' frame big' /\ c P n s h (Some (s', h')).
 
   Record semCmd := {
-    cmd_rel   :> Prog_wf -> nat -> stack -> heap -> option (stack * heap) -> Prop;
+    cmd_rel   :> Program -> nat -> stack -> heap -> option (stack * heap) -> Prop;
     cmd_zero  :  forall P s h cfg, ~(cmd_rel P 0 s h cfg);
     cmd_frame :  frame_property cmd_rel
   }.
@@ -185,7 +185,7 @@ Section Commands.
   (* |= {p}c{q} *)
   
   Program Definition sem_triple (p q : sasn) (c : semCmd) : spec :=
-    mk_spec (fun P n => forall P' m k s h, Prog_wf_sub P P' -> m <= n -> k <= m -> 
+    mk_spec (fun P n => forall P' m k s h, Prog_sub P P' -> m <= n -> k <= m -> 
                                            p s P' m h ->
       safe c P' k s h /\
       forall h' s', c P' k s h (Some (s', h')) -> (q s' P' (m - k) h')) _ _.

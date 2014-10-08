@@ -430,13 +430,14 @@ Qed.
     (* There is fuel *)
 	specialize (H n). assert (n < S n) as Hn by omega; specialize (H Hn).
 	destruct H as [Hemb [args [bd [mr [XXX HOK]]]]].
-	destruct (XXX _ Hsub) as [HML [HLen0 HNIn]]; clear XXX. split.
+	destruct (XXX _ Hsub) as [[HML [HLen0 HNIn]] HValid]; clear XXX. split.
 	unfold open_eq, var_expr, liftn, lift in Hh; simpl in Hh.
 
     (* safety *)
     + intro HFail. inversion HFail; subst.
       * contradiction (HLFail _ HML).
-      * assert (HR := method_lookup_function HML HLookup).
+      Check method_lookup_function.
+      * assert (HR := method_lookup_function HValid HML HLookup).
         injection HR; intros; subst; clear HR HLookup.
         edestruct HOK with (x := sc) (x2 := m' - 1) (k := n0) (h := h) 
         (s := (create_stack ps0 (eval_exprs s es))) as [HSafe _]; 
@@ -445,14 +446,14 @@ Qed.
 	     unfold apply_subst in *.
 	    solve_model HP.
         erewrite <- substl_trunc_subst; [reflexivity|..]. 
-        apply prog_wf in HML. apply HML.
+        apply method_lookup_nodup in HML; [|assumption]; apply HML.
         assumption. assumption. 
-      * assert (HT' := method_lookup_function HML HLookup); injection HT'; intros;
+      * assert (HT' := method_lookup_function HValid HML HLookup); injection HT'; intros;
         subst; congruence.
     +  
     (* correctness *)
     intros h' s' HSem1; inversion HSem1; subst; clear HSem1.
-    assert (HPS := method_lookup_function HLookup HML);
+    assert (HPS := method_lookup_function HValid HLookup HML);
       inversion HPS; subst; clear HPS HLookup.
     edestruct HOK with (x := sc) (x2:=m'-1) (k:=n0) (h:=h) 
     (s := (create_stack args (eval_exprs s es))) as [_ HC];
@@ -461,7 +462,9 @@ Qed.
     solve_model HP.
     unfold apply_subst. erewrite substl_trunc_subst.
     reflexivity.
-    apply prog_wf in HML. apply HML. omega. omega. 
+    apply method_lookup_nodup in HML; assumption.
+    
+    omega. omega. 
     unfold apply_subst in *.
     specialize (HC _ _ HSem0).
     solve_model HC.
@@ -472,7 +475,7 @@ Qed.
     * consider (z ?[ eq ] r); [congruence|intros].
       
     rewrite call_post_stackchange with (s:= create_stack args (eval_exprs s es)).
-    - apply prog_wf in HML. simpl in HML.
+    - apply method_lookup_nodup in HML; [|assumption]. simpl in HML.
       clear - HML HLen HLen0. revert dependent args. revert dependent es.
       { induction ps as [|p]; intros.
       + destruct es; [|discriminate].
@@ -687,15 +690,18 @@ Ltac existentialise y v :=
 
 (* TODO: move to Pwf *)
 Lemma ext_fields_same PP PP' C fields
-  (HPP : Prog_wf_sub PP PP')
+  (HPP : Prog_sub PP PP')
   (HF  : field_lookup PP C fields) :
-  exists fields', SS.Equal fields fields' /\ field_lookup PP' C fields'.
+  field_lookup PP' C fields.
 Proof.
+  admit. (* Proof must move to Program.v *)
+  (*
   destruct HF as [crec [HF HT]]; rewrite SM'.find_mapsto_iff in HF.
   specialize (HPP _ _ HF); destruct HPP as [crec' [HF' [HT' _]]].
   subst; eexists; split; [eassumption | eexists; split; rewrite ?SM'.find_mapsto_iff; eassumption || reflexivity].
+  *)
 Qed.
-
+(*
 Lemma equiv_alloc_same fields fields' P p
   (HEq : SS.Equal fields fields') :
   (SS.fold (fun f Q => `pointsto `(vptr p) `f `null ** Q) fields P -|- SS.fold (fun f Q => `pointsto `(vptr p) `f `null ** Q) fields' P).
@@ -708,11 +714,16 @@ Proof.
     reflexivity.
 *)
 Qed.
+*)
+Check @sepSP.
+Check triple.
 
-  Lemma rule_alloc_ax (x : var) C fields :
-    [prog](fun Pr => field_lookup Pr C fields) |-- {[ ltrue ]} calloc x C {[ Exists p:ptr,
+  Lemma rule_alloc_ax (x : var) (C : class) (fields : list field) :
+    @lentails spec _ ([prog](fun Pr => field_lookup Pr C fields)) 
+    	(triple ltrue (Exists p:ptr,
       @lembedand vlogic sasn _ _ (@land vlogic _ (`typeof `C (x/V)) (open_eq x /V `(vptr p)))
-      (SS.fold (fun f Q => `pointsto `(vptr p) `f `null ** Q) fields ltrue)]}.
+     (fold_right (fun f Q => @sepSP sasn _ (`pointsto (open_const (vptr p)) (open_const f) (open_const null)) Q) (@ltrue sasn _) fields))
+     (calloc x C)).
   Proof.
 	admit.
 (*

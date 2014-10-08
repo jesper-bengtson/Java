@@ -66,7 +66,7 @@ Instance UUSepAlgHeap : UUSepAlg heap := _.
 Instance HeapSepAlgOps : SepAlgOps heap := _.
 Instance UUSepAlgHeap : UUSepAlg heap := _.
 
-Definition asn := ILPreFrm Prog_wf_sub (ILPreFrm ge (ILPreFrm (@rel heap subheap) Prop)).
+Definition asn := ILPreFrm Prog_sub (ILPreFrm ge (ILPreFrm (@rel heap subheap) Prop)).
 
 Instance ILogicOpsAsn : ILogicOps asn := _.
 Instance BILogicOpsAsn : BILOperators asn. Admitted.
@@ -142,9 +142,9 @@ Instance pure_spec (p : spec) : pure (@embed spec sasn _ p) := _.
 
 Local Transparent ILPre_Ops.
 
-Definition mk_asn (f: Prog_wf -> nat -> heap -> Prop)
+Definition mk_asn (f: Program -> nat -> heap -> Prop)
   (Hnat: forall P k h, f P (S k) h -> f P k h)
-  (HProg: forall P P' k h, Prog_wf_sub P P' -> f P k h -> f P' k h)
+  (HProg: forall P P' k h, Prog_sub P P' -> f P k h -> f P' k h)
   (Hheap: forall P k h h', subheap h h' -> f P k h -> f P k h') : asn.
   refine (mkILPreFrm (fun P => mkILPreFrm (fun k => mkILPreFrm (fun h => f P k h) _) _) _).
 Proof.

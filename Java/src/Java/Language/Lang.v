@@ -3,31 +3,31 @@ Require Import ZArith Coq.Strings.String.
 Require Import Stack Open Util OpenILogic.
 Require Import Coq.Bool.Bool.
 
+Require Import ExtLib.Core.RelDec.
+Require Import ExtLib.Data.String.
+Require Import ExtLib.Data.Z.
+Require Import ExtLib.Tactics.Consider.
+
 Require Import Subst.
-
-Module string_DT' <: MiniDecidableType.
-  Definition t := String.string.
-  Definition eq_dec := Coq.Strings.String.string_dec.
-End string_DT'.
-Module string_DT <: UsualDecidableType := Make_UDT string_DT'.
-
-Module SS  := FSetWeakList.Make(string_DT).
-Module SS' := WSetMore_fun (string_DT) SS.
-
-Module SM  := FMapWeakList.Make(string_DT).
-Module SM' := WMapMore_fun (string_DT) SM.
 
 Definition class := String.string.
 Definition var := String.string.
 Definition ptr := (nat * class)%type.
 Definition arrptr := nat.
 
-Definition beq_string s1 s2 := if string_dec s1 s2 then true else false.
-
-Definition beq_ptr (p1 p2 : ptr) :=
+Instance RelDec_ptr : RelDec (@eq ptr) := {
+	rel_dec p1 p2 :=
 	match p1, p2 with
-		| (x, c), (y, d) => (beq_nat x y && beq_string c d)%bool
-	end.
+		| (x, c), (y, d) => (x ?[ eq ] y && c ?[ eq ] d)%bool
+	end
+}.
+
+Instance RelDec_Correct_ptr : RelDec_Correct RelDec_ptr.
+Proof.
+	split; intros; destruct x, y; simpl.
+	consider (n ?[ eq ] n0); intros;
+	consider (c ?[ eq ] c0); intros; subst; simpl; try intuition congruence.
+Defined.
 
 Inductive val : Set :=
 | vint :> Z -> val
@@ -36,16 +36,26 @@ Inductive val : Set :=
 | varr :> arrptr -> val
 | nothing : val.
 
-Definition beq_val v1 v2 :=
-	match v1, v2 with
-	  | vint x, vint y => Z.eqb x y
-	  | vbool a, vbool b => Bool.eqb a b
-	  | vptr p, vptr q => beq_ptr p q
-	  | varr p, varr q => beq_nat p q
+Instance RelDec_val : RelDec (@eq val) := {
+  rel_dec v1 v2 :=
+  	match v1, v2 with
+	  | vint x, vint y => x ?[ eq ] y
+	  | vbool a, vbool b => a ?[ eq ] b
+	  | vptr p, vptr q => p ?[ eq ] q
+	  | varr p, varr q => p ?[ eq ] q
+	  | nothing, nothing => true
 	  | _, _ => false
-	end.
-	
-Lemma beq_val_sound v1 v2 (H: beq_val v1 v2 = true) : v1 = v2. admit. Qed.
+	end
+}.
+
+Instance RelDec_Correct_val : RelDec_Correct RelDec_val.
+Proof.	
+  split; intros; destruct x, y; simpl; try intuition congruence.
+  + consider (z ?[ eq ] z0); intros; subst; intuition congruence.
+  + consider (b ?[ eq ] b0); intros; subst; intuition congruence.
+  + consider (p ?[ eq ] p0); intros; subst; intuition congruence.
+  + consider (a ?[ eq ] a0); intros; subst; intuition congruence.
+Qed.
 
 Definition pnull := (0, EmptyString) : ptr.
 Definition null := vptr pnull.
@@ -70,10 +80,10 @@ Inductive dexpr : Type :=
 | E_lt    : dexpr -> dexpr -> dexpr
 | E_eq    : dexpr -> dexpr -> dexpr.
 
-Fixpoint beq_dexpr e1 e2 :=
-	match e1, e2 with
-	  | E_val v1, E_val v2 => beq_val v1 v2
-	  | E_var x, E_var y => beq_string x y
+Fixpoint beq_dexpr e1' e2' :=
+	match e1', e2' with
+	  | E_val v1, E_val v2 => v1 ?[ eq ] v2
+	  | E_var x, E_var y => x ?[ eq ] y
 	  | E_plus e1 e2, E_plus e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
 	  | E_minus e1 e2, E_minus e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
 	  | E_times e1 e2, E_times e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
@@ -85,13 +95,34 @@ Fixpoint beq_dexpr e1 e2 :=
 	  | _, _ => false
 	end.
 	
-Fixpoint beq_dexprs es1 es2 :=
-	match es1, es2 with
-		| nil, nil => true
-		| e1::es1, e2::es2 => beq_dexpr e1 e2 && beq_dexprs es1 es2
-		| _, _ => false
-	end.
-	
+Instance RelDec_dexpr : RelDec (@eq dexpr) := {
+  rel_dec := beq_dexpr
+}.
+
+Instance RelDec_Correct_dexpr : RelDec_Correct RelDec_dexpr.
+Proof.
+	split; intro x; induction x; simpl in *; intros; try intuition congruence.
+	+ destruct y; simpl in *; try intuition congruence.
+	  consider (v ?[ eq ] v0); intuition congruence.
+	+ destruct y; simpl in *; try intuition congruence.
+	  consider (v ?[ eq ] v0); intuition congruence.
+	+ destruct y; simpl in *; try intuition congruence.
+	  rewrite andb_true_iff, IHx1, IHx2; intuition congruence.
+	+ destruct y; simpl in *; try intuition congruence.
+	  rewrite andb_true_iff, IHx1, IHx2; intuition congruence.
+	+ destruct y; simpl in *; try intuition congruence.
+	  rewrite andb_true_iff, IHx1, IHx2; intuition congruence.
+	+ destruct y; simpl in *; try intuition congruence.
+	  rewrite andb_true_iff, IHx1, IHx2; intuition congruence.
+	+ destruct y; simpl in *; try intuition congruence.
+	  rewrite andb_true_iff, IHx1, IHx2; intuition congruence.
+	+ destruct y; simpl in *; try intuition congruence.
+	  rewrite IHx; intuition congruence.
+	+ destruct y; simpl in *; try intuition congruence.
+	  rewrite andb_true_iff, IHx1, IHx2; intuition congruence.
+	+ destruct y; simpl in *; try intuition congruence.
+	  rewrite andb_true_iff, IHx1, IHx2; intuition congruence.
+Qed.
 
 Definition val_to_int (v : val) : Z :=
   match v with
@@ -120,7 +151,6 @@ Definition val_to_arr (v : val) : arrptr :=
 Definition val_to_nat (v : val) : nat :=
   Z.to_nat (val_to_int v).
 
-  
 Definition val_class : val -> class := fun v => snd(val_to_ptr v).
 
 Definition eplus e1 e2 := vint (val_to_int e1 + val_to_int e2).
@@ -130,7 +160,7 @@ Definition eand e1 e2 := vbool (val_to_bool e1 && val_to_bool e2).
 Definition eor e1 e2 := vbool (val_to_bool e1 || val_to_bool e2).
 Definition enot e := vbool (negb (val_to_bool e)).
 Definition elt e1 e2 := vbool (Zlt_bool (val_to_int e1) (val_to_int e2)).
-Definition eeq e1 e2 := vbool (beq_val e1 e2).
+Definition eeq (e1 e2 : val) := vbool (e1 ?[ eq ] e2).
 
 Fixpoint eval_aux (s : stack) (e : dexpr) : val :=
   match e with
@@ -175,44 +205,83 @@ Inductive cmd :=
 (* Possible bug in Coq when c1 and c2 matches in the cases *)
 Fixpoint beq_cmd cmd1 cmd2 :=
 	match cmd1, cmd2 with 
-	    | cassign v1 e1, cassign v2 e2 => beq_string v1 v2 && beq_dexpr e1 e2
+	    | cassign v1 e1, cassign v2 e2 => v1 ?[ eq ] v2 && e1 ?[ eq ] e2
 		| cskip, cskip => true
 		| cseq c1 c2, cseq c3 c4 => beq_cmd c1 c3 && beq_cmd c2 c4
-		| cif e1 c1 c2, cif e2 c3 c4 => beq_dexpr e1 e2 && beq_cmd c1 c3 && beq_cmd c2 c4
-		| cwhile e1 c1, cwhile e2 c2 => beq_dexpr e1 e2 && beq_cmd c1 c2
-		| cwrite v1 f1 e1, cwrite v2 f2 e2 => beq_string v1 v2 && beq_string f1 f2 && beq_dexpr e1 e2
-		| cread v1 v2 f1, cread v3 v4 f2 => beq_string v1 v3 && beq_string v2 v4 && beq_string f1 f2
-		| carrread v1 v2 es1, carrread v3 v4 es2 => beq_string v1 v3 && beq_string v2 v4 && beq_dexprs es1 es2
-		| carrwrite v1 es1 e1, carrwrite v2 es2 e2 => beq_string v1 v2 && beq_dexprs es1 es2 && beq_dexpr e1 e2
-		| calloc v1 c1, calloc v2 c2 => beq_string v1 v2 && beq_string c1 c2
-		| cdcall v1 v2 m1 es1, cdcall v3 v4 m2 es2 => beq_string v1 v3 && beq_string v2 v3 && beq_string m1 m2 && beq_dexprs es1 es2 
-		| cscall v1 c1 m1 es1, cdcall v2 c2 m2 es2 => beq_string v1 v2 && beq_string c1 c2 && beq_string m1 m2 && beq_dexprs es1 es2 
-		| cassert e1, cassert e2 => beq_dexpr e1 e2
+		| cif e1 c1 c2, cif e2 c3 c4 => e1 ?[ eq ] e2 && beq_cmd c1 c3 && beq_cmd c2 c4
+		| cwhile e1 c1, cwhile e2 c2 => e1 ?[ eq ] e2 && beq_cmd c1 c2
+		| cwrite v1 f1 e1, cwrite v2 f2 e2 => v1 ?[ eq ] v2 && f1 ?[ eq ] f2 && e1 ?[ eq ] e2
+		| cread v1 v2 f1, cread v3 v4 f2 => v1 ?[ eq ] v3 && v2 ?[ eq ] v4 && f1 ?[ eq ] f2
+		| carrread v1 v2 es1, carrread v3 v4 es2 => v1 ?[ eq ] v3 && v2 ?[ eq ] v4 && es1 ?[ eq ] es2
+		| carrwrite v1 es1 e1, carrwrite v2 es2 e2 => v1 ?[ eq ] v2 && es1 ?[ eq ] es2 && e1 ?[ eq ] e2
+		| calloc v1 c1, calloc v2 c2 => v1 ?[ eq ] v2 && c1 ?[ eq ] c2
+		| carralloc v1 d1, carralloc v2 d2 => v1 ?[ eq ] v2 && d1 ?[ eq ] d2
+		| cdcall v1 v2 m1 es1, cdcall v3 v4 m2 es2 => v1 ?[ eq ] v3 && v2 ?[ eq ] v4 && m1 ?[ eq ] m2 && es1 ?[ eq ] es2 
+		| cscall v1 c1 m1 es1, cscall v2 c2 m2 es2 => v1 ?[ eq ] v2 && c1 ?[ eq ] c2 && m1 ?[ eq ] m2 && es1 ?[ eq ] es2 
+		| cassert e1, cassert e2 => e1 ?[ eq ] e2
 		| _, _ => false
     end.
-(*
-Lemma beq_cmd_sound c1 c2 (H: beq_cmd c1 c2 = true) : c1 = c2.
+
+Instance RelDec_cmd : RelDec (@eq cmd) := {
+  rel_dec := beq_cmd
+}.
+
+Instance RelDec_Correct_cmd  : RelDec_Correct RelDec_cmd.
 Proof.
-  generalize dependent c2. 
-  induction c1; intros; destruct c2; simpl in *; try congruence.
-	admit.  
-	rewrite andb_true_iff in H. destruct H.
-	SearchAbout andb.
-*)
+	split; intro c; induction c; intros; simpl in *.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  rewrite andb_true_iff.
+	  consider (v ?[ eq ] v0); consider (d ?[ eq ] d0); intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  rewrite andb_true_iff, IHc1, IHc2; intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  do 2 rewrite andb_true_iff; rewrite IHc1, IHc2.
+	  consider (d ?[ eq ] d0); intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  rewrite andb_true_iff, IHc.
+	  consider (d ?[ eq ] d0); intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  consider (v ?[ eq ] v0); consider (f ?[ eq ] f0); consider (d ?[ eq ] d0); 
+	    simpl; intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (f ?[ eq ] f0); 
+	    simpl; intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (l ?[ eq ] l0); 
+	    simpl; intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  consider (v ?[ eq ] v0); consider (l ?[ eq ] l0); consider (d ?[ eq ] d0); 
+	    simpl; intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  consider (v ?[ eq ] v0); consider (d ?[ eq ] d0); simpl; intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); simpl; intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (m ?[ eq ] m0); 
+	    consider (l ?[ eq ] l0); simpl; intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); consider (m ?[ eq ] m0); 
+	    consider (l ?[ eq ] l0); simpl; try intuition congruence.
+	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
+	  consider (d ?[ eq ] d0); try intuition congruence.
+Qed.
+	  
+	
 (* The set of stack variables potentially modified by a command *)
 Fixpoint modifies (c: cmd) :=
   match c with
-  | cassign x _    => SS.singleton x
-  | cseq c1 c2     => SS.union (modifies c1) (modifies c2)
-  | cif _ c1 c2    => SS.union (modifies c1) (modifies c2)
+  | cseq c1 c2     => (modifies c1) ++ (modifies c2)
+  | cif _ c1 c2    => (modifies c1) ++ (modifies c2)
   | cwhile _ c     => modifies c
-  | cread x _ _    => SS.singleton x
-  | carrread x _ _ => SS.singleton x
-  | carralloc x _  => SS.singleton x
-  | calloc x _     => SS.singleton x
-  | cdcall x _ _ _ => SS.singleton x
-  | cscall x _ _ _ => SS.singleton x
-  |  _             => SS.empty
+  | cassign x _    
+  | cread x _ _    
+  | carrread x _ _ 
+  | carralloc x _  
+  | calloc x _     
+  | cdcall x _ _ _ 
+  | cscall x _ _ _ => x::nil
+  |  _             => nil
   end.
 
 Notation " x 'A=' e "  := (cassign x e) (at level 60, no associativity) : cmd_scope.
