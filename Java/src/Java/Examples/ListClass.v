@@ -10,7 +10,7 @@ Open Scope list_scope.
 
 Definition add_body :=
   (cseq (calloc "tn" "NodeC")
-        (cseq (cwrite "tn" "val" (E_var "n")) (* This n used to be cast to an integer *)
+        (cseq (cwrite "tn" "val" (E_var "n")) 
               (cseq (cread "lst" "this" "head")
                     (cseq (cwrite "tn" "next" (E_var "lst"))
                           (cwrite "this" "head" (E_var "tn")))))).
@@ -27,9 +27,9 @@ Definition add_body :=
     (("List", ListC)::("NodeC", NodeC)::nil).  
 
   Definition add_spec : spec :=
-    Forall xs : list Z, method_spec "List" "add" ("this"::"n"::nil) "" 
+    Forall xs : list val, method_spec "List" "add" ("this"::"n"::nil) "" 
                                     (fun s => List (s "this") xs) 
-                                    (fun s => List (s "this") ((val_to_int (s "n"))::xs)).
+                                    (fun s => List (s "this") ((s "n")::xs)).
 
             
 Lemma ListCorrect : prog_eq ListProg |-- add_spec.

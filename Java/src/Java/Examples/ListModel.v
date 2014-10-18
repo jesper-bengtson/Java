@@ -8,11 +8,11 @@ Unset Strict Implicit.
 Open Scope string_scope.
 Open Scope list_scope.
 
-  Fixpoint NodeList (p : val) (xs : list Z) : asn :=
-    match xs with
-      | nil => (p = null) /\\ ltrue
-      | x::xs  => Exists v : val, pointsto p "val" x ** pointsto p "next" v ** NodeList v xs
-    end.
+Fixpoint NodeList (p : val) (xs : list val) : asn :=
+  match xs with
+    | nil => (p = null) /\\ ltrue
+    | x::xs  => Exists v : val, pointsto p "val" x ** pointsto p "next" v ** NodeList v xs
+  end.
 
-  Definition List (p : val) (xs : list Z) : asn :=
-    Exists h : val, pointsto p "head" h ** NodeList h xs.
+Definition List (p : val) (xs : list val) : asn :=
+  Exists h : val, pointsto p "head" h ** NodeList h xs.
