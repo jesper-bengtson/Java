@@ -44,7 +44,7 @@ Local Existing Instance EmbedPropProp.
 Instance EmbedAsnPropOp : EmbedOp Prop asn := _.
 Instance EmbedAsnProp : Embed Prop asn := _.
  
-Definition sasn := @open var _ asn.
+Definition sasn := @open var val asn.
  
 Instance ILOpsSAsn : ILogicOps sasn := _.
 Instance ILogicSAsn : ILogic sasn := _.

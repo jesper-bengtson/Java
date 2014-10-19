@@ -28,6 +28,7 @@ OBJECTS = \
 	bin/Java/Logic/Traces.vo \
 	bin/Java/Semantics/AxiomaticSemantics.vo \
 	bin/Java/Semantics/OperationalSemantics.vo \
+	bin/Java/Semantics/SemCmd.vo \
 	bin/Java/Semantics/SemCmdRules.vo \
 	bin/Java/Util.vo
 
@@ -45,7 +46,8 @@ bin/Java/Logic/ProtocolLogic.vo: src/Java/Logic/ProtocolLogic.v bin/Java/Languag
 bin/Java/Logic/ST.vo: src/Java/Logic/ST.v bin/Java/Language/Lang.vo bin/Java/Logic/Heap.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Util.vo bin/Java/Language/Program.vo bin/Java/Logic/Traces.vo
 bin/Java/Logic/SpecLogic.vo: src/Java/Logic/SpecLogic.v bin/Java/Language/Lang.vo bin/Java/Language/Program.vo
 bin/Java/Logic/Traces.vo: src/Java/Logic/Traces.v bin/Java/Language/Lang.vo bin/Java/Logic/Heap.vo
-bin/Java/Semantics/AxiomaticSemantics.vo: src/Java/Semantics/AxiomaticSemantics.v bin/Java/Util.vo bin/Java/Logic/SpecLogic.vo bin/Java/Logic/ProtocolLogic.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Language/Program.vo bin/Java/Semantics/OperationalSemantics.vo bin/Java/Language/Lang.vo bin/Java/Semantics/SemCmdRules.vo bin/Java/Logic/Heap.vo bin/Java/Logic/Traces.vo bin/Java/Logic/ST.vo bin/Java/Logic/Marshal.vo bin/Java/Logic/HeapArr.vo
-bin/Java/Semantics/OperationalSemantics.vo: src/Java/Semantics/OperationalSemantics.v bin/Java/Language/Program.vo bin/Java/Logic/Heap.vo bin/Java/Logic/ProtocolLogic.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Logic/SpecLogic.vo bin/Java/Language/Lang.vo bin/Java/Logic/HeapArr.vo bin/Java/Logic/Traces.vo bin/Java/Logic/ST.vo bin/Java/Semantics/SemCmdRules.vo bin/Java/Util.vo
-bin/Java/Semantics/SemCmdRules.vo: src/Java/Semantics/SemCmdRules.v bin/Java/Logic/ProtocolLogic.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Logic/SpecLogic.vo bin/Java/Language/Lang.vo bin/Java/Util.vo bin/Java/Logic/ST.vo bin/Java/Logic/Traces.vo
+bin/Java/Semantics/AxiomaticSemantics.vo: src/Java/Semantics/AxiomaticSemantics.v bin/Java/Util.vo bin/Java/Logic/SpecLogic.vo bin/Java/Logic/ProtocolLogic.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Language/Program.vo bin/Java/Semantics/OperationalSemantics.vo bin/Java/Language/Lang.vo bin/Java/Semantics/SemCmd.vo bin/Java/Semantics/SemCmdRules.vo bin/Java/Logic/Heap.vo bin/Java/Logic/Traces.vo bin/Java/Logic/ST.vo bin/Java/Logic/Marshal.vo bin/Java/Logic/HeapArr.vo
+bin/Java/Semantics/OperationalSemantics.vo: src/Java/Semantics/OperationalSemantics.v bin/Java/Language/Program.vo bin/Java/Logic/Heap.vo bin/Java/Logic/ProtocolLogic.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Logic/SpecLogic.vo bin/Java/Language/Lang.vo bin/Java/Semantics/SemCmd.vo bin/Java/Logic/HeapArr.vo bin/Java/Logic/Traces.vo bin/Java/Logic/ST.vo bin/Java/Semantics/SemCmdRules.vo bin/Java/Util.vo
+bin/Java/Semantics/SemCmd.vo: src/Java/Semantics/SemCmd.v bin/Java/Language/Program.vo bin/Java/Logic/SpecLogic.vo bin/Java/Logic/Heap.vo bin/Java/Logic/ProtocolLogic.vo bin/Java/Language/Lang.vo bin/Java/Logic/Traces.vo bin/Java/Logic/ST.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Logic/ST.vo bin/Java/Util.vo
+bin/Java/Semantics/SemCmdRules.vo: src/Java/Semantics/SemCmdRules.v bin/Java/Semantics/SemCmd.vo bin/Java/Logic/ProtocolLogic.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Logic/SpecLogic.vo bin/Java/Language/Lang.vo bin/Java/Util.vo bin/Java/Logic/ST.vo bin/Java/Logic/Traces.vo
 bin/Java/Util.vo: src/Java/Util.v

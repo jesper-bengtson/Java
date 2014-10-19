@@ -31,7 +31,7 @@ Inductive pMarshal (Pr : Prog_wf) (ref : ptr) : SS.t -> heap -> heap -> Prop :=
                      pMarshal Pr ref fl' big m''
   .
 
-Inductive Marshal (Pr : Prog_wf) (v : sval) (big : heap) : heap -> Prop :=
+Inductive Marshal (Pr : Prog_wf) (v : val) (big : heap) : heap -> Prop :=
   | Marshal_int  : forall (z : Z)
                     (Vint : v = vint z),
     	            Marshal Pr v big (empty _)
@@ -58,9 +58,9 @@ as Marshal_Equal_m.
 Proof.
   admit (* fangel, pMarshal set Equal morphism *).
 Qed. 
-
+(*
 Local Existing Instance DecSval.
-
+*)
 Require Import FSets.FSetProperties.
 
 Lemma pMarshal_field_is_in : forall Pr ptr f v' fl h h', MapsTo (ptr, f) v' h -> pMarshal Pr ptr fl h h' -> SS.In f fl -> MapsTo (ptr, f) v' h'.
@@ -205,14 +205,14 @@ Proof.
 Qed.
 *)
 
-Fixpoint Node_list (p : sval) (xs : list sval) : asn :=
+Fixpoint Node_list (p : val) (xs : list val) : asn :=
   match xs with
     | nil => embed (p = null)
     | x :: xs => Exists v, pointsto p "val" x ** pointsto p "next" v ** Node_list v xs  
   end
 .
 
-Definition List_rep (p : sval) (xs : list sval) : asn :=
+Definition List_rep (p : val) (xs : list val) : asn :=
   Exists head, pointsto p "head" head ** Node_list head xs.
 
 (*

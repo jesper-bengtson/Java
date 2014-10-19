@@ -74,7 +74,7 @@ Print EmbedAsnProp.
   Instance EmbedPAsnAsnOp   : EmbedOp asn pasn  := @EmbedILPreDropOp PM Equal asn asn _ _ _.
   Instance EmbedPAsnAsn     : Embed asn pasn    := @EmbedILPreDrop PM Equal _ asn _ asn _ _ _ _.
   
-  Definition psasn := @open var _ pasn.
+  Definition psasn := @open var val pasn.
 
   Instance ILogicOpsPSasn    : ILogicOps psasn    := _.
   Instance ILogicPSasn       : ILogic psasn       := _.

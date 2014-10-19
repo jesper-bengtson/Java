@@ -20,7 +20,7 @@ Definition heap_unit : heap := @map_unit _ _ _ val.
 Definition max_key (h : heap) : nat :=
 	@fold (ptr * field) _ _ _ _ (fun p _ x => max (fst (fst p)) x) h 0.
 
-Definition offset_val (v : val) (n : nat) : sval :=
+Definition offset_val (v : val) (n : nat) : val :=
 	match v with
 	  | vptr (x, C) => vptr (x + n, C)
 	  | _ => v

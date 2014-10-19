@@ -72,12 +72,12 @@ Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
     + right. intros [v H]. congruence.
     + destruct path; simpl in *.
       * remember (find (x, a) h) as o; simpl in *.
-        rewrite <- Heqo in *; destruct o.
-        - left. exists s. reflexivity.
+        destruct o.
+        - left. exists v. reflexivity.
         - right. intros [v H]. congruence.
-      * remember (find (x, a) h) as o; simpl in *; rewrite <- Heqo in *. 
+      * remember (find (x, a) h) as o; simpl in *.
         destruct o; [|right; intros [v H]; congruence].
-        destruct s; try (right; intros [v H]; congruence).
+        destruct v; try (right; intros [v H]; congruence).
         apply IHpath.
   Qed.
 
@@ -105,7 +105,9 @@ Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
         unfold in_heap_arr in HValid; simpl in *.
         destruct HValid as [y HValid].
         remember (find (arr, a) h') as o.
-        unfold val in *; simpl in *; destruct o;
+        simpl in *; destruct o; [|congruence].
+        admit.
+        (*
         rewrite <- Heqo in HValid; rewrite <- Heqo; [|congruence].
         destruct s; try congruence.
         apply IHpath.
@@ -120,6 +122,7 @@ Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
         apply H. 
         unfold in_heap_arr. exists y.
         apply HValid.
+        *)
   Qed.
 
 Opaque MapSepAlgOps.
@@ -137,8 +140,10 @@ Opaque MapSepAlgOps.
         destruct (sa_mul_mapstoL Hh H).
         rewrite <- find_mapsto_iff.
         apply H0.
-      * remember (find (x, a) h) as o; destruct o; 
-        unfold val in *; simpl in *; rewrite <- Heqo in H; [|congruence].
+      * remember (find (x, a) h) as o; destruct o; [|congruence].
+        destruct v0; try congruence.
+        admit. (*
+        rewrite <- Heqo in H; [|congruence].
         destruct v0; try congruence.
         symmetry in Heqo; rewrite <- find_mapsto_iff in Heqo.        
         destruct (sa_mul_mapstoL Hh Heqo).
@@ -146,6 +151,7 @@ Opaque MapSepAlgOps.
         unfold arrptr, val in *; simpl in *.
         rewrite H0.
         apply IHpath; apply H.
+*)
   Qed.
 
   Lemma add_heap_arr_frame arr path (h frame h' h'' : heap_arr) v (HFrame : sa_mul h frame h')
@@ -163,6 +169,8 @@ Opaque MapSepAlgOps.
         destruct (sa_mul_mapstoL HFrame HIn). apply H1. apply H.
       * destruct HIn as [y HIn]; simpl in HIn. 
         remember (find (arr, a) h) as o; simpl in *.
+admit.
+(*
         rewrite <- Heqo in *.
         destruct o; [|congruence].
         destruct s; try congruence.
@@ -172,6 +180,7 @@ Opaque MapSepAlgOps.
         unfold arrptr in *; simpl in *. rewrite H1 in H.
         apply IHpath. apply H.
         exists y. apply HIn.
+*)
   Qed.
 (*
   Lemma add_hear_arr_eq x path h h' v n (H : add_heap_arr x path h v = Some h') 

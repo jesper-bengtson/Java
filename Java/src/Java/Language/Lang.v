@@ -28,34 +28,34 @@ Definition arrptr := nat.
 Definition stptr := nat.
 Definition protocol := nat.
 
-Inductive sval : Set :=
-| vint :> Z -> sval
-| vbool :> bool -> sval
-| vptr :> ptr -> sval
-| varr :> arrptr -> sval
-| vst :> stptr -> sval
-| nothing : sval.
+Inductive val : Set :=
+| vint :> Z -> val
+| vbool :> bool -> val
+| vptr :> ptr -> val
+| varr :> arrptr -> val
+| vst :> stptr -> val
+| nothing : val.
 
 Definition pnull := (0, EmptyString) : ptr.
 Definition null := vptr pnull.
 
-(* From here on, val will be (roughly) synonymous with sval *)
-Instance SVal : ValNull := Build_ValNull nothing.
+(* From here on, val will be (roughly) synonymous with val *)
+Instance SVal : ValNull val := Build_ValNull nothing.
 
-(* This lets sval unify with val *)
+(* This lets val unify with val *)
 Canonical Structure SVal.
 
-Definition DecSval : DecidableEq sval. Proof. split. repeat (decide equality). Qed.
+Definition Decval : DecidableEq val. Proof. split. repeat (decide equality). Qed.
 
-Inductive svalEq : sval -> sval -> Prop :=
-| s_int (a b : Z) : a === b -> svalEq (vint a) (vint b)
-| s_bool (a b : bool) : a === b -> svalEq (vbool a) (vbool b)
-| s_ptr (a b : ptr) : a === b -> svalEq (vptr a) (vptr b)
-| s_arrptr (a b : arrptr) : a === b -> svalEq (varr a) (varr b)
-| s_stptr (a b : stptr) : a === b -> svalEq (vst a) (vst b)
-| s_nothing : svalEq nothing nothing
+Inductive valEq : val -> val -> Prop :=
+| s_int (a b : Z) : a === b -> valEq (vint a) (vint b)
+| s_bool (a b : bool) : a === b -> valEq (vbool a) (vbool b)
+| s_ptr (a b : ptr) : a === b -> valEq (vptr a) (vptr b)
+| s_arrptr (a b : arrptr) : a === b -> valEq (varr a) (varr b)
+| s_stptr (a b : stptr) : a === b -> valEq (vst a) (vst b)
+| s_nothing : valEq nothing nothing
 .
-Definition SvalEqEquiv : Equivalence svalEq.
+Definition valEqEquiv : Equivalence valEq.
 Proof.
   split.
   * unfold Reflexive; intros x; induction x; constructor; auto.
@@ -66,34 +66,34 @@ Proof.
     constructor; transitivity b; assumption.
 Qed.
 
-Inductive sval_lt : sval -> sval -> Prop :=
-| s_lt_int_int (a b : Z) : a <<< b -> sval_lt (vint a) (vint b)
-| s_lt_bool_bool (a b : bool): a <<< b -> sval_lt (vbool a) (vbool b)
-| s_lt_ptr_ptr (a b : ptr) : a <<< b -> sval_lt (vptr a) (vptr b)
-| s_lt_arr_arr (a b : arrptr) : a <<< b -> sval_lt (varr a) (varr b)
-| s_lt_st_st (a b : stptr) : a <<< b -> sval_lt (vst a) (vst b)
+Inductive val_lt : val -> val -> Prop :=
+| s_lt_int_int (a b : Z) : a <<< b -> val_lt (vint a) (vint b)
+| s_lt_bool_bool (a b : bool): a <<< b -> val_lt (vbool a) (vbool b)
+| s_lt_ptr_ptr (a b : ptr) : a <<< b -> val_lt (vptr a) (vptr b)
+| s_lt_arr_arr (a b : arrptr) : a <<< b -> val_lt (varr a) (varr b)
+| s_lt_st_st (a b : stptr) : a <<< b -> val_lt (vst a) (vst b)
 
-| s_lt_nothing_int b : sval_lt nothing (vint b)
+| s_lt_nothing_int b : val_lt nothing (vint b)
 
-| s_lt_nothing_bool b : sval_lt nothing (vbool b)
-| s_lt_int_bool a b : sval_lt (vint a) (vbool b)
+| s_lt_nothing_bool b : val_lt nothing (vbool b)
+| s_lt_int_bool a b : val_lt (vint a) (vbool b)
 
-| s_lt_nothing_ptr b : sval_lt nothing (vptr b)
-| s_lt_int_ptr a b : sval_lt (vint a) (vptr b)
-| s_lt_bool_ptr a b : sval_lt (vbool a) (vptr b)
+| s_lt_nothing_ptr b : val_lt nothing (vptr b)
+| s_lt_int_ptr a b : val_lt (vint a) (vptr b)
+| s_lt_bool_ptr a b : val_lt (vbool a) (vptr b)
 
-| s_lt_nothing_arr b : sval_lt nothing (varr b)
-| s_lt_int_arr a b : sval_lt (vint a) (varr b)
-| s_lt_bool_arr a b : sval_lt (vbool a) (varr b)
-| s_lt_ptr_arr a b : sval_lt (vptr a) (varr b)
+| s_lt_nothing_arr b : val_lt nothing (varr b)
+| s_lt_int_arr a b : val_lt (vint a) (varr b)
+| s_lt_bool_arr a b : val_lt (vbool a) (varr b)
+| s_lt_ptr_arr a b : val_lt (vptr a) (varr b)
 
-| s_lt_nothing_st b : sval_lt nothing (vst b)
-| s_lt_int_st a b : sval_lt (vint a) (vst b)
-| s_lt_bool_st a b : sval_lt (vbool a) (vst b)
-| s_lt_ptr_st a b : sval_lt (vptr a) (vst b)
-| s_lt_arr_st a b : sval_lt (varr a) (vst b)
+| s_lt_nothing_st b : val_lt nothing (vst b)
+| s_lt_int_st a b : val_lt (vint a) (vst b)
+| s_lt_bool_st a b : val_lt (vbool a) (vst b)
+| s_lt_ptr_st a b : val_lt (vptr a) (vst b)
+| s_lt_arr_st a b : val_lt (varr a) (vst b)
 .
-Definition sval_compare a b :=
+Definition val_compare a b :=
   match a, b with
       | nothing, nothing => Eq
       | nothing, _ => Lt
@@ -117,8 +117,8 @@ Definition sval_compare a b :=
 
       | vst a', vst b' => a' =?= b'
   end.
-Local Existing Instance SvalEqEquiv.
-Definition StrictOrderSval : StrictOrder sval_lt svalEq.
+Local Existing Instance valEqEquiv.
+Definition StrictOrderval : StrictOrder val_lt valEq.
 Proof.
   split.
   * intros a b c Hab Hbc.
@@ -129,8 +129,8 @@ Proof.
     apply lt_not_eq in H0; apply H0; apply H3.
 Qed.
 
-Local Existing Instance StrictOrderSval.
-Program Definition OrderedTypeSval : OrderedType sval := Build_OrderedType sval svalEq sval_lt _ _ sval_compare _.
+Local Existing Instance StrictOrderval.
+Program Definition OrderedTypeval : OrderedType val := Build_OrderedType val valEq val_lt _ _ val_compare _.
 Next Obligation.
   destruct x; destruct y; simpl; repeat constructor.
   * destruct (compare_dec z z0); repeat constructor; auto.
@@ -140,7 +140,7 @@ Next Obligation.
   * destruct (compare_dec s s0); repeat constructor; auto.
 Qed.
 
-Definition stack := stack var.
+Definition stack := stack var val.
 
 Inductive dexpr : Type :=
 | E_val   : val -> dexpr
