@@ -66,10 +66,10 @@ Instance UUSepAlgHeap : UUSepAlg heap := _.
 Instance HeapSepAlgOps : SepAlgOps heap := _.
 Instance UUSepAlgHeap : UUSepAlg heap := _.
 
-Definition asn := ILPreFrm Prog_sub (ILPreFrm ge (ILPreFrm (@rel heap subheap) Prop)).
+Definition asn := ILPreFrm (@rel heap subheap) Prop.
 
 Instance ILogicOpsAsn : ILogicOps asn := _.
-Instance BILogicOpsAsn : BILOperators asn. Admitted.
+Instance BILogicOpsAsn : BILOperators asn.
 Instance BILogicAsn : IBILogic asn. Admitted.
 
 Local Existing Instance EmbedILPreDropOp.
@@ -101,13 +101,6 @@ Local Existing Instance pureop_bi_sepalg.
 
 Instance EmbedSasnPureOp : EmbedOp vlogic sasn := _.
 Instance EmbedSasnPure : Embed vlogic sasn := _.
-
-Require Import SpecLogic.
-
-Instance EmbedAsnSpecOp  : EmbedOp spec asn := _.
-Instance EmbedAsnSpec    : Embed spec asn := _.
-Instance EmbedSAsnSpecOp : EmbedOp spec sasn := _.
-Instance EmbedSAsnSpec   : Embed spec sasn := _.
 
 Local Existing Instance pure_embed_pre_drop.
 Local Existing Instance pure_embed_pre.
@@ -142,25 +135,16 @@ Instance pure_spec (p : spec) : pure (@embed spec sasn _ p) := _.
 
 Local Transparent ILPre_Ops.
 
-Definition mk_asn (f: Program -> nat -> heap -> Prop)
-  (Hnat: forall P k h, f P (S k) h -> f P k h)
-  (HProg: forall P P' k h, Prog_sub P P' -> f P k h -> f P' k h)
-  (Hheap: forall P k h h', subheap h h' -> f P k h -> f P k h') : asn.
-  refine (mkILPreFrm (fun P => mkILPreFrm (fun k => mkILPreFrm (fun h => f P k h) _) _) _).
+Definition mk_asn (f: heap -> Prop)
+  (Hheap: forall h h', subheap h h' -> f h -> f h') : asn.
+  refine (mkILPreFrm (fun h => f h) _).
 Proof.
-  intros P P' HP Hn h H; simpl.
-  eapply HProg; eassumption.
-Grab Existential Variables.
-  assert (forall k' k P h, k' >= k -> f P k' h -> f P k h) as Hnat'.
-  intros k k' P' h Hkk' S.  
-  induction Hkk'. assumption.
-  apply IHHkk'. apply Hnat. assumption.
-  intros n n' Hn'' p S; simpl in *. eapply Hnat'; eassumption.
-  intros h h' Hh H. eapply Hheap; eassumption.
+  intros h h' H H1.
+  eapply Hheap. apply H. assumption.
 Defined.
 
 Program Definition pointsto_aux (x : ptr) (f : field) (v : val) : asn :=
-  mk_asn (fun P k h => subheap (add (x, f) v (empty val)) (fst h)) _ _ _.
+  mk_asn (fun h => subheap (add (x, f) v (empty val)) (fst h)) _.
 Next Obligation.
   destruct h, h'; simpl in *.
   apply subheap_prod in H as [H _].
@@ -169,7 +153,7 @@ Qed.
 
 Definition pointsto (p : val) (f : field) (v : val) : asn :=
   (p <> null) /\\ pointsto_aux (val_to_ptr p) f v.
-
+(*
 Program Definition pointsto_arr_element_aux (x : val) (path : list val) (v : val) : asn :=
   mk_asn (fun P k h => exists (h' : heap) , 
                          subheap h' h /\
@@ -197,7 +181,7 @@ Fixpoint pointsto_arr_aux (x : val) (n : nat) (vs : list val) : asn :=
     | v::vs => pointsto_arr_element x (vint (Z_of_nat n)) v ** 
                                     pointsto_arr_aux x (S n) vs
   end.
-
+*)
 Lemma firstn_nil {A : Type} (n : nat) : firstn n (@nil A) = nil.
 Proof.
   destruct n; simpl; reflexivity.
@@ -423,6 +407,51 @@ SearchAbout firstn.
   simpl.
 Qed.
 *)
+
+Definition extSP (P Q: sasn) := exists R, (P ** R) -|- Q.
+Instance extSP_Pre: PreOrder extSP.
+Proof.
+ split.
+ - exists empSP. apply empSPR.
+ - intros P1 P2 P3 [R1 H1] [R2 H2]. exists (R1 ** R2).
+   rewrite <-H1, sepSPA in H2. apply H2.
+Qed.
+
+Instance extSP_impl_m :
+ Proper (extSP --> extSP ++> Basics.impl) extSP.
+Proof.
+ unfold extSP. intros P P' [RP HP] Q Q' [RQ HQ] [R H].
+ eexists. rewrite <- HQ,  <- H, <- HP. split;
+ repeat rewrite sepSPA; reflexivity.
+Qed.
+
+Instance extSP_iff_m :
+ Proper (lequiv ==> lequiv ==> iff) extSP.
+Proof.
+ unfold extSP. intros P P' HP Q Q' HQ.
+ setoid_rewrite HP. setoid_rewrite HQ. 
+ reflexivity.
+Qed.
+
+Instance extSP_sepSP_m :
+ Proper (extSP ++> extSP ++> extSP) sepSP.
+Proof.
+ unfold extSP. intros P P' [RP HP] Q Q' [RQ HQ].
+ eexists. rewrite <- HP, <- HQ. split;
+ repeat rewrite sepSPA;
+ rewrite sepSPC, (sepSPC P);
+ apply bilsep; rewrite <- (sepSPA RP), (sepSPC RP), sepSPA; reflexivity. 
+Qed.
+
+Instance subrelation_equivSP_extSP: subrelation lequiv extSP.
+Proof. intros P P' HP. exists empSP. rewrite HP. apply empSPR. Qed.
+
+Instance subrelation_equivSP_inverse_extSP: subrelation lequiv (inverse extSP).
+Proof. intros P P' HP. exists empSP. rewrite HP. apply empSPR. Qed.
+
+Hint Extern 0 (extSP ?P ?P) => reflexivity.
+
+
 (*
 
 Lemma pointsto_arr_get_element x i j k vs

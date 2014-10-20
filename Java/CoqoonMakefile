@@ -37,11 +37,11 @@ bin/Java/Examples/ListClass.vo: src/Java/Examples/ListClass.v bin/Java/Semantics
 bin/Java/Examples/ListModel.vo: src/Java/Examples/ListModel.v bin/Java/Semantics/AxiomaticSemantics.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Language/Lang.vo
 bin/Java/Language/Lang.vo: src/Java/Language/Lang.v bin/Java/Util.vo
 bin/Java/Language/Program.vo: src/Java/Language/Program.v bin/Java/Language/Lang.vo bin/Java/Util.vo
-bin/Java/Logic/AssertionLogic.vo: src/Java/Logic/AssertionLogic.v bin/Java/Language/Program.vo bin/Java/Language/Lang.vo bin/Java/Logic/HeapArr.vo bin/Java/Logic/SpecLogic.vo
+bin/Java/Logic/AssertionLogic.vo: src/Java/Logic/AssertionLogic.v bin/Java/Language/Program.vo bin/Java/Language/Lang.vo bin/Java/Logic/HeapArr.vo
 bin/Java/Logic/HeapArr.vo: src/Java/Logic/HeapArr.v bin/Java/Language/Program.vo bin/Java/Language/Lang.vo
-bin/Java/Logic/SpecLogic.vo: src/Java/Logic/SpecLogic.v bin/Java/Language/Program.vo
+bin/Java/Logic/SpecLogic.vo: src/Java/Logic/SpecLogic.v bin/Java/Language/Program.vo bin/Java/Logic/AssertionLogic.vo
 bin/Java/Semantics/AxiomaticSemantics.vo: src/Java/Semantics/AxiomaticSemantics.v bin/Java/Logic/SpecLogic.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Language/Program.vo bin/Java/Semantics/OperationalSemantics.vo bin/Java/Language/Lang.vo bin/Java/Semantics/SemCmd.vo bin/Java/Semantics/SemCmdRules.vo bin/Java/Logic/HeapArr.vo
-bin/Java/Semantics/OperationalSemantics.vo: src/Java/Semantics/OperationalSemantics.v bin/Java/Language/Program.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Logic/SpecLogic.vo bin/Java/Language/Lang.vo bin/Java/Semantics/SemCmd.vo bin/Java/Logic/HeapArr.vo bin/Java/Semantics/SemCmdRules.vo
+bin/Java/Semantics/OperationalSemantics.vo: src/Java/Semantics/OperationalSemantics.v bin/Java/Language/Program.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Logic/SpecLogic.vo bin/Java/Language/Lang.vo bin/Java/Logic/HeapArr.vo
 bin/Java/Semantics/SemCmd.vo: src/Java/Semantics/SemCmd.v bin/Java/Language/Program.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Logic/SpecLogic.vo bin/Java/Language/Lang.vo
 bin/Java/Semantics/SemCmdRules.vo: src/Java/Semantics/SemCmdRules.v bin/Java/Semantics/SemCmd.vo bin/Java/Logic/AssertionLogic.vo bin/Java/Logic/SpecLogic.vo bin/Java/Language/Lang.vo bin/Java/Util.vo
 bin/Java/Util.vo: src/Java/Util.v

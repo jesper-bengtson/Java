@@ -10,6 +10,9 @@ Set Maximal Implicit Insertion.
 
 Section Commands.
 
+
+  
+
   Definition semCmdType := Program -> nat -> stack -> heap -> option (stack * heap) -> Prop.
   Definition safe (c : semCmdType) P s t n := ~(c P s t n None).
   Definition frame_property (c : semCmdType) :=
