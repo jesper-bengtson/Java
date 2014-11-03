@@ -35,16 +35,19 @@ Local Existing Instance UUSepAlg_prod.
 
 Definition heap_ptr := Map [ptr * field, val].
 
-Definition heap := (heap_ptr * heap_arr)%type.
+(*Definition heap := (heap_ptr * heap_arr)%type.*)
+
+Definition heap := heap_ptr.
 
 Definition heap_ptr_unit : heap_ptr := @map_unit _ _ _ val.
-Definition heap_unit : heap := (heap_ptr_unit, heap_arr_unit).
+Definition heap_unit := heap_ptr.
+(*Definition heap_unit : heap := (heap_ptr_unit, heap_arr_unit).
 
 Definition heap_add_ptr (h : heap) (p : ptr) (f : field) (v : val) : heap :=
   (add (p, f) v (fst h), snd h).
 Definition heap_add_arr (h : heap) (n m : nat) (v : val) : heap :=
   (fst h, add (n, m) v (snd h)).
-
+*)
 
 Instance RelHeapPtr : Rel heap_ptr := _.
 Instance PreorderHeapPtr : PreOrder (@rel heap_ptr RelHeapPtr) := _.
@@ -69,8 +72,8 @@ Instance UUSepAlgHeap : UUSepAlg heap := _.
 Definition asn := ILPreFrm (@rel heap subheap) Prop.
 
 Instance ILogicOpsAsn : ILogicOps asn := _.
-Instance BILogicOpsAsn : BILOperators asn.
-Instance BILogicAsn : IBILogic asn. Admitted.
+Instance BILogicOpsAsn : BILOperators asn := _.
+Instance BILogicAsn : IBILogic asn := _.
 
 Local Existing Instance EmbedILPreDropOp.
 Local Existing Instance EmbedILPreDrop.
@@ -144,15 +147,20 @@ Proof.
 Defined.
 
 Program Definition pointsto_aux (x : ptr) (f : field) (v : val) : asn :=
-  mk_asn (fun h => subheap (add (x, f) v (empty val)) (fst h)) _.
+  mk_asn (fun h => subheap (add (x, f) v (empty val)) h) _.
 Next Obligation.
   destruct h, h'; simpl in *.
-  apply subheap_prod in H as [H _].
   setoid_rewrite H in H0. assumption.
 Qed.
 
+Definition is_ptr (v : val) :=
+  match v with
+    | vptr _ => True
+    | _ => False
+  end.
+
 Definition pointsto (p : val) (f : field) (v : val) : asn :=
-  (p <> null) /\\ pointsto_aux (val_to_ptr p) f v.
+  (p <> null) /\\ (is_ptr p) /\\ pointsto_aux (val_to_ptr p) f v.
 (*
 Program Definition pointsto_arr_element_aux (x : val) (path : list val) (v : val) : asn :=
   mk_asn (fun P k h => exists (h' : heap) , 

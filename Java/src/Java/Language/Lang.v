@@ -29,11 +29,14 @@ Proof.
 	consider (c ?[ eq ] c0); intros; subst; simpl; try intuition congruence.
 Defined.
 
+Definition channel := nat.
+
 Inductive val : Set :=
 | vint :> Z -> val
 | vbool :> bool -> val
 | vptr :> ptr -> val
 | varr :> arrptr -> val
+| vchan :> channel -> val
 | nothing : val.
 
 Instance RelDec_val : RelDec (@eq val) := {
@@ -43,6 +46,7 @@ Instance RelDec_val : RelDec (@eq val) := {
 	  | vbool a, vbool b => a ?[ eq ] b
 	  | vptr p, vptr q => p ?[ eq ] q
 	  | varr p, varr q => p ?[ eq ] q
+	  | vchan c, vchan d => c ?[ eq ] d
 	  | nothing, nothing => true
 	  | _, _ => false
 	end
@@ -55,6 +59,7 @@ Proof.
   + consider (b ?[ eq ] b0); intros; subst; intuition congruence.
   + consider (p ?[ eq ] p0); intros; subst; intuition congruence.
   + consider (a ?[ eq ] a0); intros; subst; intuition congruence.
+  + consider (c ?[ eq ] c0); intros; subst; intuition congruence.
 Qed.
 
 Definition pnull := (0, EmptyString) : ptr.
@@ -202,6 +207,18 @@ Inductive cmd :=
 | cscall    : var -> class -> method -> list dexpr -> cmd
 | cassert   : dexpr -> cmd
 .
+
+Inductive comp_cmd :=
+  | cc_skip : comp_cmd
+  | cc_atom : cmd -> comp_cmd
+  | cc_seq : comp_cmd -> comp_cmd -> comp_cmd
+  | cc_start : comp_cmd -> comp_cmd
+  | cc_send : var -> dexpr -> comp_cmd
+  | cc_recv : var -> var -> comp_cmd
+  | cc_loop : comp_cmd -> comp_cmd
+  | cc_choice : comp_cmd -> comp_cmd -> comp_cmd.
+
+
 (* Possible bug in Coq when c1 and c2 matches in the cases *)
 Fixpoint beq_cmd cmd1 cmd2 :=
 	match cmd1, cmd2 with 
