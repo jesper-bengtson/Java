@@ -145,8 +145,39 @@ Require Import Java.Logic.Marshal.
 
 End Commands.
 
-  Program Definition safe (c : comp_cmd) : spec :=
+Open Scope open_scope.
+
+Inductive STComp Pr c : ST -> par_context -> Prop :=
+  | STComp_tau st pc pc' : 
+ 	  sem_par_context Pr pc l_tau pc' -> 
+ 	  STComp Pr c st pc' -> STComp Pr c st pc
+  | STComp_send x (P : sasn) st pc v h pc' :
+      sem_par_context Pr pc (l_send c v h) pc' ->
+      STComp Pr c st pc' ->
+      P [{ (fun _ => v) // x }] (fun _ => null) h ->
+  	  STComp Pr c (st_send x P st) pc
+  | STComp_recv x (P : sasn) st pc :
+      (forall v h, P [{ (fun _ => v) // x }] (fun _ => null) h ->
+      	exists pc', sem_par_context Pr pc (l_recv c v h) pc' /\ STComp Pr c st pc') ->
+      STComp Pr c (st_recv x P st) pc.
+
+  Require Import ExtLib.Core.RelDec.
+
+  Definition protocol := Map [channel, ST].
+
+  Fixpoint st_compatible Pr (c : channel) (hc : hole_context) (st : ST) :=
+	match hc with
+	  | hc_hole => False
+	  | hc_nu1 d hc pc => if c ?[ eq ] d then STComp Pr c st pc else st_compatible Pr c hc st
+	  | hc_nu2 d pc hc => if c ?[ eq ] d then STComp Pr c st pc else st_compatible Pr c hc st
+	end.
+
+  Fixpoint compatible Pr (hc : hole_context) (p : protocol) :=
+  	fold (fun c st acc => st_compatible Pr c hc st /\ acc) p True.
+
+  Program Definition safe (c : comp_cmd) (p : protocol) : spec :=
     mk_spec (fun Pr n ctxt hc P => forall s h m, P s h -> n >= m ->
+        compatible Pr hc p ->
     	exists pc, red Pr m (hc_to_pc hc (pc_atom s h (cmd_to_context c ++ ctxt))) pc) _ _ _.
   Next Obligation.
     admit.
@@ -157,26 +188,13 @@ End Commands.
 	destruct H as [h1 [h2 [HSub [HT HR]]]].
 	specialize (H0 _ _ _ HT H2).
 	destruct H0 as [pc Hred].
-	generalize dependent (cmd_to_context c ++ c0); intros l Hred.
-	induction l.
-	+ simpl in Hred.
-	  destruct m; [admit|].
-	  inversion Hred; subst.
-	  admit.
-	  admit.
-	+ admit.
+	admit.
+	admit.
  Qed.
 
-Definition has_ST (c : channel) (st : ST) : spec :=
-	mk_spec (fun Pr n ctxt hc P	N	)
 
-
-Print ST.
-Check ST.
-
-
-Definition triple P c Q :=
-	|-- safe cc_skip @ Q -->> safe c @ P.
+Definition triple P p c Q p' :=
+	|-- safe cc_skip p' @ Q -->> safe c p @ P.
 
     Transparent ILPre_Ops.
     Transparent ILFun_Ops.
@@ -188,6 +206,25 @@ Definition triple P c Q :=
     Opaque MapSepAlgOps.
 Require Import Model.
 
+(*
+Lemma send_triple (x : var) (e : dexpr) st P:
+  triple_st P (st_send x P st) (cc_send x e) 0 P st.
+Proof.
+  intros Pr k cont hc T _ Pr' Hsub n Hkn R HR Hsafe Pr'' HSub' m Hnm S HS HST.
+  split.
+  intros s h o HPS Hmo.
+  eexists.
+  simpl.
+  destruct o. constructor.
+  eapply red_step.
+  
+  
+  apply cc_send.
+  simpl.
+   constructor.
+  constructor.
+  constructor.
+  split.
 
 Lemma write_lemma (x : var) (f : field) (e : dexpr) :
 	@lentails spec _
@@ -211,24 +248,25 @@ Proof.
   admit. reflexivity.
   reflexivity.
 Qed.
-
-  Lemma test_seq (c1 c2 : comp_cmd) (P Q R : sasn)
-  	(Hc1 : safe cc_skip @ Q |-- safe c1 @ P) 
-  	(Hc2 : safe cc_skip @ R |-- safe c2 @ Q) :
-  	safe cc_skip @ R |-- safe (cc_seq c1 c2) @ P.
+*)
+  Lemma test_seq (c1 c2 : comp_cmd) (P Q R : sasn) (p q r : protocol)
+  	(Hc1 : safe cc_skip q @ Q |-- safe c1 p @ P) 
+  	(Hc2 : safe cc_skip r @ R |-- safe c2 q @ Q) :
+  	safe cc_skip r @ R |-- safe (cc_seq c1 c2) p @ P.
   Proof.
     
-    Lemma safe_skip S c P (H : S |-- safe c @ P) :
-    	S |-- safe (cc_seq cc_skip c) @ P.
+    Lemma safe_skip S c P (p : protocol) (H : S |-- safe c p @ P) :
+    	S |-- safe (cc_seq cc_skip c) p @ P.
     Proof.
-      intros Pr k cont hc T Hsafe s h n HT Hkn.
+      intros Pr k cont hc T Hsafe s h n HT Hkn Hcomp.
       simpl in Hkn; simpl. eapply H; eassumption.
     Qed.
     
-    Lemma noethu S c1 c2 c3 P Q
-    	(Hc1 : safe c2 @ Q |-- safe c1 @P)
-    	(H : S |-- safe (cc_seq c2 c3) @ Q) :
-    	S |-- safe (cc_seq c1 c3) @ P.
+ 
+   Lemma noethu S c1 c2 c3 P Q p q
+    	(Hc1 : safe c2 q @ Q |-- safe c1 p @ P)
+    	(H : S |-- safe (cc_seq c2 c3) q @ Q) :
+    	S |-- safe (cc_seq c1 c3) p @ P.
     Proof.
       intros Pr k c hc T Hsafe s h n HT Hkn.
       simpl. rewrite <- app_assoc.
@@ -236,7 +274,7 @@ Qed.
       eapply Hc1; [|eapply HT | omega].
       simpl; simpl in H; intros.
       rewrite app_assoc.
-      eapply H; [eapply Hsafe | eapply H0 | omega].
+      eapply H; [eapply Hsafe | eapply H0 | omega | apply H2].
 	Qed.
     
     

@@ -42,8 +42,8 @@ Require Import Compare_dec.
 
 Inductive ST :=
   | st_end : ST
-  | st_send : var -> sasn -> ST
-  | st_recv : var -> sasn -> ST.
+  | st_send : var -> sasn -> ST -> ST
+  | st_recv : var -> sasn -> ST -> ST.
   
 Inductive label :=
   | l_tau : label
