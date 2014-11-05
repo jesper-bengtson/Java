@@ -98,18 +98,29 @@ Require Import Java.Logic.Marshal.
          sem_par_context q (l_send a v h) q' ->
          sem_par_context (pc_nu a p q) l_tau (pc_nu a p' q').
 
-  Inductive red : nat -> par_context -> par_context -> Prop := 
-    | red_zero n p : red n p p
-    | red_step n p q r : sem_par_context p l_tau q -> red n q r -> red (S n) p r.
+  Fixpoint pc_nil pc :=
+    match pc with
+      | pc_atom _ _ nil => True
+      | pc_atom _ _ _ => False
+      | pc_nu _ pc1 pc2 => pc_nil pc1 /\ pc_nil pc2
+    end.
 
-  Lemma red_tau_step n p q (H : sem_par_context p l_tau q) :
-	  exists q, red n p q.
+  Inductive red : nat -> par_context -> Prop := 
+    | red_zero pc : red 0 pc
+    | red_stop n pc : pc_nil pc -> red n pc
+    | red_step n pc1 : (forall pc2 l, sem_par_context pc1 l pc2 -> l = l_tau /\ red n pc2) -> red (S n) pc1.
+
+(*
+  Lemma red_tau_step n p q (H : sem_par_context p l_tau q) (Hn : n > 0) :
+	  red n p q.
   Proof.
-    destruct n.
+    destruct n; [omega|].
+    induction H; simpl in *.
+    + eapply red_step; [eapply sem_comp_start; eapply H|].
     + eexists; constructor.
     + exists q. econstructor; [eassumption | constructor].
   Qed.
-
+*)
   Lemma sem_par_hc pc l pc' hc (Hsem : sem_par_context pc l pc') 
     (H : List.Forall (fun c => label_channel l <> Some c) (hc_channels hc)) :
   	sem_par_context (hc_to_pc hc pc) l (hc_to_pc hc pc').
@@ -172,23 +183,21 @@ Inductive STComp Pr c : ST -> par_context -> Prop :=
 	  | hc_nu2 d pc hc => if c ?[ eq ] d then STComp Pr c st pc else st_compatible Pr c hc st
 	end.
 
-  Fixpoint compatible Pr (hc : hole_context) (p : protocol) :=
+  Definition compatible Pr (hc : hole_context) (p : protocol) :=
   	fold (fun c st acc => st_compatible Pr c hc st /\ acc) p True.
 
   Program Definition safe (c : comp_cmd) (p : protocol) : spec :=
-    mk_spec (fun Pr n ctxt hc P => forall s h m, P s h -> n >= m ->
-        compatible Pr hc p ->
-    	exists pc, red Pr m (hc_to_pc hc (pc_atom s h (cmd_to_context c ++ ctxt))) pc) _ _ _.
+    mk_spec (fun Pr n ctxt P => forall s h Pr' m hc, P s h -> n >= m -> Prog_sub Pr Pr' ->
+        compatible Pr' hc p ->
+    	red Pr' m (hc_to_pc hc (pc_atom s h (cmd_to_context c ++ ctxt)))) _ _ _.
   Next Obligation.
-    admit.
+	eapply H0; try eassumption. transitivity P'; assumption.
   Qed.
   Next Obligation.
 	destruct H as [R [_ H]].
 	specialize (H _ _ H1).
 	destruct H as [h1 [h2 [HSub [HT HR]]]].
-	specialize (H0 _ _ _ HT H2).
-	destruct H0 as [pc Hred].
-	admit.
+	specialize (H0 _ _ _ _ hc HT H2 H3 H4).
 	admit.
  Qed.
 
@@ -205,27 +214,52 @@ Definition triple P p c Q p' :=
     
     Opaque MapSepAlgOps.
 Require Import Model.
+Require Import ExtLib.Tactics.Consider.
 
-(*
-Lemma send_triple (x : var) (e : dexpr) st P:
-  triple_st P (st_send x P st) (cc_send x e) 0 P st.
+Lemma compatible_hole Pr pr (H : compatible Pr hc_hole pr) : pr === empty ST.
 Proof.
-  intros Pr k cont hc T _ Pr' Hsub n Hkn R HR Hsafe Pr'' HSub' m Hnm S HS HST.
-  split.
-  intros s h o HPS Hmo.
-  eexists.
-  simpl.
-  destruct o. constructor.
-  eapply red_step.
-  
-  
-  apply cc_send.
-  simpl.
-   constructor.
-  constructor.
-  constructor.
-  split.
+  revert H; unfold compatible.
+  apply fold_rec. intros.
+  intros c. admit.
+  intros.
+  destruct H3. simpl in H3. destruct H3.
+Qed.
+(*
+Lemma compatible_nu1_ineq Pr c d hc pc p (H : compatible Pr (hc_nu1 c hc pc) p) 
+	(HMapsTo : In d p) (Hineq : c <> d) : compatible Pr hc p.
+Proof.
+  unfold compatible in H.
+ o *)
 
+
+Lemma send_triple (x y : var) (e : dexpr) st p P Q (v : channel) 
+  (HPQ : P |-- Q) (Hembed : P |-- embed (open_eq x/V `(vchan v))) 
+  (Hp : MapsTo v (st_send y Q st) p) :
+  triple P p (cc_send x e) P (add v st p).
+Proof.
+  intros Pr k ctx T _ Pr' HPr n Hkn R HR Hsafe s h Pr'' m hc HPR Hnm Hpr Hcomp.
+  simpl. destruct m; [constructor|].
+  apply red_step. intros. simpl in H.
+  simpl in Hsafe.
+  admit. (* I believe you, but you need a lot of work *)
+Qed.
+
+Lemma start_triple p x c v P st
+  (H : triple ltrue (add v st (empty ST)) c ltrue (empty ST)) :
+	triple P p (cc_start x c) P (add v (dual st) p).
+Proof.
+  intros Pr k ctx T _ Pr' HPr n Hkn R HR Hsafe s h Pr'' m hc HPR Hnm Hpr Hcomp.
+  simpl; destruct m; [constructor|].
+  apply red_step. intros. simpl in H0.
+  assert ((@ltrue spec _) Pr k nil T) as HTrue by apply I.
+  assert (Prog_sub Pr Pr) as HPr2 by reflexivity.
+  assert (k >= k) as Hk by omega.
+  assert (extSP T T) as HTT by admit.
+  assert ((safe cc_skip (empty ST) @ ltrue) Pr k nil T) as blurb.
+  simpl; intros. constructor. admit (* not true *).
+  specialize (H Pr k nil T HTrue Pr HPr2 k Hk T HTT blurb).
+  simpl in H.
+  
 Lemma write_lemma (x : var) (f : field) (e : dexpr) :
 	@lentails spec _
 	(safe cc_skip @ (`pointsto (x/V) (`f) (eval e)))
@@ -255,26 +289,25 @@ Qed.
   	safe cc_skip r @ R |-- safe (cc_seq c1 c2) p @ P.
   Proof.
     
-    Lemma safe_skip S c P (p : protocol) (H : S |-- safe c p @ P) :
+ 
+   Lemma safe_skip S c P (p : protocol) (H : S |-- safe c p @ P) :
     	S |-- safe (cc_seq cc_skip c) p @ P.
     Proof.
-      intros Pr k cont hc T Hsafe s h n HT Hkn Hcomp.
+      intros Pr k cont hc T Hsafe s h Pr' n HT Hkn HPr Hcomp.
       simpl in Hkn; simpl. eapply H; eassumption.
     Qed.
-    
- 
-   Lemma noethu S c1 c2 c3 P Q p q
+      
+    Lemma noethu S c1 c2 c3 P Q p q
     	(Hc1 : safe c2 q @ Q |-- safe c1 p @ P)
     	(H : S |-- safe (cc_seq c2 c3) q @ Q) :
     	S |-- safe (cc_seq c1 c3) p @ P.
     Proof.
-      intros Pr k c hc T Hsafe s h n HT Hkn.
+      intros Pr k c T Hsafe s h Pr' n hc HT Hkn HPr Hcomp.
       simpl. rewrite <- app_assoc.
       specialize (Hc1 Pr k (cmd_to_context c3 ++ c)).
-      eapply Hc1; [|eapply HT | omega].
-      simpl; simpl in H; intros.
-      rewrite app_assoc.
-      eapply H; [eapply Hsafe | eapply H0 | omega | apply H2].
+      eapply Hc1; [| eapply HT | omega | eapply HPr | eapply Hcomp].
+      simpl; simpl in H; intros. rewrite app_assoc.
+      eapply H; [eapply Hsafe | eapply H0 | omega | apply H2 | eapply H3].
 	Qed.
     
     

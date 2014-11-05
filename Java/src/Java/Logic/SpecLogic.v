@@ -45,6 +45,13 @@ Inductive ST :=
   | st_send : var -> sasn -> ST -> ST
   | st_recv : var -> sasn -> ST -> ST.
   
+Fixpoint dual (st : ST) :=
+  match st with
+    | st_end => st_end
+    | st_send x P st => st_recv x P st
+    | st_recv x P st => st_send x P st
+  end.
+  
 Inductive label :=
   | l_tau : label
   | l_send : channel -> val -> heap -> label
@@ -336,15 +343,15 @@ Proof.
 Qed.
 
 Definition spec := ILPreFrm Prog_sub (ILPreFrm ge 
-	(Fun context (Fun hole_context (ILPreFrm extSP Prop)))).
+	(Fun context (ILPreFrm extSP Prop))).
 
-Definition mk_spec (f: Program -> nat -> context -> hole_context -> sasn -> Prop)
-  (Hnat: forall k P c hc T, f P (S k) c hc T -> f P k c hc T)
-  (HSPred: forall k P P' c hc T, Prog_sub P P' -> f P k c hc T -> f P' k c hc T)
-  (HSExt: forall k P c hc T U, extSP T U -> f P k c hc T -> f P k c hc U) : spec.
+Definition mk_spec (f: Program -> nat -> context -> sasn -> Prop)
+  (Hnat: forall k P c T, f P (S k) c T -> f P k c T)
+  (HSPred: forall k P P' c T, Prog_sub P P' -> f P k c T -> f P' k c T)
+  (HSExt: forall k P c T U, extSP T U -> f P k c T -> f P k c U) : spec.
   refine (mkILPreFrm (fun k => 
-  		   (mkILPreFrm (fun P c hc => 
-  		       (mkILPreFrm (fun T => f k P c hc T) _)) _)) _).
+  		   (mkILPreFrm (fun P c => 
+  		       (mkILPreFrm (fun T => f k P c T) _)) _)) _).
 Proof.
   intros P P' HPP' k c. simpl. intros. eapply HSPred. eassumption. assumption.
   Grab Existential Variables.
@@ -358,7 +365,7 @@ Proof.
 Defined.
 
 Program Definition prog_spec (X : Program -> Prop) : spec :=
-  mk_spec (fun (P : Program) _ _ _ _ => forall (Q : Program) , Prog_sub P Q -> X Q /\ valid_program Q = true) _ _ _.
+  mk_spec (fun (P : Program) _ _ _ => forall (Q : Program) , Prog_sub P Q -> X Q /\ valid_program Q = true) _ _ _.
 Next Obligation.
   intros; apply H0; etransitivity; eassumption.
 Qed.
@@ -377,7 +384,7 @@ Definition prog_eq Prog : spec := [prog] (fun P => P = Prog).
 
 Lemma prog_eq_to_prop P (f : Program -> Prop) (H : f P) : prog_eq P |-- [prog] f.
 Proof.
-  intros Q n c hc T HQ R HQR.
+  intros Q n c T HQ R HQR.
   specialize (HQ _ HQR).
   simpl in *. subst. intuition congruence.
 Qed.
@@ -390,7 +397,7 @@ Require Import Model.
 Require Import Morphisms.
 
 Program Definition spec_at (G : spec) (R: sasn) :=
- mk_spec (fun Pr k c hc P => G Pr k c hc (R ** P)) _ _ _.
+ mk_spec (fun Pr k c P => G Pr k c (R ** P)) _ _ _.
 Next Obligation.
  solve_model H.
 Qed.
@@ -408,7 +415,7 @@ Infix "@" := spec_at (at level 44, left associativity).
 Lemma spec_frame (S : spec) (R : sasn) :
  S |-- S @ R.
 Proof.
- intros Pr k c hc P H. unfold spec_at; simpl.
+ intros Pr k c P H. unfold spec_at; simpl.
  assert (extSP P (P ** R)) as HPR by (exists R; reflexivity).
  rewrite ->sepSPC in HPR. rewrite <-HPR. assumption.
 Qed.
@@ -421,7 +428,7 @@ Require Import Morphisms.
 Instance spec_at_entails_m:
  Proper (lentails ++> extSP ++> lentails) spec_at.
 Proof.
- intros S S' HS R R' HR Pr k c hc P H.
+ intros S S' HS R R' HR Pr k c P H.
  unfold spec_at in *; simpl in H; simpl.
  solve_model H; [rewrite <- HR|rewrite <- HS]; reflexivity.
 Qed.
@@ -435,7 +442,7 @@ Qed.
 Lemma spec_at_emp S: S @ empSP -|- S.
 Proof.
  split; [|apply spec_frame].
- intros Pr k c hc P; unfold spec_at; simpl; rewrite empSPL; intros; assumption.
+ intros Pr k c P; unfold spec_at; simpl; rewrite empSPL; intros; assumption.
 Qed.
 
 Lemma spec_at_at S R R': S @ R @ R' -|- S @ (R ** R').
@@ -474,7 +481,7 @@ Proof.
  split.
  - apply limplAdj. rewrite <-spec_at_and.
    cancel2. apply landAdj. reflexivity.
- - unfold spec_at; simpl; intros Pr k c hc P H Pr' HPr' k' Hk' P' [Pext HPext] HS.
+ - unfold spec_at; simpl; intros Pr k c P H Pr' HPr' k' Hk' P' [Pext HPext] HS.
    rewrite <- HPext, sepSPA in HS.
    assert (extSP P (P ** Pext)) by (exists Pext; reflexivity).
    specialize (H _ HPr' _ Hk' _ H0 HS). rewrite sepSPA in HPext. rewrite HPext in H.
