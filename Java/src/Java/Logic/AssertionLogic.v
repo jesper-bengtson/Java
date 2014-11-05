@@ -82,7 +82,7 @@ Instance EmbedAsnProp : Embed Prop asn := _.
 
 Instance RelDec_var : RelDec (@eq var) := _.
 
-Definition sasn := @open var val asn.
+Definition sasn := (Stack.stack var val) -> asn.
 
 Instance ILogicOpsSAsn : ILogicOps sasn := _.
 Instance BILogicOpsSAsn : BILOperators sasn := _.
