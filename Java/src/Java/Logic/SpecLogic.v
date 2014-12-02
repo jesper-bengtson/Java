@@ -56,7 +56,7 @@ Inductive label :=
   | l_tau : label
   | l_send : channel -> val -> heap -> label
   | l_recv : channel -> val -> heap -> label
-  | l_start : channel -> comp_cmd -> label.
+  | l_start : channel -> var -> comp_cmd -> label.
   
 Inductive par_context :=
   | pc_atom : stack -> heap -> context -> par_context
@@ -79,7 +79,7 @@ Definition label_channel l :=
 	| l_tau =>  None
 	| l_send c _ _ => Some c
 	| l_recv c _ _ => Some c
-	| l_start c _ => Some c
+	| l_start c _ _ => Some c
   end.
 
 Fixpoint pc_channels (pc : par_context) : list channel :=

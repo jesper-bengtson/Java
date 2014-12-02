@@ -212,7 +212,7 @@ Inductive comp_cmd :=
   | cc_skip : comp_cmd
   | cc_atom : cmd -> comp_cmd
   | cc_seq : comp_cmd -> comp_cmd -> comp_cmd
-  | cc_start : var -> comp_cmd -> comp_cmd
+  | cc_start : var -> var -> comp_cmd -> comp_cmd
   | cc_send : var -> dexpr -> comp_cmd
   | cc_recv : var -> var -> comp_cmd
   | cc_loop : comp_cmd -> comp_cmd
