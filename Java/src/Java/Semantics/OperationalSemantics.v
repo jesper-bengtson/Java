@@ -341,21 +341,22 @@ Lemma hc_to_pc Pr hc s h c ctx l pc
   (exists s' h' ctx', sem_comp_cmd Pr s h c ctx (Some (l, s', h', ctx')) /\
       pc = hc_to_pc hc (pc_atom s' h' ctx')) \/
   (exists v x c' s' h' ctx', sem_comp_cmd Pr s h c ctx (Some (l_start v x c', s', h', ctx')) /\
-    pc = pc_nu v (hc_to_pc hc (pc_atom s' h' ctx')) 
-      (pc_atom (stack_add x (vchan v) (stack_empty _ _)) (empty _) (cmd_to_context c')) /\
+    pc = hc_to_pc hc (pc_nu v (pc_atom s' h' ctx')
+      (pc_atom (stack_add x (vchan v) (stack_empty _ _)) (empty _) (cmd_to_context c'))) /\
     l = l_tau) \/
-  (exists hc' a v h, (forall s h', sem_par_context Pr (hc_to_pc hc (pc_atom s h' nil)) (l_send a v h)
-    (hc_to_pc hc' (pc_atom s h' nil))) /\
-    (exists s' h' ctx', sem_comp_cmd Pr s h c ctx (Some (l_recv a v h, s', h', ctx')) /\
-    pc = hc_to_pc hc' (pc_atom s' h' ctx) /\ l = l_tau)) \/
-  (exists hc' a v h, (forall s h', sem_par_context Pr (hc_to_pc hc (pc_atom s h' nil)) (l_recv a v h)
-    (hc_to_pc hc' (pc_atom s h' nil))) /\
-    (exists s' h' ctx', sem_comp_cmd Pr s h c ctx (Some (l_send a v h, s', h', ctx')) /\
-    pc = hc_to_pc hc' (pc_atom s' h' ctx) /\ l = l_tau)).
+  (exists hc' a v h', 
+    (forall s h'', sem_par_context Pr (hc_to_pc hc (pc_atom s h'' nil)) (l_send a v h')
+      (hc_to_pc hc' (pc_atom s h'' nil))) /\
+    (exists s' h'' ctx', sem_comp_cmd Pr s h c ctx (Some (l_recv a v h', s', h'', ctx')) /\
+    pc = hc_to_pc hc' (pc_atom s' h'' ctx') /\ l = l_tau)) \/
+  (exists hc' a v h', 
+    (forall s h'', sem_par_context Pr (hc_to_pc hc (pc_atom s h'' nil)) (l_recv a v h')
+      (hc_to_pc hc' (pc_atom s h'' nil))) /\
+    (exists s' h'' ctx', sem_comp_cmd Pr s h c ctx (Some (l_send a v h', s', h'', ctx')) /\
+    pc = hc_to_pc hc' (pc_atom s' h'' ctx') /\ l = l_tau)).
 Proof.
   remember (hc_to_pc hc (pc_atom s h (c :: ctx))).
   generalize dependent hc.
-  admit. (*
   induction H; intros.
   + destruct hc; simpl in Heqp; inversion Heqp; subst; clear Heqp.
     subst. right. right. left.
@@ -375,26 +376,111 @@ Proof.
     simpl; split; [assumption | reflexivity].
   + destruct hc; simpl in Heqp; inversion Heqp; subst.
     * specialize (IHsem_par_context _ eq_refl).
-      destruct IHsem_par_context as [[hc' [H1 H2]] | [[s' [h' [ctx' [H1 H2]]]] | 
-      	[hc' [a [v [h' [H1 [s' [h'' [ctx' [H2 [H3 H4]]]]]]]]]]]].
+	  destruct IHsem_par_context as [[hc' [H1 H2]] | [[s'' [h' [ctx' [H1 H2]]]] | 
+	    [[v' [z [c' [s'' [h' [ctx' [H1 [H2 H3]]]]]]]] | 
+	  	[[hc' [b [v' [h' [H1 [s'' [h'' [ctx' [H2 [H3 H4]]]]]]]]]] |
+	  	[hc' [b [v' [h' [H1 [s'' [h'' [ctx' [H2 [H3 H4]]]]]]]]]]]]]].
       - subst. left. exists (hc_nu1 c1 hc' p0).
         simpl; split; [|reflexivity].
         intros. constructor; [assumption | apply H1].
-      - subst; right; left. exists s', h', ctx'.
+      - subst; right; left.
+        exists s'', h', ctx'.
         split; [assumption | reflexivity].
-      - subst. right. right.
-        exists (hc_nu1 c1 hc' p0), a, v, h'. simpl.
+      - subst; right; right; left; repeat eexists; assumption.
+      - subst; right; right; right; left. 
+        exists (hc_nu1 c1 hc' p0), b, v', h'. simpl.
         split; intros. constructor. simpl.
         admit. (* Name clash *)
         apply H1.
-        exists s', h'', ctx'. split; [apply H2|].
-        split; reflexivity. 
+        repeat eexists; eassumption.
+      - subst; right; right; right; right.
+        exists (hc_nu1 c1 hc' p0), b, v', h'. simpl.
+        split; intros. constructor. simpl.
+        admit. (* Name clash *)
+        apply H1.
+        repeat eexists; eassumption.
     * left. exists (hc_nu2 c1 p' hc).
       split; [|reflexivity].
       intros. constructor; assumption.
-  + admit.
+  + destruct hc; simpl in Heqp; inversion Heqp; subst; simpl.
+    left. exists (hc_nu1 c1 hc q'). simpl; intros; split; [|reflexivity].
+    intros; constructor; assumption.
+   * specialize (IHsem_par_context _ eq_refl).
+	  destruct IHsem_par_context as [[hc' [H1 H2]] | [[s'' [h' [ctx' [H1 H2]]]] | 
+	    [[v' [z [c' [s'' [h' [ctx' [H1 [H2 H3]]]]]]]] | 
+	  	[[hc' [b [v' [h' [H1 [s'' [h'' [ctx' [H2 [H3 H4]]]]]]]]]] |
+	  	[hc' [b [v' [h' [H1 [s'' [h'' [ctx' [H2 [H3 H4]]]]]]]]]]]]]].
+      - subst. left. exists (hc_nu2 c1 p0 hc').
+        simpl; split; [|reflexivity].
+        intros. constructor; [assumption | apply H1].
+      - subst; right; left.
+        exists s'', h', ctx'.
+        split; [assumption | reflexivity].
+      - subst; right; right; left; repeat eexists; assumption.
+      - subst; right; right; right; left. 
+        exists (hc_nu2 c1 p0 hc'), b, v', h'. simpl.
+        split; intros. constructor. simpl.
+        admit. (* Name clash *)
+        apply H1.
+        repeat eexists; eassumption.
+      - subst; right; right; right; right.
+        exists (hc_nu2 c1 p0 hc'), b, v', h'. simpl.
+        split; intros. constructor. simpl.
+        admit. (* Name clash *)
+        apply H1.
+        repeat eexists; eassumption.
   + destruct hc; simpl in Heqp; inversion Heqp; subst; clear Heqp.
     * specialize (IHsem_par_context1 _ eq_refl).
+	  destruct IHsem_par_context1 as [[hc' [H1 H2]] | [[s'' [h' [ctx' [H1 H2]]]] | 
+	    [[v' [z [c' [s'' [h' [ctx' [H1 [H2 H3]]]]]]]] | 
+	  	[[hc' [b [v' [h' [H1 [s'' [h'' [ctx' [H2 [H3 H4]]]]]]]]]] |
+	  	[hc' [b [v' [h' [H1 [s'' [h'' [ctx' [H2 [H3 H4]]]]]]]]]]]]]].
+      - subst. left. exists (hc_nu1 c0 hc' q'); simpl.
+        simpl; split; intros; [|reflexivity].
+        eapply sem_par_comm1; [apply H1|eassumption].
+      - subst; right; right; right; right. simpl.
+        admit.
+      - admit.
+   - admit.
+   - admit.
+   * admit.
+   + admit.
+Qed.
+
+(*
+        exists (hc_nu1 c0 hc q'); simpl. 
+        repeat eexists; intros; [|apply H1].
+        constructor.
+        simpl. admit.
+        assumption.
+        repeat eexists; intros; [|apply H1].
+        repeat eexists; [| | reflexivity].
+        simpl.
+        subst; right; right; right; left. 
+      simpl.
+      simpl; exists (hc_nu1 c0 hc q'). simpl.
+        apply H1.
+        eassumption; try
+        assumption.
+        pc_atom.
+        constructor; [assumption | apply H1].
+      - subst; right; left.
+        exists s'', h', ctx'.
+        split; [assumption | reflexivity].
+      - subst; right; right; left; repeat eexists; assumption.
+      - subst; right; right; right; left. 
+        exists (hc_nu2 c1 p0 hc'), b, v', h'. simpl.
+        split; intros. constructor. simpl.
+        admit. (* Name clash *)
+        apply H1.
+        repeat eexists; eassumption.
+      - subst; right; right; right; right.
+        exists (hc_nu2 c1 p0 hc'), b, v', h'. simpl.
+        split; intros. constructor. simpl.
+        admit. (* Name clash *)
+        apply H1.
+        repeat eexists; eassumption.
+    Print hole_context.
       destruct IHsem_par_context1 as [[hc' [H1 H2]] | [[s' [h' [ctx' [H1 H2]]]] | 
       	[hc' [a [v' [h' [H1 [s' [h'' [ctx' [H2 [H3 H4]]]]]]]]]]]].
       - subst. admit.
@@ -403,8 +489,7 @@ Proof.
     * admit.
   + admit.
   *)
-Qed.
-Check st.
+
 Lemma start_triple p x y c v P s :
 	st v x c s |-- triple P p (cc_start x y c) P (add v (dual s) p).
 Proof.
