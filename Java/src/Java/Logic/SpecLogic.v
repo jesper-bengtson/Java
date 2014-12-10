@@ -74,6 +74,13 @@ Fixpoint hc_to_pc (hc : hole_context) pc : par_context :=
 	  | hc_nu2 a c1 c2 => pc_nu a c1 (hc_to_pc c2 pc)
 	end.
 
+Fixpoint insert_context (hc1 hc2 : hole_context) : hole_context :=
+	match hc1 with
+	  | hc_hole => hc2
+	  | hc_nu1 a hc1 c => hc_nu1 a (insert_context hc1 hc2) c
+	  | hc_nu2 a c hc1 => hc_nu2 a c (insert_context hc1 hc2)
+	end.
+
 Definition label_channel l :=
   match l with
 	| l_tau =>  None
