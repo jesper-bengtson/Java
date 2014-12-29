@@ -147,6 +147,12 @@ Definition val_to_ptr (v : val) : ptr :=
     | _ => pnull
   end.
 
+Definition val_to_channel (v : val) : channel :=
+  match v with
+    | vchan p => p
+    | _ => 0
+  end.
+
 Definition val_to_arr (v : val) : arrptr :=
   match v with
     | varr n => n

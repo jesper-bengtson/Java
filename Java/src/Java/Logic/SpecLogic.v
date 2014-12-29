@@ -1,4 +1,5 @@
 Require Import Later Program ILogic ILEmbed ILInsts Lang RelationClasses.
+Require Import SessionType.
 
 (*
 Local Existing Instance ILLaterNat.
@@ -40,18 +41,6 @@ Local Transparent ILPre_Ops.
 Local Transparent ILFun_Ops.
 Require Import Compare_dec.
 
-Inductive ST :=
-  | st_end : ST
-  | st_send : var -> sasn -> ST -> ST
-  | st_recv : var -> sasn -> ST -> ST.
-  
-Fixpoint dual (st : ST) :=
-  match st with
-    | st_end => st_end
-    | st_send x P st => st_recv x P st
-    | st_recv x P st => st_send x P st
-  end.
-  
 Inductive label :=
   | l_tau : label
   | l_send : channel -> val -> heap -> label
@@ -348,7 +337,7 @@ Proof.
 	  apply H6; assumption.
 	  apply H; assumption.
 Qed.
-
+Locate extSP.
 Definition spec := ILPreFrm Prog_sub (ILPreFrm ge 
 	(Fun context (ILPreFrm extSP Prop))).
 
@@ -380,13 +369,15 @@ Qed.
 Notation "'[prog]' P"    := (prog_spec  P) (at level 65).
 
 Local Existing Instance EmbedILPreDropOp.
+Local Existing Instance EmbedILFunDropOp.
 Local Existing Instance EmbedILPreDrop.
+Local Existing Instance EmbedILFunDrop.
 Local Existing Instance EmbedOpPropProp.
 Local Existing Instance EmbedPropProp.
-(*
+
 Instance EmbedPropSpecOp : EmbedOp Prop spec := _. 
 Instance EmbedPropSpec : Embed Prop spec := _.
-*)
+
 Definition prog_eq Prog : spec := [prog] (fun P => P = Prog).
 
 Lemma prog_eq_to_prop P (f : Program -> Prop) (H : f P) : prog_eq P |-- [prog] f.

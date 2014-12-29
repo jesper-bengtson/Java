@@ -416,49 +416,6 @@ SearchAbout firstn.
 Qed.
 *)
 
-Definition extSP (P Q: sasn) := exists R, (P ** R) -|- Q.
-Instance extSP_Pre: PreOrder extSP.
-Proof.
- split.
- - exists empSP. apply empSPR.
- - intros P1 P2 P3 [R1 H1] [R2 H2]. exists (R1 ** R2).
-   rewrite <-H1, sepSPA in H2. apply H2.
-Qed.
-
-Instance extSP_impl_m :
- Proper (extSP --> extSP ++> Basics.impl) extSP.
-Proof.
- unfold extSP. intros P P' [RP HP] Q Q' [RQ HQ] [R H].
- eexists. rewrite <- HQ,  <- H, <- HP. split;
- repeat rewrite sepSPA; reflexivity.
-Qed.
-
-Instance extSP_iff_m :
- Proper (lequiv ==> lequiv ==> iff) extSP.
-Proof.
- unfold extSP. intros P P' HP Q Q' HQ.
- setoid_rewrite HP. setoid_rewrite HQ. 
- reflexivity.
-Qed.
-
-Instance extSP_sepSP_m :
- Proper (extSP ++> extSP ++> extSP) sepSP.
-Proof.
- unfold extSP. intros P P' [RP HP] Q Q' [RQ HQ].
- eexists. rewrite <- HP, <- HQ. split;
- repeat rewrite sepSPA;
- rewrite sepSPC, (sepSPC P);
- apply bilsep; rewrite <- (sepSPA RP), (sepSPC RP), sepSPA; reflexivity. 
-Qed.
-
-Instance subrelation_equivSP_extSP: subrelation lequiv extSP.
-Proof. intros P P' HP. exists empSP. rewrite HP. apply empSPR. Qed.
-
-Instance subrelation_equivSP_inverse_extSP: subrelation lequiv (inverse extSP).
-Proof. intros P P' HP. exists empSP. rewrite HP. apply empSPR. Qed.
-
-Hint Extern 0 (extSP ?P ?P) => reflexivity.
-
 
 (*
 
@@ -532,3 +489,52 @@ Fixpoint alloc_arr_aux (h : heap_arr) (x : nat) (size : list nat)
 Definition alloc_arr (x : nat) (size : list nat) (paths : list (list nat)) : heap_arr :=
 	alloc_arr_aux (empty val) x size paths.
 *)	
+
+
+Definition extSP (P Q: sasn) := exists R, (P ** R) -|- Q.
+Instance extSP_Pre: PreOrder extSP.
+Proof.
+ split.
+ - exists empSP. apply empSPR.
+ - intros P1 P2 P3 [R1 H1] [R2 H2]. exists (R1 ** R2).
+   rewrite <-H1, sepSPA in H2. apply H2.
+Qed.
+
+Lemma extSP_refl (P : sasn) : extSP P P.
+Proof.
+  exists empSP. apply empSPR.
+Qed.
+
+Instance extSP_impl_m :
+ Proper (extSP --> extSP ++> Basics.impl) extSP.
+Proof.
+ unfold extSP. intros P P' [RP HP] Q Q' [RQ HQ] [R H].
+ eexists. rewrite <- HQ,  <- H, <- HP. split;
+ repeat rewrite sepSPA; reflexivity.
+Qed.
+
+Instance extSP_iff_m :
+ Proper (lequiv ==> lequiv ==> iff) extSP.
+Proof.
+ unfold extSP. intros P P' HP Q Q' HQ.
+ setoid_rewrite HP. setoid_rewrite HQ. 
+ reflexivity.
+Qed.
+
+Instance extSP_sepSP_m :
+ Proper (extSP ++> extSP ++> extSP) sepSP.
+Proof.
+ unfold extSP. intros P P' [RP HP] Q Q' [RQ HQ].
+ eexists. rewrite <- HP, <- HQ. split;
+ repeat rewrite sepSPA;
+ rewrite sepSPC, (sepSPC P);
+ apply bilsep; rewrite <- (sepSPA RP), (sepSPC RP), sepSPA; reflexivity. 
+Qed.
+
+Instance subrelation_equivSP_extSP: subrelation lequiv extSP.
+Proof. intros P P' HP. exists empSP. rewrite HP. apply empSPR. Qed.
+
+Instance subrelation_equivSP_inverse_extSP: subrelation lequiv (inverse extSP).
+Proof. intros P P' HP. exists empSP. rewrite HP. apply empSPR. Qed.
+
+Hint Extern 0 (extSP ?P ?P) => reflexivity.

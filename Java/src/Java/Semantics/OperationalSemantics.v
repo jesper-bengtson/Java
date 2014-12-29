@@ -3,6 +3,8 @@ Require Import MapInterface MapFacts.
 Require Import ILInsts ILogic ILEmbed ILEmbedTac ILQuantTac OpenILogic 
         Open Subst Stack Lang HeapArr BILogic.
         
+Require Import SessionType ProtocolLogic.
+
 Require Import ExtLib.Tactics.Consider.
 
 Import SepAlgNotations.
@@ -42,66 +44,70 @@ Section Commands.
 
 Require Import Java.Logic.Marshal.
 	Check Marshal.
+	
+  Definition channels := list channel.
 
-  Inductive sem_comp_cmd : stack -> heap -> comp_cmd -> context -> option (label * stack * heap * context) -> Prop :=
-    | sem_atom_fail s h c cont : sem_cmd s h c None -> 
-      sem_comp_cmd s h (cc_atom c) cont None
-    | sem_atom s h c cont s' h' : sem_cmd s h c (Some (s', h')) -> 
-      sem_comp_cmd s h (cc_atom c) cont (Some (l_tau, s', h', cont))
+  Inductive sem_comp_cmd : stack -> heap -> channels -> comp_cmd -> context -> 
+    option (label * stack * heap * context) -> Prop :=
+    | sem_atom_fail s h c cs cont : sem_cmd s h c None -> 
+      sem_comp_cmd s h cs (cc_atom c) cont None
+    | sem_atom s h c cs cont s' h' : sem_cmd s h c (Some (s', h')) -> 
+      sem_comp_cmd s h cs (cc_atom c) cont (Some (l_tau, s', h', cont))
       
-  	| sem_skip s h c : sem_comp_cmd s h cc_skip c (Some (l_tau, s, h, c))
+  	| sem_skip s h cs c : sem_comp_cmd s h cs cc_skip c (Some (l_tau, s, h, c))
   	
-  	| sem_send s h a e v hm cont c :
+  	| sem_send s h a e v hm cs cont c :
   	  eval e s = v ->
   	  s a = vchan c ->
   	  Marshal P v h hm ->
-  	  sem_comp_cmd s h (cc_send a e) cont (Some (l_send c v hm, s, h, cont))
+  	  sem_comp_cmd s h cs (cc_send a e) cont (Some (l_send c v hm, s, h, cont))
   	  
-  	| sem_recv s (h : heap) x a v h hm h'' cont c :
+  	| sem_recv s (h : heap) x a v h hm h'' cs cont c :
   	  sa_mul h hm h'' ->
   	  s a = vchan c ->
-  	  sem_comp_cmd s h (cc_recv x a) cont (Some (l_recv c v hm, stack_add x v s, h'', cont)) 
+  	  sem_comp_cmd s h cs (cc_recv x a) cont (Some (l_recv c v hm, stack_add x v s, h'', cont)) 
   	  
-  	| sem_start s h x y c cont :
-  	  sem_comp_cmd s h (cc_start x y c) cont (Some (l_start 0 y c, stack_add x (vchan 0) s, h, cont))
+  	| sem_start s h x y c v cs cont :
+  	  ~ List.In v cs ->
+  	  sem_comp_cmd s h cs (cc_start x y c) cont (Some (l_start v y c, stack_add x (vchan v) s, h, cont))
   	
-	| sem_seq_fail s h c1 c2 cont : sem_comp_cmd s h c1 (c2::cont) None -> 
-		sem_comp_cmd s h (cc_seq c1 c2) cont None
-  	| sem_seq_step s h s' h' c1 c1' c2 cont l : 
-  		sem_comp_cmd s h c1 (c2::cont) (Some (l, s', h', c1')) ->
-  		sem_comp_cmd s h (cc_seq c1 c2) cont (Some (l, s', h', c1')).
+	| sem_seq_fail s h c1 c2 cs cont : sem_comp_cmd s h cs c1 (c2::cont) None -> 
+		sem_comp_cmd s h cs (cc_seq c1 c2) cont None
+  	| sem_seq_step s h s' h' c1 c1' c2 cs cont l : 
+  		sem_comp_cmd s h cs c1 (c2::cont) (Some (l, s', h', c1')) ->
+  		sem_comp_cmd s h cs (cc_seq c1 c2) cont (Some (l, s', h', c1')).
 
-   Inductive sem_par_context : par_context -> label -> par_context -> Prop :=
-     | sem_comp_start s h c ctxt c' s' h' ctxt' v x : 
-        sem_comp_cmd s h c ctxt (Some (l_start v x c', s', h', ctxt')) -> 
-     	sem_par_context 
+   Inductive sem_par_context : channels -> par_context -> label -> par_context -> Prop :=
+     | sem_comp_start s h c ctxt c' s' h' ctxt' v x cs : 
+        sem_comp_cmd s h cs c ctxt (Some (l_start v x c', s', h', ctxt')) -> 
+     	sem_par_context (v::cs)
      	  (pc_atom s h (c::ctxt)) l_tau
      	  (pc_nu v 
      	      (pc_atom s' h' ctxt') 
      	  	  (pc_atom (stack_add x (vchan v) (stack_empty _ _)) (empty _) (cmd_to_context c')))
-     | sem_par_send s h c ctxt s' h' h'' ctxt' v a :
-         sem_comp_cmd s h c ctxt (Some (l_send a v h'', s', h', ctxt')) ->
-     	 sem_par_context (pc_atom s h (c::ctxt)) (l_send a v h'') (pc_atom s' h' ctxt')
-     | sem_par_recv s h c ctxt s' h' h'' ctxt' v a :
-         sem_comp_cmd s h c ctxt (Some (l_recv a v h'', s', h', ctxt')) ->
-     	 sem_par_context (pc_atom s h (c::ctxt)) (l_recv a v h'') (pc_atom s' h' ctxt')
-     | sem_par_tau s h c ctxt s' h' ctxt' :
-         sem_comp_cmd s h c ctxt (Some (l_tau, s', h', ctxt')) ->
-     	 sem_par_context (pc_atom s h (c::ctxt)) l_tau (pc_atom s' h' ctxt')
-     | sem_par_par1 p l p' q c :
+     | sem_par_send s h c ctxt s' h' h'' ctxt' v a cs :
+         sem_comp_cmd s h cs c ctxt (Some (l_send a v h'', s', h', ctxt')) ->
+     	 sem_par_context cs (pc_atom s h (c::ctxt)) (l_send a v h'') (pc_atom s' h' ctxt')
+     | sem_par_recv s h c ctxt s' h' h'' ctxt' v a cs :
+         sem_comp_cmd s h cs c ctxt (Some (l_recv a v h'', s', h', ctxt')) ->
+     	 sem_par_context cs (pc_atom s h (c::ctxt)) (l_recv a v h'') (pc_atom s' h' ctxt')
+     | sem_par_tau s h c ctxt s' h' ctxt' cs :
+         sem_comp_cmd s h cs c ctxt (Some (l_tau, s', h', ctxt')) ->
+     	 sem_par_context cs (pc_atom s h (c::ctxt)) l_tau (pc_atom s' h' ctxt')
+     | sem_par_par1 p l p' q c cs :
          label_channel l <> Some c ->
-         sem_par_context p l p' -> sem_par_context (pc_nu c p q) l (pc_nu c p' q)
-     | sem_par_par2 p l q q' c :
+         sem_par_context (c::cs) p l p' -> sem_par_context cs (pc_nu c p q) l (pc_nu c p' q)
+     | sem_par_par2 p l q q' c cs :
          label_channel l <> Some c ->
-         sem_par_context q l q' -> sem_par_context (pc_nu c p q) l (pc_nu c p q')
-     | sem_par_comm1 p a v h p' q q' :
-         sem_par_context p (l_send a v h) p' -> 
-         sem_par_context q (l_recv a v h) q' ->
-         sem_par_context (pc_nu a p q) l_tau (pc_nu a p' q')
-     | sem_par_comm2 p a v h p' q q' :
-         sem_par_context p (l_recv a v h) p' -> 
-         sem_par_context q (l_send a v h) q' ->
-         sem_par_context (pc_nu a p q) l_tau (pc_nu a p' q').
+         sem_par_context (c::cs) q l q' -> sem_par_context cs (pc_nu c p q) l (pc_nu c p q')
+     | sem_par_comm1 p a v h p' q q' cs :
+         sem_par_context cs p (l_send a v h) p' -> 
+         sem_par_context cs q (l_recv a v h) q' ->
+         sem_par_context cs (pc_nu a p q) l_tau (pc_nu a p' q')
+     | sem_par_comm2 p a v h p' q q' cs :
+         sem_par_context cs p (l_recv a v h) p' -> 
+         sem_par_context cs q (l_send a v h) q' ->
+         sem_par_context cs (pc_nu a p q) l_tau (pc_nu a p' q').
 
   Fixpoint pc_nil pc :=
     match pc with
@@ -113,7 +119,7 @@ Require Import Java.Logic.Marshal.
   Inductive red : nat -> par_context -> Prop := 
     | red_zero pc : red 0 pc
     | red_stop n pc : pc_nil pc -> red n pc
-    | red_step n pc1 : (forall pc2, sem_par_context pc1 l_tau pc2 -> red n pc2) -> red (S n) pc1.
+    | red_step n pc1 : (forall cs pc2, sem_par_context cs pc1 l_tau pc2 -> red n pc2) -> red (S n) pc1.
 
 
   Lemma red_dc n pc m (H : red n pc) (Hmn : m <= n) : red m pc.
@@ -122,7 +128,7 @@ Require Import Java.Logic.Marshal.
     + inversion Hmn; apply red_zero.
     + apply red_stop; assumption.
     + destruct m; [apply red_zero|].
-      apply red_step; intros; apply H0; [assumption | omega].
+      apply red_step; intros; eapply H0; [eassumption | omega].
   Qed.
 
 (*
@@ -137,24 +143,36 @@ Require Import Java.Logic.Marshal.
     + exists q. econstructor; [eassumption | constructor].
   Qed.
 *)
-  Lemma sem_par_hc pc l pc' hc (Hsem : sem_par_context pc l pc') 
+(*
+  Lemma sem_par_hc cs pc l pc' hc (Hsem : sem_par_context cs pc l pc') 
     (H : List.Forall (fun c => label_channel l <> Some c) (hc_channels hc)) :
-  	sem_par_context (hc_to_pc hc pc) l (hc_to_pc hc pc').
+  	sem_par_context cs (hc_to_pc hc pc) l (hc_to_pc hc pc').
   Proof.
-    induction hc; simpl in *.
+    generalize dependent cs.
+    induction hc; simpl in *; intros.
     + assumption.
     + inversion H; subst; clear H.
       apply Forall_appE in H3 as [H3 _].
-      constructor; [|apply IHhc]; assumption.
+      constructor; [|apply IHhc]; try assumption.
+      clear -Hsem H2.
+      induction Hsem.
+      simpl in *.
+      assert (sem_par_context (v :: c :: cs) (pc_atom s h (c0 :: ctxt)) l_tau
+  (pc_nu v (pc_atom s' h' ctxt')
+     (pc_atom (stack_add x (vchan v) (@stack_empty var val _)) (empty val)
+        (cmd_to_context c')))).
+      apply sem_comp_start.
+      assumption.
+      constructor.
     + inversion H; subst; clear H.
       apply Forall_appE in H3 as [_ H3].
       constructor; [|apply IHhc]; assumption.
   Qed.
 
-  Lemma sem_par_atom s h c ctxt l s' h' ctxt' 
+  Lemma sem_par_atom s h cs c ctxt l s' h' ctxt' 
     (Hl : ~(exists a x c, l = l_start a x c))
-    (Hsem : sem_comp_cmd s h c ctxt (Some (l, s', h', ctxt'))) :
-  	sem_par_context (pc_atom s h (c::ctxt)) l (pc_atom s' h' ctxt').
+    (Hsem : sem_comp_cmd s h cs c ctxt (Some (l, s', h', ctxt'))) :
+  	sem_par_context cs (pc_atom s h (c::ctxt)) l (pc_atom s' h' ctxt').
   Proof.
     destruct l; simpl in *.
     + constructor; assumption.
@@ -162,10 +180,10 @@ Require Import Java.Logic.Marshal.
     + constructor; assumption.
     + exfalso; apply Hl; exists c0, v, c1; reflexivity.
   Qed.
-
-  Lemma sem_comp_atom s h c s' h' ctxt
+*)
+  Lemma sem_comp_atom s h cs c s' h' ctxt
   	(Hsem : sem_cmd s h c (Some (s', h'))) :
-  	sem_comp_cmd s h (cc_atom c) ctxt (Some (l_tau, s', h', ctxt)).
+  	sem_comp_cmd s h cs (cc_atom c) ctxt (Some (l_tau, s', h', ctxt)).
   Proof.
     constructor; assumption.
   Qed.
@@ -173,67 +191,94 @@ Require Import Java.Logic.Marshal.
 End Commands.
 
 Open Scope open_scope.
+Check all_STs.
 
-Definition protocol := Map [channel, ST].
+Definition protocol_empty (p : protocol) :=
+  for_all (fun _ e => match e with | st_end => true | _ => false end) p = true.
 
-Inductive STComp Pr : nat -> protocol -> par_context-> Prop :=
+Inductive STComp (Pr : Program) : nat -> protocol -> par_context-> Prop :=
   | STComp_zero p pc : STComp Pr 0 p pc
-  | STComp_nil p pc : pc_nil pc -> (* protocol empty -> *)STComp Pr 0 p pc
-  | STComp_tau n p pc pc' : 
- 	  sem_par_context Pr pc l_tau pc' -> 
- 	  STComp Pr n p pc' -> STComp Pr (S n) p pc
-  | STComp_send n x c (P : sasn) p st pc v h pc' :
-      sem_par_context Pr pc (l_send c v h) pc' ->
+  | STComp_nil n p pc : pc_nil pc -> protocol_empty p -> STComp Pr n p pc
+  | STComp_step n p pc : 
+    (forall l pc' cs, sem_par_context Pr cs pc l pc' -> 
+      STComp_aux Pr n p l pc') -> 
+    STComp Pr (S n) p pc
+with STComp_aux (Pr : Program) : nat -> protocol -> label -> par_context -> Prop :=
+  | STComp_tau n p pc : STComp Pr n p pc -> STComp_aux Pr n p l_tau pc
+  | STComp_send n x c (P : sasn) p st pc v h :
       MapsTo c (st_send x P st) p ->
-      STComp Pr n (add c st p) pc' ->
       P [{ (fun _ => v) // x }] (fun _ => null) h ->
-  	  STComp Pr (S n) p pc
-  | STComp_recv n x c (P : sasn) p st pc :
+      STComp Pr n (add c st p) pc ->
+      STComp_aux Pr n p (l_send c v h) pc
+  | stComp_recv n x c (P : sasn) p st pc v h :
       MapsTo c (st_recv x P st) p ->
-      (forall v h, P [{ (fun _ => v) // x }] (fun _ => null) h ->
-      	exists pc', sem_par_context Pr pc (l_recv c v h) pc' /\ STComp Pr n (add c st p) pc') ->
-      STComp Pr (S n) p pc.
-
+      (P [{ (fun _ => v) // x }] (fun _ => null) h -> STComp Pr n (add c st p) pc) ->
+      STComp_aux Pr n p (l_recv c v h) pc.
+      
   Definition compatible Pr n (hc : hole_context) (p : protocol) :=
-    forall pc m, m >= n -> STComp Pr m p pc -> red Pr n (hc_to_pc hc pc).
+    forall pc m, m <= n -> STComp Pr m p pc -> red Pr m (hc_to_pc hc pc).
 
-  Program Definition safe (c : comp_cmd) (p : protocol) : spec :=
+  Program Definition safe (c : comp_cmd) p : spec :=
     mk_spec (fun Pr n ctxt P => forall s h Pr' m hc, P s h -> n >= m -> Prog_sub Pr Pr' ->
         compatible Pr' m hc p ->
     	red Pr' m (hc_to_pc hc (pc_atom s h (cmd_to_context c ++ ctxt)))) _ _ _.
   Next Obligation.
 	eapply H0; try eassumption. transitivity P'; assumption.
-  Qed.
+  Qed. (*
+  Next Obligation.
+    eapply H0; try eassumption; omega. 
+  Qed.*)
   Next Obligation.
 	destruct H as [R [_ H]].
 	specialize (H _ _ H1).
-	destruct H as [h1 [h2 [HSub [HT HR]]]].
+	destruct H as [h1 [h2 [Hsub2 [HT HR]]]].
 	specialize (H0 _ _ _ _ hc HT H2 H3 H4).
+	generalize dependent (cmd_to_context c ++ c0); clear c c0; intros cnt Hcnt.
+	generalize dependent p.
+	remember (hc_to_pc hc (pc_atom s h1 cnt)).
+	induction Hcnt; intros.
+	+ constructor.
+	+ constructor. admit.
+	+ subst. apply red_step; intros.
+	  admit.
+	  (*
+	  eapply H with cs.
+	  clear -H5.
+	  induction H5.
+	  generalize dependent cs.
+	  induction hc; simpl; intros.
+	  admit.
+	  inversion H5; subst.
+	  apply sem_par_par1. assumption. eapply H7.
+	  Print sem_par_context.
+	  apply sem_par1.
+	induction hc; simpl; simpl in Hcnt; intros.
+	admit.
+	generalize dependent c0.
+	induction c; simpl; intros.
+	destruct c; simpl in H0.
+	admit.
+*)
+ Qed.
+(*
+  Program Definition safe2 (c : comp_cmd) : spec :=
+    mk_spec (fun Pr n _ P => forall s p h Pr' m hc, P s p h -> n >= m -> Prog_sub Pr Pr' ->
+        compatible Pr' m hc p ->
+    	red Pr' m (hc_to_pc hc (pc_atom s h (cmd_to_context c)))) _ _ _.
+  Next Obligation.
+    eapply H; try eassumption; omega.
+  Qed.
+  Next Obligation.
+	eapply H0; try eassumption. transitivity P'; assumption.
+  Qed.
+  Next Obligation.
+	destruct H as [R [_ H]].
+	specialize (H _ _ _ H1).
+	destruct H as [p1 [p2 [HSub1 [h1 [h2 [Hsub2 [HT HR]]]]]]].
+	specialize (H0 _ _ _ _ _ hc HT H2 H3).
 	admit.
  Qed.
-
-Program Definition st v x c p :=
-  mk_spec (fun Pr n _ P => 
-    let s := stack_add x (vchan v) (stack_empty _ _) in
-    let h := empty val in
-    forall Pr' m hc, P s h ->
-    n >= m -> Prog_sub Pr Pr' ->
-      compatible Pr m hc (add v p (empty ST)) ->
-      red Pr' m (hc_to_pc hc (pc_atom s h (cmd_to_context c)))) _ _ _.
-Next Obligation.
-  eapply H0; try eassumption.
-  + transitivity P'; assumption.
-  + admit. (* compatibility preserved by program ordering *)
-Qed.
-Next Obligation.
-  apply H0; try assumption.
-  destruct H as [R H].
-  admit.
-Qed.
-
-Definition triple P p c Q p' : spec :=
-	safe cc_skip p' @ Q -->> safe c p @ P.
-
+*)
     Transparent ILPre_Ops.
     Transparent ILFun_Ops.
     Require Import IBILogic.
@@ -241,6 +286,29 @@ Definition triple P p c Q p' : spec :=
     Transparent BILPre_Ops.
     Transparent BILFun_Ops.
     
+
+Program Definition st_safe x c st :=
+  mk_spec (fun Pr n _ P => forall v,
+    let s := stack_add x (vchan v) (stack_empty _ _) in
+    let h := empty val in
+    let p := add v st (empty ST) in
+    forall Pr' m hc, P s h ->
+    n >= m -> Prog_sub Pr Pr' ->
+      compatible Pr' m hc p ->
+      red Pr' m (hc_to_pc hc (pc_atom s h (cmd_to_context c)))) _ _ _.
+Next Obligation.
+  eapply H0; try eassumption.
+  + transitivity P'; assumption.
+Qed.
+Next Obligation.
+  apply H0; try assumption.
+  destruct H as [R H].
+  admit.
+Qed.
+
+Definition triple P p c Q q : spec :=
+	safe cc_skip q @ Q -->> safe c p @ P.
+
     Opaque MapSepAlgOps.
 Check safe.
 Print triple.
@@ -255,12 +323,13 @@ Proof.
   exists empSP; rewrite empSPR; reflexivity.
 Qed.
 
-Lemma verify_st v x c p
-  (H : @lentails spec _ ltrue (triple (embed (open_eq x/V `(vchan v))) (add v p (empty ST)) c ltrue (empty ST))) :
-  |-- st v x c p.
+(*
+Lemma verify_st x c p
+  (H : forall v, @lentails spec _ ltrue (triple (embed (open_eq x/V `(vchan v))) (add v p (empty ST)) c ltrue (empty ST))) :
+  |-- st x c p.
 Proof.
-  intros Pr m ctx Q _ Pr' n hc HQ Hmn HPr Hcomp.
-  specialize (H Pr m nil Q I).
+  intros Pr m ctx Q _ v Pr' n hc HQ Hmn HPr Hcomp.
+  specialize (H v Pr m nil Q I).
   simpl in H.
   rewrite app_nil_r in H.
   eapply H; [eassumption | eassumption | apply extSP_id | | | reflexivity | reflexivity|].
@@ -276,7 +345,7 @@ Proof.
   rewrite stack_lookup_add. reflexivity.
   + admit.
 Qed.
-
+*)
 Require Import Model.
 Require Import ExtLib.Tactics.Consider.
 (*
@@ -347,27 +416,39 @@ Proof.
  o *)
 
 
-Lemma hc_to_pc Pr hc s h c ctx l pc
-  (H : sem_par_context Pr (hc_to_pc hc (pc_atom s h (c::ctx))) l pc) :
-  (exists hc', (forall s h, sem_par_context Pr (hc_to_pc hc (pc_atom s h nil)) l
-    (hc_to_pc hc' (pc_atom s h nil))) /\
-    pc = hc_to_pc hc' (pc_atom s h (c :: ctx))) \/
-  (exists s' h' ctx', sem_comp_cmd Pr s h c ctx (Some (l, s', h', ctx')) /\
-      pc = hc_to_pc hc (pc_atom s' h' ctx')) \/
-  (exists v x c' s' h' ctx', sem_comp_cmd Pr s h c ctx (Some (l_start v x c', s', h', ctx')) /\
+Lemma hc_to_pc Pr hc l cs pc pc'
+  (H : sem_par_context Pr cs (hc_to_pc hc pc) l pc') :
+  (exists hc', (forall pc, sem_par_context Pr cs (hc_to_pc hc pc) l (hc_to_pc hc' pc)) /\
+    pc' = hc_to_pc hc' pc)  \/
+  (exists pc'' cs', sem_par_context Pr (cs' ++ cs) pc l pc'' /\
+      pc' = hc_to_pc hc pc'')(* \/
+  (exists hc' cs' pc'' hc'' hc''' c v h, 
+    sem_par_context Pr (cs ++ cs') (hc_to_pc hc' pc) l (hc_to_pc hc'' pc'') /\
+    sem_par_context Pr (cs ++ cs') pc (l_send c v h) pc'' /\
+    (forall pc, sem_par_context Pr (cs ++ cs') (hc_to_pc hc' pc) (l_recv c v h) (hc_to_pc hc'' pc)) /\
+    l = l_tau /\ hc = insert_context hc''' hc' /\ pc' = hc_to_pc hc''' (hc_to_pc hc'' pc'')) \/
+  (exists hc' cs' pc'' hc'' c v h, 
+    sem_par_context Pr (cs ++ cs') (hc_to_pc hc' pc) l (hc_to_pc hc'' pc'') /\
+    sem_par_context Pr (cs ++ cs') pc (l_send c v h) pc'' /\
+    (forall pc, sem_par_context Pr (cs ++ cs') (hc_to_pc hc' pc) (l_recv c v h) (hc_to_pc hc'' pc)) /\
+    l = l_tau).*)
+
+      
+  (*
+  (exists v x c' s' h' ctx', sem_comp_cmd Pr s h cs c ctx (Some (l_start v x c', s', h', ctx')) /\
     pc = hc_to_pc hc (pc_nu v (pc_atom s' h' ctx')
       (pc_atom (stack_add x (vchan v) (stack_empty _ _)) (empty _) (cmd_to_context c'))) /\
     l = l_tau) \/
   (exists hc' a v h', 
-    (forall s h'', sem_par_context Pr (hc_to_pc hc (pc_atom s h'' nil)) (l_send a v h')
+    (forall s h'', sem_par_context Pr cs (hc_to_pc hc (pc_atom s h'' nil)) (l_send a v h')
       (hc_to_pc hc' (pc_atom s h'' nil))) /\
-    (exists s' h'' ctx', sem_comp_cmd Pr s h c ctx (Some (l_recv a v h', s', h'', ctx')) /\
+    (exists s' h'' ctx', sem_comp_cmd Pr s h cs c ctx (Some (l_recv a v h', s', h'', ctx')) /\
     pc = hc_to_pc hc' (pc_atom s' h'' ctx') /\ l = l_tau)) \/
   (exists hc' a v h', 
-    (forall s h'', sem_par_context Pr (hc_to_pc hc (pc_atom s h'' nil)) (l_recv a v h')
+    (forall s h'', sem_par_context Pr cs (hc_to_pc hc (pc_atom s h'' nil)) (l_recv a v h')
       (hc_to_pc hc' (pc_atom s h'' nil))) /\
-    (exists s' h'' ctx', sem_comp_cmd Pr s h c ctx (Some (l_send a v h', s', h'', ctx')) /\
-    pc = hc_to_pc hc' (pc_atom s' h'' ctx') /\ l = l_tau)).
+    (exists s' h'' ctx', sem_comp_cmd Pr s h cs c ctx (Some (l_send a v h', s', h'', ctx')) /\
+    pc = hc_to_pc hc' (pc_atom s' h'' ctx') /\ l = l_tau))*).
 Proof.
   admit.
   (*
@@ -509,46 +590,50 @@ Qed.
     * admit.
   + admit.
   *)
+Check has_ST.
 
-Lemma start_triple p x y c v P s :
-	st v x c s |-- triple P p (cc_start x y c) P (add v (dual s) p).
-Proof.
-  intros Pr k ctx T HT Pr' HPr n Hkn R HR Hsafe s' h Pr'' m hc HPR Hnm Hpr Hcomp.
-  simpl. generalize dependent hc.
-  induction m; [constructor|]; intros.
-  apply red_step. intros.
-  unfold safe in Hsafe; simpl in Hsafe.
-  simpl in HT.
-  simpl in HT.
-  apply hc_to_pc in H.
-  destruct H as [[hc' [H1 H2]] | [[s'' [h' [ctx' [H1 H2]]]] | 
-    [[v' [z [c' [s'' [h' [ctx' [H1 [H2 _]]]]]]]] | 
-  	[[hc' [b [v' [h' [H1 [s'' [h'' [ctx' [H2 [H3 H4]]]]]]]]]] |
-  	[hc' [b [v' [h' [H1 [s'' [h'' [ctx' [H2 [H3 H4]]]]]]]]]]]]]]; subst.
-  + subst. apply IHm. omega.
-  
-Lemma compatible_step Pr n hc hc' p 
+  Lemma protocol_empty_MapsTo (P : protocol) c s 
+    (H : MapsTo c s P) (Hempty : protocol_empty P) (Hineq : s <> st_end) : False.
+  Proof.
+    unfold protocol_empty in Hempty. rewrite for_all_iff in Hempty.
+    specialize (Hempty _ _ H); destruct s; congruence.
+    intros c1 c2 Hc st1 st2 Hst; subst; reflexivity.
+  Qed.
+
+Lemma compatible_step Pr n hc hc' p cs
   (Hcomp : compatible Pr (S n) hc p)
-  (Hstep : forall s h, sem_par_context Pr (SpecLogic.hc_to_pc hc (pc_atom s h nil))
-    l_tau (SpecLogic.hc_to_pc hc' (pc_atom s h nil))) :
+  (Hstep : forall pc, sem_par_context Pr cs (SpecLogic.hc_to_pc hc pc)
+    l_tau (SpecLogic.hc_to_pc hc' pc)) :
   compatible Pr n hc' p.
 Proof.
-  intros pc m Hmn HPc.
+  intros pc m Hmn Hpc.
+  unfold compatible in Hcomp.
+  eapply Hcomp.
+  destruct n.
+  + assert (m = 0) by omega; subst; constructor.
+  + assert (S m <= S (S n)) by omega; clear Hmn.
+    specialize (Hcomp _ _ H Hpc).
+  apply red_step; intros.
   unfold compatible in Hcomp.
   
-  apply Hcomp.
-    admit. (* Compatible must be downwards closed *)
-  + inversion H1; subst.
-  + subst. simpl.
-    clear IHm.
-    simpl in Hsafe.
-    inversion H1; subst.
-    
-    specialize (Hsafe (stack_add x (vchan 0) s') h' Pr'' m
-    	(insert_context hc (hc_nu1 0 hc_hole (pc_atom (stack_add z (vchan 0) (stack_empty var val)) (empty val)
-    	  (cmd_to_context c'))))).
-    simpl in Hsafe.
-    
+  eapply Hcomp.
+  Print compatible.
+  unfold compatible in Hcomp.
+  assert (m >= S n) as Hnm' by omega.
+  specialize (Hcomp _ _ Hnm' Hpc).
+  inversion Hcomp; subst. admit.
+  eapply H0.
+  apply Hstep.
+  intros pc m Hmn Hpc.
+  Print compatible.
+  unfold compatible in Hcomp.
+  assert (m <= S n) as Hnm' by omega.
+  specialize (Hcomp _ _ Hnm' Hpc).
+  inversion Hcomp; subst. admit.
+  eapply H0.
+  apply Hstep.
+Qed.
+
     Lemma insert_context_comm hc1 hc2 pc : 
       SpecLogic.hc_to_pc (insert_context hc1 hc2) pc = SpecLogic.hc_to_pc hc1 (SpecLogic.hc_to_pc hc2 pc).
     Proof.
@@ -566,30 +651,373 @@ Proof.
       + rewrite IHhc1. reflexivity.
       + rewrite IHhc1. reflexivity.
     Qed.
-    
-    progress rewrite insert_context_comm in Hsafe. simpl in Hsafe.
+
+  Lemma protocol_empty_add v st p (H : protocol_empty (add v st p)) 
+  	(HIn : ~ In v p) : st = st_end /\ protocol_empty p.
+  Proof.
+    unfold protocol_empty in H.
+    rewrite for_all_iff in H; [split|].
+    + specialize (H v st).
+      assert (MapsTo v st (add v st p)) as H1. {
+        rewrite add_mapsto_iff; left; split; reflexivity.
+      }
+      specialize (H H1). destruct st; congruence.
+    + intros. unfold protocol_empty.
+      rewrite for_all_iff; intros c e H1.
+      apply H with c. 
+      assert (c = v \/ c <> v) by admit.
+      destruct H0; subst.
+      contradiction HIn.
+      rewrite in_find_iff; intros H2.
+      rewrite find_mapsto_iff in H1. rewrite H1 in H2; congruence.
+      rewrite add_mapsto_iff. right. intuition congruence.
+      intros st1 st2 Heq; subst. reflexivity.
+    + intros c1 c2 Heq1 st1 st2 Heq2; subst. reflexivity.
+  Qed.
+
+  Lemma dual_end st (H : dual_ST st = st_end) : st = st_end.
+  Proof.
+    destruct st; simpl in *; subst; congruence.
+  Qed.
+
+  Lemma nil_inaction Pr cs p l p' (H : sem_par_context Pr cs p l p') (Hnil : pc_nil p) : False.
+  Proof.
+    generalize dependent cs; generalize dependent p'; generalize dependent l.
+    induction p; simpl in *; intros.
+    + destruct c; [inversion H|intuition].
+    + destruct Hnil as [Hnilp Hnilq].
+      inversion H; subst; firstorder.
+  Qed.
+
+  Lemma protocol_empty_tau Pr cs p l p' n P (H : sem_par_context Pr cs p l p')
+    (H1 : STComp Pr (S n) P p) (Hempty : protocol_empty P) : l = l_tau.
+  Proof.
+    inversion H1; subst.
+    + destruct (nil_inaction H H0).
+    + specialize (H2 _ _ _ H).
+      inversion H2; [reflexivity | |]; subst.
+      * contradiction (protocol_empty_MapsTo H0 Hempty); intros; congruence.
+      * contradiction (protocol_empty_MapsTo H0 Hempty); intros; congruence.
+  Qed.
+
+  Lemma STComp_dc Pr n m p pc (H : STComp Pr n p pc) (Hmn : m <= n) : STComp Pr m p pc.
+  Proof.
+    generalize dependent p; generalize dependent pc; generalize dependent n; induction m; intros.
+    + constructor.
+    + destruct n; [omega|]; inversion H; subst.
+      * apply STComp_nil; assumption.
+      * apply STComp_step; intros l pc' cs H2.
+        specialize (H1 _ _ _ H2).
+        inversion H1; subst.
+        - apply STComp_tau. eapply IHm with n; [omega | assumption].
+        - eapply STComp_send; try eassumption.
+          eapply IHm with n; [omega | assumption].
+        - eapply stComp_recv; intros; try eassumption.
+          apply IHm with n; [omega|].
+          apply H3; assumption.
+  Qed.
+  
+  Lemma STComp_tau_step Pr n cs p pc pc' (H : STComp Pr (S n) p pc) 
+    (Hstep : sem_par_context Pr cs pc l_tau pc') : STComp Pr n p pc'.
+  Proof.
+    inversion H; subst.
+    + contradiction (nil_inaction Hstep H0).
+    + specialize (H1 _ _ _ Hstep).
+      inversion H1; subst; assumption.
+  Qed.
+
+  Lemma protocol_empty_rewrite p q (H : protocol_empty p) (Heq : p === q) : protocol_empty q.
+  Proof.
+    unfold protocol_empty in *; rewrite for_all_iff in *; intros.
+    rewrite for_all_iff in H.
+    rewrite <- Heq in H0.
+    specialize (H k e H0). 
+    apply H.
+    intros ? ? ? ? ? ?; subst; reflexivity.
+    intros ? ? ? ? ? ?; subst; reflexivity.
+  Qed.
+
+  Lemma add_commute (p : protocol) a b st1 st2 (H : a <> b) : 
+  	add a st1 (add b st2 p) === add b st2 (add a st1 p).
+  Proof.
+    intros c.
+    destruct (eq_dec a c).
+    rewrite add_eq_o; [|assumption].
+    destruct (eq_dec b c); [congruence|].
+    rewrite add_neq_o; [|assumption].
+    rewrite H0; rewrite add_eq_o; reflexivity.
+    rewrite add_neq_o; [|assumption].
+    destruct (eq_dec b c).
+    rewrite add_eq_o; [|assumption].
+    rewrite add_eq_o; [|assumption]. reflexivity.
+    rewrite add_neq_o; [|assumption].
+    rewrite add_neq_o; [|assumption].
+    rewrite add_neq_o; [|assumption].
+    reflexivity.
+  Qed.
+  
+  Lemma add_overwrite (p : protocol) a st1 st2 :
+  	add a st1 (add a st2 p) === add a st1 p.
+  Proof.
+    intros b.
+    destruct (eq_dec a b).
+    rewrite add_eq_o; [|assumption].
+    rewrite add_eq_o; [|assumption].
+    reflexivity.
+    rewrite add_neq_o; [|assumption].
+    rewrite add_neq_o; [|assumption].
+    rewrite add_neq_o; [|assumption].
+    reflexivity.
+  Qed.
+  
+  Lemma STComp_rewrite_protocol Pr n p q pc
+  	(H : STComp Pr n p pc) (Heq : p === q) : STComp Pr n q pc.
+  Proof.
+    generalize dependent pc; generalize dependent p; generalize dependent q;
+    induction n; [constructor |]; intros.
+    inversion H; subst.
+    + apply STComp_nil; [assumption|].
+      eapply protocol_empty_rewrite; eassumption.
+    + apply STComp_step; intros l pc' cs H2.
+      specialize (H1 _ _ _ H2).
+      inversion H1; subst.
+      - apply STComp_tau; eapply IHn; eassumption.
+      - rewrite Heq in H0. 
+        eapply STComp_send; try eassumption.
+        eapply IHn; try eassumption.
+        rewrite Heq. reflexivity.
+      - rewrite Heq in H0.
+        eapply stComp_recv; try eassumption; intros H4.
+        eapply IHn; try eassumption; [|eapply H3; assumption].
+        rewrite Heq; reflexivity.
+  Qed.
+
+  Lemma STComp_com Pr n v st (p : protocol) pc1 pc2
+    (Hnotin : ~ In v p) 
+    (H1 : STComp Pr n (add v (dual_ST st) p) pc1) 
+    (H2 : STComp Pr n (add v st (empty ST)) pc2) :
+    STComp Pr n p (pc_nu v pc1 pc2).
+  Proof.
+    generalize dependent st; generalize dependent p; generalize dependent pc1; generalize dependent pc2.
+    induction n; [constructor|]; intros.
+    inversion H1; subst.
+    * apply protocol_empty_add in H0; [|assumption].
+      destruct H0 as [H3 H4].
+      assert (st = st_end) by (apply dual_end; assumption); subst; simpl in *.
+      inversion H2; subst.
+      + apply STComp_nil; simpl; [tauto|assumption].
+      + apply STComp_step; intros.
+        inversion H0; subst.
+        - destruct (nil_inaction H13 H).
+        - assert (l = l_tau). {
+            eapply (protocol_empty_tau H13 H2); try eassumption.
+            unfold protocol_empty. rewrite for_all_iff; intros; [|intros a b c d e f; subst; reflexivity].
+            rewrite add_mapsto_iff in H6.
+            destruct H6 as [[H6 H7] | [H6 H7]]; [subst; reflexivity|].
+            rewrite empty_mapsto_iff in H7; destruct H7.
+          }.
+          subst; apply STComp_tau; eapply IHn with (st := st_end); simpl; [
+            assumption |
+            apply STComp_dc with (S n); [assumption | omega] |
+            specialize (H5 _ _ _ H13); inversion H5; subst; apply H6
+          ].
+        - destruct (nil_inaction H12 H).
+        - destruct (nil_inaction H12 H).
+    * apply STComp_step; intros; inversion H; subst.
+      + specialize (H0 _ _ _ H10); inversion H0; subst.
+        - apply STComp_tau; eapply IHn; try eassumption.
+          apply STComp_dc with (S n); [assumption | omega].
+        - assert (c <> v) by (clear -H9; intro H; apply H9; subst; reflexivity); clear H9.
+          rewrite add_mapsto_iff in H3.
+          destruct H3 as [[Heq _] | [_ H3]]; [subst; congruence|].
+          eapply STComp_send; try eassumption.
+  		  eapply IHn with (st := st).   
+ 		  rewrite add_in_iff. intros [Heq | Hnotin']; [congruence | apply Hnotin; assumption].
+ 		  eapply STComp_rewrite_protocol; [eapply H5|].
+ 		  clear -H6.
+ 		  apply add_commute; assumption.
+   		  eapply STComp_dc with (S n); [assumption | omega].
+        - assert (c <> v) by (clear -H9; intro H; apply H9; subst; reflexivity); clear H9.
+          rewrite add_mapsto_iff in H3.
+  		  destruct H3 as [[Heq _] | [_ H3]]; [subst; congruence|].
+ 		  eapply stComp_recv; try eassumption.
+ 		  intros.
+  		  apply IHn with (st := st).
+ 		  rewrite add_in_iff. intros [Heq | Hnotin']; [congruence | apply Hnotin; assumption].
+  		  specialize (H4 H6).
+  		  eapply STComp_rewrite_protocol; [eapply H4|].
+  		  apply add_commute; assumption.
+  		  apply STComp_dc with (S n); [assumption | omega].
+      + clear H0; inversion H2; subst; [destruct (nil_inaction H10 H0)|].
+        specialize (H3 _ _ _ H10); inversion H3; subst.
+        - apply STComp_tau; apply IHn with (st := st); try assumption.
+          apply STComp_dc with (S n); [assumption | omega].
+        - assert (c <> v) by (clear -H9; intro H; apply H9; subst; reflexivity); clear H9.
+          rewrite add_mapsto_iff in H0.
+          destruct H0 as [[Heq _] | [_ H0]]; [subst; congruence|].
+          rewrite empty_mapsto_iff in H0; destruct H0.
+        - assert (c <> v) by (clear -H9; intro H; apply H9; subst; reflexivity); clear H9.
+          rewrite add_mapsto_iff in H0.
+  		  destruct H0 as [[Heq _] | [_ H0]]; [subst; congruence|].
+  		  rewrite empty_mapsto_iff in H0; destruct H0.
+      + apply STComp_tau.
+        specialize (H0 _ _ _ H9).
+        inversion H2; subst; [destruct (nil_inaction H10 H3)|].
+        specialize (H4 _ _ _ H10); inversion H4; subst.
+        inversion H0; subst.
+        rewrite add_mapsto_iff in H12.
+        destruct H12 as [[_ Heq] | [Hneq _]]; [|congruence]; subst. simpl in *.
+        rewrite add_mapsto_iff in H11.
+        destruct H11 as [[_ Heq] | [Hneq _]]; [|congruence]; inversion Heq; subst.
+        specialize (H13 H15).
+        eapply IHn with (st := st0); try assumption.
+        eapply STComp_rewrite_protocol; [eapply H16 | apply add_overwrite].
+        eapply STComp_rewrite_protocol; [eapply H13 | apply add_overwrite].
+      + apply STComp_tau.
+        specialize (H0 _ _ _ H9).
+        inversion H2; subst; [destruct (nil_inaction H10 H3)|].
+        specialize (H4 _ _ _ H10); inversion H4; subst.
+        inversion H0; subst.
+        rewrite add_mapsto_iff in H11.
+        destruct H11 as [[_ Heq] | [Hneq _]]; [|congruence]; subst. simpl in *.
+        rewrite add_mapsto_iff in H15.
+        destruct H15 as [[_ Heq] | [Hneq _]]; [|congruence]; inversion Heq; subst.
+        specialize (H16 H13).
+        eapply IHn with (st := st0); try assumption.
+        eapply STComp_rewrite_protocol; [eapply H16 | apply add_overwrite].
+        eapply STComp_rewrite_protocol; [eapply H14 | apply add_overwrite].
+  Qed.
+  
+  Lemma sem_par_context_start Pr cs p x y c p' (H : sem_par_context Pr cs p (l_start x y c) p') 
+    : False.  
+  Proof.
+    remember (l_start x y c).
+    induction H; inversion Heql; subst; tauto.
+  Qed.
+
+Lemma start_triple x y c P s p :
+  st_safe y c s |-- (Forall v, ~In v p ->> (safe cc_skip (add v (dual_ST s) p) @ (P [{ (fun _ => vchan v) // x }]))) -->> safe (cc_start x y c) p @ P.
+Proof.
+  intros Pr k ctx T HT Pr' HPr n Hkn R HR Hsafe s' h Pr'' m hc HPR Hnm Hpr Hcomp.
+  unfold spec_at in HT. simpl in HT.
+  simpl. generalize dependent hc.
+  induction m; [constructor|]; intros.
+  apply red_step. intros.
+  unfold safe in Hsafe; simpl in Hsafe.
+  simpl in HT.
+  apply hc_to_pc in H.
+  destruct H as [[hc' [H1 H2]] | [pc'' [cs' [H1 H2]]]]; subst.
+  + subst. apply IHm. omega.
+    eapply compatible_step; try eassumption.
+  + clear IHm.
+    Transparent BILPre_Ops.
+    Transparent SABIOps SABIOps2.
+    simpl in HPR.
+    destruct HPR as [h1 [h2 [Hh [HP HR']]]].
+    unfold extSP in HR. destruct HR as [U [H2 H3]].
+    inversion H1; subst; [|inversion H8].
+    inversion H8; subst.
+    generalize dependent (cs' ++ cs); clear cs cs'; intros cs Hcs Hsem.
+    destruct cs; inversion Hcs; subst; clear Hcs.
+    assert (n >= n) as Htemp by reflexivity.
+    assert (Prog_sub Pr' Pr') as Htemp' by reflexivity.
+    assert (~ In c p) as Htemp'' by admit.
+    specialize (Hsafe _ _ Htemp' _ Htemp _ (extSP_refl R) Htemp'' (stack_add x (vchan c) s') h' Pr'' m
+    	(insert_context hc (hc_nu1 c hc_hole (pc_atom (stack_add x0 (vchan c) (stack_empty var val)) (empty val)
+    	  (cmd_to_context c'))))).
+    simpl in Hsafe.
+        
+    progress rewrite insert_context_comm in Hsafe.
     apply Hsafe.
+    do 3 eexists; [eassumption|].
     admit.
     omega.
     assumption.
-    intros pc Hcomp'.
+    intros pc l Hlm Hcomp'.
     rewrite insert_context_comm. simpl.
-    assert (red Pr'' m
-  (SpecLogic.hc_to_pc hc
-     (pc_nu v pc
-        (pc_atom (stack_add x (vchan v) (@stack_empty var val Val)) (empty val)
-           (cmd_to_context c'))))).
-    specialize (HT Pr'' m (insert_context hc (hc_nu2 v pc hc_hole))). simpl in HT.
+    specialize (HT c Pr'' m (insert_context hc (hc_nu2 c pc hc_hole))). simpl in HT.
     rewrite insert_context_comm in HT. simpl in HT. apply HT.
     admit.
     omega.
-    admit.
-    intros a b.
+    transitivity Pr'; assumption.
+    intros a b d e.
     rewrite insert_context_comm. simpl.
     assert (compatible Pr m hc p) by admit.
     unfold compatible in H.
-    apply H. clear H.
+    assert (red Pr m (SpecLogic.hc_to_pc hc (pc_nu c pc a))).
+    eapply H. reflexivity. clear H.
     unfold compatible in Hcomp.
+    eapply STComp_com with s; try eassumption.
+    
+admit.  
+admit.
+  apply STComp_tau.
+  apply IHn; try assumption.
+  eapply STComp_tau_step.
+    inversion H; subst.
+  specialize (H12 _ _ H4).
+  destruct H12 as [pc'' [H12 H13]].
+  exists (pc_nu v pc'' pc2); split.
+  apply sem_par_par1. simpl. clear -H3; intros H; apply H3; inversion H; reflexivity.
+  apply H12.
+  Print sem_par_context.
+  SearchAbout In add.
+  Lemma STComp_nu Pr n c st1 st2 p p1 p2 pc1 pc2 
+    (H1 : STComp Pr n (add c st1 p1) pc1) (H2 : STComp Pr n (add c st2 p2) pc2) 
+    (Hpartition : Partition p p1 p2) :
+    STComp Pr n p (pc_nu c pc1 pc2).
+  Proof.
+    
+  Qed.
+  
+  eapply STComp_nu; try eassumption.
+  Focus 2. apply STComp_dc with (S n); [eassumption|omega].
+  Check Partition.
+  Print Partition.
+  Print Disjoint.
+    inversion H; subst.
+    apply STComp_nil; assumption.
+    
+  inversion H10.
+  inversion H10; subst.
+  inversion H8. subst. simpl in *.
+  apply STComp_tau.
+      * specialize (IHp1 Hnilp _ _ H7).
+    unfold pc_nil in Hnil.
+      SearchAbout find MapsTo.
+      Sea
+      rewrite add_mapsto_iff.
+Requre Import ExtLib.Tactics.
+      apply H1.
+      eapply H. rewrite add_mapsto_iff. right.
+    setoid_rewrite add_mapsto_iff in H.
+    SearchAbout MapsTo add.
+    SearchAbout for_all.
+    SearchAbout dict.
+    induction p; simpl.
+    induction p.
+    apply STComp_step; intros l pc' H; inversion H; subst.
+    + 
+    Print STComp.
+    inversion H9; subst.
+    inversion H.
+    remember (add v (dual_ST st) p) as p1.
+    remember (add v st (empty ST)) as p2.
+    generalize dependent st.
+    induction H1; intros; simpl in *.
+    + constructor.
+    + assert (st = st_end) by admit; subst; simpl in *.
+      remember (add v st_end (empty ST)) as p1.
+      induction H2.
+      * constructor.
+      * apply STComp_nil; simpl; [tauto|]. admit.
+      * admit.
+    + apply STComp_step.
+      intros.
+      
+Print STComp.    
+    eapply STComp_tau. [|eapply IHSTComp; try eassumption].
+      apply sem_par_par1; [simpl; intuition congruence|].
     eapply HT.
     simpl in HT.
     Check SpecLogic.hc_to_pc.
