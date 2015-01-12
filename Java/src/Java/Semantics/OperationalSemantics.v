@@ -71,16 +71,18 @@ Require Import Java.Logic.Marshal.
   	  ~ List.In v cs ->
   	  sem_comp_cmd s h cs (cc_start x y c) cont (Some (l_start v y c, stack_add x (vchan v) s, h, cont))
   	
-	| sem_seq_fail s h c1 c2 cs cont : sem_comp_cmd s h cs c1 (c2::cont) None -> 
-		sem_comp_cmd s h cs (cc_seq c1 c2) cont None
-  	| sem_seq_step s h s' h' c1 c1' c2 cs cont l : 
-  		sem_comp_cmd s h cs c1 (c2::cont) (Some (l, s', h', c1')) ->
-  		sem_comp_cmd s h cs (cc_seq c1 c2) cont (Some (l, s', h', c1')).
+  	| sem_seq_step s h c1 c2 cs cont r : 
+  		sem_comp_cmd s h cs c1 (c2::cont) r ->
+  		sem_comp_cmd s h cs (cc_seq c1 c2) cont r.
+
+    Definition not_modifies (c : comp_cmd) (x : var) : Prop :=
+      forall s h cs l s' h' ctx ctx' (HSem : sem_comp_cmd s h cs c ctx (Some (l, s', h', ctx'))),
+        s x = s' x.
 
    Inductive sem_par_context : channels -> par_context -> label -> par_context -> Prop :=
      | sem_comp_start s h c ctxt c' s' h' ctxt' v x cs : 
         sem_comp_cmd s h cs c ctxt (Some (l_start v x c', s', h', ctxt')) -> 
-     	sem_par_context (v::cs)
+     	sem_par_context cs
      	  (pc_atom s h (c::ctxt)) l_tau
      	  (pc_nu v 
      	      (pc_atom s' h' ctxt') 
@@ -96,10 +98,10 @@ Require Import Java.Logic.Marshal.
      	 sem_par_context cs (pc_atom s h (c::ctxt)) l_tau (pc_atom s' h' ctxt')
      | sem_par_par1 p l p' q c cs :
          label_channel l <> Some c ->
-         sem_par_context (c::cs) p l p' -> sem_par_context cs (pc_nu c p q) l (pc_nu c p' q)
+         sem_par_context cs p l p' -> sem_par_context cs (pc_nu c p q) l (pc_nu c p' q)
      | sem_par_par2 p l q q' c cs :
          label_channel l <> Some c ->
-         sem_par_context (c::cs) q l q' -> sem_par_context cs (pc_nu c p q) l (pc_nu c p q')
+         sem_par_context cs q l q' -> sem_par_context cs (pc_nu c p q) l (pc_nu c p q')
      | sem_par_comm1 p a v h p' q q' cs :
          sem_par_context cs p (l_send a v h) p' -> 
          sem_par_context cs q (l_recv a v h) q' ->
@@ -115,21 +117,6 @@ Require Import Java.Logic.Marshal.
       | pc_atom _ _ _ => False
       | pc_nu _ pc1 pc2 => pc_nil pc1 /\ pc_nil pc2
     end.
-
-  Inductive red : nat -> par_context -> Prop := 
-    | red_zero pc : red 0 pc
-    | red_stop n pc : pc_nil pc -> red n pc
-    | red_step n pc1 : (forall cs pc2, sem_par_context cs pc1 l_tau pc2 -> red n pc2) -> red (S n) pc1.
-
-
-  Lemma red_dc n pc m (H : red n pc) (Hmn : m <= n) : red m pc.
-  Proof.
-    generalize dependent m; induction H; intros.
-    + inversion Hmn; apply red_zero.
-    + apply red_stop; assumption.
-    + destruct m; [apply red_zero|].
-      apply red_step; intros; eapply H0; [eassumption | omega].
-  Qed.
 
 (*
 
@@ -190,8 +177,202 @@ Require Import Java.Logic.Marshal.
 
 End Commands.
 
+Lemma hc_to_pc_cases Pr hc l cs pc pc'
+  (H : sem_par_context Pr cs (hc_to_pc hc pc) l pc') :
+  (exists hc', (forall pc, sem_par_context Pr cs (hc_to_pc hc pc) l (hc_to_pc hc' pc)) /\
+    pc' = hc_to_pc hc' pc)  \/
+  (exists pc'', sem_par_context Pr cs pc l pc'' /\
+      pc' = hc_to_pc hc pc'') \/
+  ((exists pc'' c v h, sem_par_context Pr cs pc (l_send c v h) pc'' /\
+   exists pc''' pc'''', sem_par_context Pr cs pc''' (l_recv c v h) pc'''' /\
+   exists hc' hc'', hc = insert_context hc' (hc_nu1 c hc'' pc''') /\
+   pc' = hc_to_pc hc' (pc_nu c (hc_to_pc hc'' pc'') pc'''')) /\ l = l_tau) \/
+  ((exists pc'' c v h, sem_par_context Pr cs pc (l_recv c v h) pc'' /\
+   exists pc''' pc'''', sem_par_context Pr cs pc''' (l_send c v h) pc'''' /\
+   exists hc' hc'', hc = insert_context hc' (hc_nu1 c hc'' pc''') /\
+   pc' = hc_to_pc hc' (pc_nu c (hc_to_pc hc'' pc'') pc'''')) /\ l = l_tau) \/
+  ((exists pc'' c v h, sem_par_context Pr cs pc (l_send c v h) pc'' /\
+   exists pc''' pc'''', sem_par_context Pr cs pc''' (l_recv c v h) pc'''' /\
+   exists hc' hc'', hc = insert_context hc' (hc_nu2 c pc''' hc'') /\
+   pc' = hc_to_pc hc' (pc_nu c pc'''' (hc_to_pc hc'' pc''))) /\ l = l_tau) \/
+  ((exists pc'' c v h, sem_par_context Pr cs pc (l_recv c v h) pc'' /\
+   exists pc''' pc'''', sem_par_context Pr cs pc''' (l_send c v h) pc'''' /\
+   exists hc' hc'', hc = insert_context hc' (hc_nu2 c pc''' hc'') /\
+   pc' = hc_to_pc hc' (pc_nu c pc'''' (hc_to_pc hc'' pc''))) /\ l = l_tau).
+Proof.
+  generalize dependent pc; generalize dependent l; generalize dependent pc'.
+  induction hc; simpl in *; intros.
+  + right; left; exists pc'; split; [assumption | reflexivity].
+  + inversion H; subst.
+    * destruct (IHhc _ _ _ H7) as [[hc' [H1 H2]] | [[pc'' [H1 H2]] | 
+        [[[pc'' [c' [v [h [H1 [pc''' [pc'''' [H2 [hc' [hc'' [H3 H4]]]]]]]]]]] Heq] |
+        [[[pc'' [c' [v [h [H1 [pc''' [pc'''' [H2 [hc' [hc'' [H3 H4]]]]]]]]]]] Heq] | 
+        [[[pc'' [c' [v [h [H1 [pc''' [pc'''' [H2 [hc' [hc'' [H3 H4]]]]]]]]]]] Heq] | 
+        [[pc'' [c' [v [h [H1 [pc''' [pc'''' [H2 [hc' [hc'' [H3 H4]]]]]]]]]]] Heq]]]]]];        
+        clear IHhc; subst.
+      - left; exists (hc_nu1 c hc' p); split; [|reflexivity].
+        intros. apply sem_par_par1. assumption. apply H1.
+      - right; left. eexists; split; [apply H1 | reflexivity].
+      - right; right; left.
+        split; [|reflexivity].
+        do 4 eexists; split; [eassumption|].
+        do 2 eexists; split; [eassumption|].
+        exists (hc_nu1 c hc' p), hc''; split; reflexivity.
+      - right; right; right; left.
+        split; [|reflexivity].
+        do 4 eexists; split; [eassumption|].
+        do 2 eexists; split; [eassumption|].
+        exists (hc_nu1 c hc' p), hc''; split; reflexivity.
+      - right; right; right; right; left.
+        split; [|reflexivity].
+        do 4 eexists; split; [eassumption|].
+        do 2 eexists; split; [eassumption|].
+        exists (hc_nu1 c hc' p), hc''; split; reflexivity.
+      - right; right; right; right; right.
+        split; [|reflexivity].
+        do 4 eexists; split; [eassumption|].
+        do 2 eexists; split; [eassumption|].
+        exists (hc_nu1 c hc' p), hc''; split; reflexivity.
+    * left. exists (hc_nu1 c hc q'); split; [|reflexivity].
+      intros; simpl. apply sem_par_par2; eassumption.
+    * destruct (IHhc _ _ _ H6) as [[hc' [H1 H2]] | [[pc'' [H1 H2]] | 
+        [[_ Heq] | [[_ Heq] | [[_ Heq] | [_ Heq]]]]]]; 
+          [| | congruence | congruence | congruence | congruence]; clear IHhc; subst.
+      - left. exists (hc_nu1 c hc' q'); split; [|reflexivity]. intros.
+        eapply sem_par_comm1; [eapply H1 | eapply H7].
+      - right; right; left. split; [|reflexivity]. 
+        do 4 eexists; split; [eassumption|]. 
+        do 2 eexists; split; [eassumption|]. 
+        exists hc_hole; exists hc; split; reflexivity.
+    * destruct (IHhc _ _ _ H6) as [[hc' [H1 H2]] | [[pc'' [H1 H2]] | 
+        [[_ Heq] | [[_ Heq] | [[_ Heq] | [_ Heq]]]]]]; 
+          [| | congruence | congruence | congruence | congruence]; clear IHhc; subst.
+      - left. exists (hc_nu1 c hc' q'); split; [|reflexivity]. intros.
+        eapply sem_par_comm2; [eapply H1 | eapply H7].
+      - right; right. right; left; split; [|reflexivity]. 
+        do 4 eexists; split; [eassumption|]. 
+        do 2 eexists; split; [eassumption|]. 
+        exists hc_hole; exists hc; split; reflexivity.
+  + inversion H; subst.
+    * left; exists (hc_nu2 c p' hc); split; [|reflexivity].
+      intros; simpl; apply sem_par_par1; eassumption.
+    * destruct (IHhc _ _ _ H7) as [[hc' [H1 H2]] | [[pc'' [H1 H2]] | 
+        [[[pc'' [c' [v [h [H1 [pc''' [pc'''' [H2 [hc' [hc'' [H3 H4]]]]]]]]]]] Heq] |
+        [[[pc'' [c' [v [h [H1 [pc''' [pc'''' [H2 [hc' [hc'' [H3 H4]]]]]]]]]]] Heq] | 
+        [[[pc'' [c' [v [h [H1 [pc''' [pc'''' [H2 [hc' [hc'' [H3 H4]]]]]]]]]]] Heq] | 
+        [[pc'' [c' [v [h [H1 [pc''' [pc'''' [H2 [hc' [hc'' [H3 H4]]]]]]]]]]] Heq]]]]]];        
+        clear IHhc; subst.
+      - left; exists (hc_nu2 c p hc'); split; [|reflexivity].
+        intros. apply sem_par_par2. assumption. apply H1.
+      - right; left. eexists; split; [apply H1 | reflexivity].
+      - right; right; left.
+        split; [|reflexivity].
+        do 4 eexists; split; [eassumption|].
+        do 2 eexists; split; [eassumption|].
+        exists (hc_nu2 c p hc'), hc''; split; reflexivity.
+      - right; right; right; left;
+        split; [|reflexivity].
+        do 4 eexists; split; [eassumption|].
+        do 2 eexists; split; [eassumption|].
+        exists (hc_nu2 c p hc'), hc''; split; reflexivity.
+      - right; right; right; right; left;
+        split; [|reflexivity].
+        do 4 eexists; split; [eassumption|].
+        do 2 eexists; split; [eassumption|].
+        exists (hc_nu2 c p hc'), hc''; split; reflexivity.
+      - right; right; right; right; right;
+        split; [|reflexivity].
+        do 4 eexists; split; [eassumption|].
+        do 2 eexists; split; [eassumption|].
+        exists (hc_nu2 c p hc'), hc''; split; reflexivity.
+    * destruct (IHhc _ _ _ H7) as [[hc' [H1 H2]] | [[pc'' [H1 H2]] | 
+        [[_ Heq] | [[_ Heq] | [[_ Heq] | [_ Heq]]]]]]; 
+          [| | congruence | congruence | congruence | congruence]; clear IHhc; subst.
+      - left. exists (hc_nu2 c p' hc'); split; [|reflexivity]. intros.
+        eapply sem_par_comm1; [eapply H6 | eapply H1].
+      - right; right; right; right; right; split; [|reflexivity]. 
+        do 4 eexists; split; [eassumption|]. 
+        do 2 eexists; split; [eassumption|]. 
+        exists hc_hole. simpl.
+        exists hc; split; reflexivity.
+    * destruct (IHhc _ _ _ H7) as [[hc' [H1 H2]] | [[pc'' [H1 H2]] | 
+        [[_ Heq] | [[_ Heq] | [[_ Heq] | [_ Heq]]]]]]; 
+          [| | congruence | congruence | congruence | congruence]; clear IHhc; subst.
+      - left. exists (hc_nu2 c p' hc'); split; [|reflexivity]. intros.
+        eapply sem_par_comm2; [eapply H6 | eapply H1].
+      - right; right; right; right; left; split; [|reflexivity]. 
+        do 4 eexists; split; [eassumption|]. 
+        do 2 eexists; split; [eassumption|]. 
+        exists hc_hole. simpl.
+        exists hc; split; reflexivity.
+Qed.
+
+Lemma sem_hc_to_pc Pr cs pc pc' hc 
+  (H : sem_par_context Pr cs pc l_tau pc') :
+  sem_par_context Pr cs (hc_to_pc hc pc) l_tau (hc_to_pc hc pc').
+Proof.
+  induction hc.
+  + simpl. assumption.
+  + simpl in *; apply sem_par_par1; [firstorder | assumption].
+  + simpl in *; apply sem_par_par2; [firstorder | assumption].
+Qed.
+
+Lemma sem_comp_cmd_Program_closed Pr Pr' s h cs c ctxt r
+  (H : sem_comp_cmd Pr s h cs c ctxt r) (HPr : Prog_sub Pr Pr') : 
+    sem_comp_cmd Pr' s h cs c ctxt r.
+Proof.
+  induction H.
+  + constructor; assumption.
+  + constructor; assumption.
+  + constructor.
+  + constructor; try assumption. admit.
+  + constructor; try assumption.
+  + constructor; assumption.
+  + constructor. apply IHsem_comp_cmd.
+Qed.
+
+Lemma sem_par_context_Program_closed Pr Pr' cs pc l pc' 
+  (H : sem_par_context Pr cs pc l pc') (HPr : Prog_sub Pr Pr') :
+  sem_par_context Pr' cs pc l pc'.
+Proof.
+  induction H;
+   try (constructor; eapply sem_comp_cmd_Program_closed; eassumption).
+  constructor; assumption.
+  constructor; assumption.
+  eapply sem_par_comm1; eassumption.
+  eapply sem_par_comm2; eassumption.
+Qed.
+
+  Inductive red : Program -> nat -> par_context -> Prop := 
+    | red_zero Pr pc : red Pr 0 pc
+    | red_stop Pr n pc : pc_nil pc -> red Pr n pc
+    | red_step Pr n pc1 : (forall cs pc2 Pr', Prog_sub Pr Pr' -> 
+    	sem_par_context Pr' cs pc1 l_tau pc2 -> red Pr' n pc2) -> red Pr (S n) pc1.
+
+
+  Lemma red_dc Pr n pc m (H : red Pr n pc) (Hmn : m <= n) : red Pr m pc.
+  Proof.
+    generalize dependent m; induction H; intros.
+    + inversion Hmn; apply red_zero.
+    + apply red_stop; assumption.
+    + destruct m; [apply red_zero|].
+      apply red_step; intros; eapply H0; [eassumption | eassumption | omega].
+  Qed.
+
+
+Lemma red_Program_closed Pr Pr' n pc (H : red Pr n pc) (HPr : Prog_sub Pr Pr') : red Pr' n pc.
+Proof.
+  generalize dependent Pr'; induction H; intros.
+  + constructor.
+  + constructor; assumption.
+  + apply red_step. intros.
+    eapply H0 with cs Pr'0.
+    * etransitivity; eassumption.
+    * eassumption.
+    * reflexivity.
+Qed.
+
 Open Scope open_scope.
-Check all_STs.
 
 Definition protocol_empty (p : protocol) :=
   for_all (fun _ e => match e with | st_end => true | _ => false end) p = true.
@@ -200,8 +381,7 @@ Inductive STComp (Pr : Program) : nat -> protocol -> par_context-> Prop :=
   | STComp_zero p pc : STComp Pr 0 p pc
   | STComp_nil n p pc : pc_nil pc -> protocol_empty p -> STComp Pr n p pc
   | STComp_step n p pc : 
-    (forall l pc' cs, sem_par_context Pr cs pc l pc' -> 
-      STComp_aux Pr n p l pc') -> 
+    (forall l pc' cs, sem_par_context Pr cs pc l pc' -> STComp_aux Pr n p l pc') -> 
     STComp Pr (S n) p pc
 with STComp_aux (Pr : Program) : nat -> protocol -> label -> par_context -> Prop :=
   | STComp_tau n p pc : STComp Pr n p pc -> STComp_aux Pr n p l_tau pc
@@ -215,31 +395,73 @@ with STComp_aux (Pr : Program) : nat -> protocol -> label -> par_context -> Prop
       (P [{ (fun _ => v) // x }] (fun _ => null) h -> STComp Pr n (add c st p) pc) ->
       STComp_aux Pr n p (l_recv c v h) pc.
       
+
   Definition compatible Pr n (hc : hole_context) (p : protocol) :=
-    forall pc m, m <= n -> STComp Pr m p pc -> red Pr m (hc_to_pc hc pc).
+    forall pc, (forall m, STComp Pr m p pc) -> red Pr n (hc_to_pc hc pc).
+
+Lemma compatible_step Pr n hc hc' p cs
+  (Hcomp : compatible Pr (S n) hc p)
+  (Hstep : forall pc, sem_par_context Pr cs (SpecLogic.hc_to_pc hc pc)
+    l_tau (SpecLogic.hc_to_pc hc' pc)) :
+  compatible Pr n hc' p.
+Proof.
+  intros pc H.
+  unfold compatible in Hcomp.
+  specialize (Hcomp pc H).
+  inversion Hcomp; subst. admit.
+  eapply H2. reflexivity. eapply Hstep.
+Qed.
 
   Program Definition safe (c : comp_cmd) p : spec :=
-    mk_spec (fun Pr n ctxt P => forall s h Pr' m hc, P s h -> n >= m -> Prog_sub Pr Pr' ->
+    mk_spec (fun Pr n ctxt P => forall s h Pr' m hc xs, (forall x, ~ List.In x xs -> not_modifies Pr' c x) -> 
+        (Exists vs, apply_subst P (subst_fresh vs xs)) s h -> n >= m -> Prog_sub Pr Pr' ->
         compatible Pr' m hc p ->
     	red Pr' m (hc_to_pc hc (pc_atom s h (cmd_to_context c ++ ctxt)))) _ _ _.
   Next Obligation.
-	eapply H0; try eassumption. transitivity P'; assumption.
-  Qed. (*
+    eapply H. eassumption. eassumption. omega. eassumption. eassumption.
+  Qed.
   Next Obligation.
-    eapply H0; try eassumption; omega. 
-  Qed.*)
+	eapply H0; try eassumption. transitivity P'; assumption.
+  Qed.
   Next Obligation.
 	destruct H as [R [_ H]].
 	specialize (H _ _ H1).
 	destruct H as [h1 [h2 [Hsub2 [HT HR]]]].
 	specialize (H0 _ _ _ _ hc HT H2 H3 H4).
 	generalize dependent (cmd_to_context c ++ c0); clear c c0; intros cnt Hcnt.
-	generalize dependent p.
-	remember (hc_to_pc hc (pc_atom s h1 cnt)).
+	generalize dependent p. generalize dependent hc. generalize dependent Pr'. generalize dependent cnt.
+	generalize dependent s; generalize dependent h.
+	induction m; intros; [constructor|].
+	inversion Hcnt; subst; [admit|].
+	apply red_step; intros.
+	apply hc_to_pc_cases in H0.
+    destruct H0 as [[hc' [H6 H7]] | [[pc'' [H6 H7]] | 
+        [[[pc'' [c' [v [h' [H6 [pc''' [pc'''' [H7 [hc' [hc'' [H8 H9]]]]]]]]]]] Heq] |
+        [[[pc'' [c' [v [h' [H6 [pc''' [pc'''' [H7 [hc' [hc'' [H8 H9]]]]]]]]]]] Heq] | 
+        [[[pc'' [c' [v [h' [H6 [pc''' [pc'''' [H7 [hc' [hc'' [H8 H9]]]]]]]]]]] Heq] | 
+        [[pc'' [c' [v [h' [H6 [pc''' [pc'''' [H7 [hc' [hc'' [H8 H9]]]]]]]]]]] Heq]]]]]];        
+        subst.
+	+ eapply IHm. omega. assumption. assumption. assumption. assumption. transitivity Pr'; assumption.
+	  eapply H5 with cs. assumption. eapply H6. eapply compatible_step; [|eassumption].
+	  assert (compatible Pr'0 (S m) hc p) by admit. eapply H0.
+	+ inversion H6. subst. admit.
+	  subst.
+	  inversion H11; subst.
+	  inversion H13. subst.
+	  eapply IHm.
+	  omega. assumption. admit. admit. 
+	  eapply H5 with cs. eassumption.
+	  eapply sem_hc_to_pc.
+	  constructor.
+	  constructor.
+	  inversion H13. subst.
+	remember (hc_to_pc hc (pc_atom s h1 cnt)). 
 	induction Hcnt; intros.
 	+ constructor.
-	+ constructor. admit.
+	+ constructor. subst. admit.
 	+ subst. apply red_step; intros.
+	  unfold compatible in H4.
+	  eapply H. assumption.
 	  admit.
 	  (*
 	  eapply H with cs.
@@ -600,39 +822,6 @@ Check has_ST.
     intros c1 c2 Hc st1 st2 Hst; subst; reflexivity.
   Qed.
 
-Lemma compatible_step Pr n hc hc' p cs
-  (Hcomp : compatible Pr (S n) hc p)
-  (Hstep : forall pc, sem_par_context Pr cs (SpecLogic.hc_to_pc hc pc)
-    l_tau (SpecLogic.hc_to_pc hc' pc)) :
-  compatible Pr n hc' p.
-Proof.
-  intros pc m Hmn Hpc.
-  unfold compatible in Hcomp.
-  eapply Hcomp.
-  destruct n.
-  + assert (m = 0) by omega; subst; constructor.
-  + assert (S m <= S (S n)) by omega; clear Hmn.
-    specialize (Hcomp _ _ H Hpc).
-  apply red_step; intros.
-  unfold compatible in Hcomp.
-  
-  eapply Hcomp.
-  Print compatible.
-  unfold compatible in Hcomp.
-  assert (m >= S n) as Hnm' by omega.
-  specialize (Hcomp _ _ Hnm' Hpc).
-  inversion Hcomp; subst. admit.
-  eapply H0.
-  apply Hstep.
-  intros pc m Hmn Hpc.
-  Print compatible.
-  unfold compatible in Hcomp.
-  assert (m <= S n) as Hnm' by omega.
-  specialize (Hcomp _ _ Hnm' Hpc).
-  inversion Hcomp; subst. admit.
-  eapply H0.
-  apply Hstep.
-Qed.
 
     Lemma insert_context_comm hc1 hc2 pc : 
       SpecLogic.hc_to_pc (insert_context hc1 hc2) pc = SpecLogic.hc_to_pc hc1 (SpecLogic.hc_to_pc hc2 pc).
@@ -933,19 +1122,21 @@ Proof.
     admit.
     omega.
     assumption.
-    intros pc l Hlm Hcomp'.
+    intros pc Hcomp'.
     rewrite insert_context_comm. simpl.
     specialize (HT c Pr'' m (insert_context hc (hc_nu2 c pc hc_hole))). simpl in HT.
     rewrite insert_context_comm in HT. simpl in HT. apply HT.
     admit.
     omega.
     transitivity Pr'; assumption.
-    intros a b d e.
+    intros a b.
     rewrite insert_context_comm. simpl.
+    apply red_Program_closed with Pr.
+    Check STComp_com.
     assert (compatible Pr m hc p) by admit.
     unfold compatible in H.
     assert (red Pr m (SpecLogic.hc_to_pc hc (pc_nu c pc a))).
-    eapply H. reflexivity. clear H.
+    eapply H. intros. clear H.
     unfold compatible in Hcomp.
     eapply STComp_com with s; try eassumption.
     
