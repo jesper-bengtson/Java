@@ -16,6 +16,7 @@ override COQFLAGS += -R bin ""
 override COQFLAGS += $(DK_ITU_SDG_KOPITIAM_LP_COQ_8_4_FLAGS)
 override COQFLAGS += -R $(CONTAINERS_PATH) Containers
 override COQFLAGS += $(CHARGE_FLAGS)
+override COQFLAGS += -R $(EXTLIB_PATH) ExtLib
 OBJECTS = \
 	bin/Java/Examples/ListClass.vo \
 	bin/Java/Examples/ListModel.vo \

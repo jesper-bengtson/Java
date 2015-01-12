@@ -1,28 +1,68 @@
-Require Import List String RelationClasses Morphisms Setoid.
+Require Import List Coq.Strings.String RelationClasses Morphisms Setoid.
 Require Import Lang Util.
+
+Require Import ExtLib.Core.RelDec.
+Require Import ExtLib.Tactics.Consider.
+
+Require Import ExtLib.Data.Pair.
+Require Import ExtLib.Data.List.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 
-Program Fixpoint search_NoDup
-    {A} (A_dec: forall a b: A, {a=b}+{a<>b}) (l: list A) : option (NoDup l) :=
-  match l with
-  | nil => Some _
-  | a::l' =>
-      match search_NoDup A_dec l' with
-      | Some nodup =>
-          match In_dec A_dec a l' with
-          | left isin => None
-          | right notin => Some _
-          end
-      | None => None
-      end
-  end.
-Next Obligation.
-intros. constructor.
-Qed. Next Obligation.
-intros. subst. constructor; assumption.
-Defined.
+Section RelDecNoDup.
+	Require Import Coq.Bool.Bool.
+
+	Context {A : Type} {RelDec_A : RelDec (@eq A)} 
+	        {RelDec_Correct_A : RelDec_Correct RelDec_A}.
+
+	Fixpoint inb (x : A) (lst : list A) := 
+	  match lst with
+	    | nil => false
+	    | l::ls => if x ?[ eq ] l then true else inb x ls
+	  end.
+	  
+    Lemma inb_sound (x : A) (lst : list A) (H : inb x lst = true) : In x lst.
+    Proof.
+      induction lst; simpl in *; try congruence.
+	  consider (x ?[ eq ] a); intros; subst.
+	  + left; reflexivity.
+	  + right; apply IHlst; assumption.
+    Qed.
+    
+    Lemma inb_complete (x : A) (lst : list A) (H : In x lst) : inb x lst = true.
+    Proof.
+	  induction lst; simpl in *; try intuition congruence.
+      consider (x ?[ eq ] a); intros; destruct H as [H | H]; try congruence.
+      apply IHlst; assumption.
+    Qed.
+    
+	Fixpoint nodup (lst : list A) : bool :=
+		match lst with
+		  | nil => true
+		  | l :: ls => (negb (inb l ls) && nodup ls)%bool
+		end.
+
+	Lemma nodup_sound (lst : list A) (H : nodup lst = true) : NoDup lst.
+	Proof.
+	  induction lst.
+	  + constructor.
+	  + simpl in *. rewrite andb_true_iff in H; destruct H as [H1 H2].
+	    rewrite negb_true_iff in H1. constructor.
+	    * intro H. apply inb_complete in H. intuition congruence.
+	    * apply IHlst; assumption.
+	Qed.
+	  	
+	Lemma nodup_complete (lst : list A) (H : NoDup lst) : nodup lst = true.
+	Proof.
+	  induction lst.
+	  + constructor.
+	  + simpl in *. rewrite andb_true_iff. inversion H; subst; split; clear H.
+	    * apply eq_true_not_negb. intros H; apply H2. apply inb_sound; assumption.
+	    * apply IHlst; assumption.
+	Qed.
+	  	
+End RelDecNoDup.
 
 Record Method := {
   m_params: list var;
@@ -30,34 +70,124 @@ Record Method := {
   m_ret: dexpr
 }.
 
-Record Class := {
-  c_fields  : SS.t;
-  c_methods : SM.t Method
+Instance RelDec_Method : RelDec (@eq Method) := {
+	rel_dec m1 m2 := (m_params m1 ?[ eq ] m_params m2 &&
+					  m_body m1 ?[ eq ] m_body m2 &&
+					  m_ret m1 ?[ eq ] m_ret m2)%bool
 }.
 
-Record Program := {
-  p_classes: SM.t Class
+Instance RelDec_Correct_Method : RelDec_Correct RelDec_Method.
+Proof.
+	split; intros; destruct x, y; simpl.
+	consider (m_params0 ?[ eq ] m_params1);
+	consider (m_body0 ?[ eq ] m_body1);
+	consider (m_ret0 ?[ eq ] m_ret1); simpl; intuition congruence.
+Qed.
+
+Record Class := {
+  c_fields  : list field;
+  c_methods : list (string * Method)
 }.
+
+Instance RelDec_Class : RelDec (@eq Class) := {
+	rel_dec c1 c2 := (c_fields c1 ?[ eq ] c_fields c2 &&
+					  c_methods c1 ?[ eq ] c_methods c2)%bool
+}.
+
+Instance RelDec_Correct_Class : RelDec_Correct RelDec_Class.
+Proof.
+	split; intros; destruct x, y; simpl.
+	consider (c_fields0 ?[ eq ] c_fields1);
+	consider (c_methods0 ?[ eq ] c_methods1); intros;
+		 simpl; try intuition congruence.
+Qed.
+
+Record Program := {
+  p_classes: list (string * Class)
+}.
+
+Instance RelDec_Program : RelDec (@eq Program) := {
+  rel_dec p1 p2 := (p_classes p1) ?[ eq ] (p_classes p2)
+}.
+
+Instance RelDec_Correct_Program : RelDec_Correct RelDec_Program.
+Proof.
+	split; intros; destruct x, y; simpl.
+	consider (p_classes0 ?[ eq ] p_classes1); intuition congruence.
+Qed.
+
+Definition valid_method (M : Method) := nodup (m_params M).
+
+Definition valid_class (C : Class) : bool :=
+	let (names, methods) := split (c_methods C) in
+	nodup (c_fields C) && nodup names &&
+	  forallb (fun M => valid_method M) methods.
+
+Definition valid_program (P : Program) : bool :=
+	let (names, classes) := split (p_classes P) in
+	    nodup names &&
+		forallb valid_class classes.
+
+Fixpoint class_lookup_aux C (lst : list (string * Class)) :=
+	match lst with
+		| nil => None
+		| (c, Crec)::ls => if C ?[ eq ] c then Some Crec else class_lookup_aux C ls
+	end.
+
+Definition class_lookup C P := class_lookup_aux C (p_classes P).
+
+Lemma split_Prop {A B C : Type} (lst : list (A * B)) (P : list A -> list B -> C) : 
+	(let (a, b) := split lst in P a b) =
+	P (fst (split lst)) (snd (split lst)).
+Proof.
+  generalize dependent C.
+  induction lst; try reflexivity; intros; destruct a; simpl.
+  replace (let (g, d) := split lst in (a :: g, b :: d)) with
+  		  (a :: fst (split lst), b :: snd (split lst)) by (symmetry; apply IHlst).
+  reflexivity.
+Qed.
 
 Section Pwf.
 
   Variable Prog: Program.
+  Variable (Valid : valid_program Prog = true).
 
-  Definition field_lookup (C:class) (fields:SS.t) :=
-    exists Crec, SM.MapsTo C Crec (p_classes Prog) /\
-      fields = c_fields Crec.
+  Definition field_lookup (C:class) (fields: list field) :=
+  	exists Crec, In (C, Crec) (p_classes Prog) /\
+  		fields = c_fields Crec.
 
-  Lemma field_lookup_function: forall C f f',
-    field_lookup C f -> field_lookup C f' -> f = f'.
+  Lemma field_lookup_function C f f' 
+  	(H1 : field_lookup C f) (H2 : field_lookup C f') : f = f'. 
   Proof.
-    unfold field_lookup.
-    intros C f f' HM1 HM2. destruct HM1 as [m HM1]. destruct HM2 as [m' HM2].
-    assert (m = m') by firstorder using SM'.MapsTo_fun. intuition congruence.
+    unfold field_lookup in *.
+    destruct H1 as [m [H11 H12]]; destruct H2 as [n [H21 H22]].
+    unfold valid_program in Valid. simpl in *.
+    assert (m = n); [|subst; reflexivity].
+    rewrite split_Prop, andb_true_iff in Valid.
+    destruct Valid; clear Valid.
+    induction (p_classes Prog); simpl in *; try intuition congruence.
+    destruct a; simpl in *.
+    rewrite split_Prop in H, H0; simpl in *; rewrite andb_true_iff in H, H0.
+    destruct H, H0.
+    rewrite negb_true_iff in H.
+    destruct H11, H21.
+    + inversion H3; inversion H4; subst; apply H9.
+    + inversion H3; subst; clear IHl.
+      assert (~inb C (fst (split l)) = true) by (unfold class; intuition congruence).
+	  contradiction H5; clear H H5.
+	  apply inb_complete.
+	  apply in_split_l in H4. apply H4.
+	+ inversion H4; subst; clear IHl.
+      assert (~inb C (fst (split l)) = true) by (unfold class; intuition congruence).
+	  contradiction H5; clear H H5.
+	  apply inb_complete.
+	  apply in_split_l in H3. apply H3.
+    + apply IHl; try assumption.
   Qed.
 
   Definition method_lookup (C:class) m mrec :=
-    exists Crec, SM.MapsTo C Crec (p_classes Prog) /\
-      SM.MapsTo m mrec (c_methods Crec).
+    exists Crec, In (C, Crec) (p_classes Prog) /\
+      In (m, mrec) (c_methods Crec).
 
   Lemma method_lookup_function : forall C m mr0 mr1
     (HML0 : method_lookup C m mr0)
@@ -66,196 +196,84 @@ Section Pwf.
   Proof.
     unfold Pwf.method_lookup; intros; destruct HML0 as [C0 [HC0 HM0]];
       destruct HML1 as [C1 [HC1 HM1]].
-    rewrite SM'.find_mapsto_iff in *; rewrite HC0 in HC1; inversion HC1; subst.
-    rewrite HM0 in HM1; inversion HM1; subst; reflexivity.
+   unfold valid_program in Valid. simpl in *.
+    rewrite split_Prop, andb_true_iff in Valid.
+    destruct Valid; clear Valid.
+    induction (p_classes Prog); simpl in *; try intuition congruence.
+    destruct a; simpl in *.
+    rewrite split_Prop in H, H0; simpl in *; rewrite andb_true_iff in H, H0.
+    destruct H, H0.
+    rewrite negb_true_iff in H.
+    destruct HC0, HC1.
+    + clear IHl; inversion H3; inversion H4. repeat subst; clear H H1 H2 H3 H4 H8.
+	  unfold valid_class in H0. rewrite split_Prop in H0; repeat rewrite andb_true_iff in H0.
+	  destruct H0 as [[_ H] _].
+	  induction (c_methods C1); simpl in *; try intuition congruence.
+	  destruct a; rewrite split_Prop in H; simpl in H.
+	  rewrite andb_true_iff in H; destruct H as [H1 H2].
+	  rewrite negb_true_iff in H1.
+	  destruct HM1, HM0.
+	  * inversion H; inversion H0; repeat subst; reflexivity.
+	  * inversion H; subst; clear IHl0.
+        assert (~inb m (fst (split l0)) = true) by intuition congruence.
+        contradiction H3. apply inb_complete.
+        apply in_split_l in H0; apply H0.
+	  * inversion H0; subst; clear IHl0.
+        assert (~inb m (fst (split l0)) = true) by intuition congruence.
+        contradiction H3. apply inb_complete.
+        apply in_split_l in H; apply H.
+	  * apply IHl0; assumption.
+    + inversion H3; subst; clear IHl.
+      assert (~inb C (fst (split l)) = true) by (unfold class; intuition congruence).
+	  contradiction H5; clear H H5.
+	  apply inb_complete.
+	  apply in_split_l in H4. apply H4.
+	+ inversion H4; subst; clear IHl.
+      assert (~inb C (fst (split l)) = true) by (unfold class; intuition congruence).
+	  contradiction H5; clear H H5.
+	  apply inb_complete.
+	  apply in_split_l in H3. apply H3.
+    + apply IHl; try assumption.
   Qed.
 
-  Program Definition search_method_lookup
-      {P': method -> Method -> Prop} (search: forall m mrec, option (P' m mrec))
-      : option (forall C m mrec, method_lookup C m mrec -> P' m mrec) :=
-    search_cast _ _ (
-      SM'.search_forall (fun _ Crec =>
-        SM'.search_forall (fun m mrec =>
-          search m mrec
-        ) (c_methods Crec)
-      ) (p_classes Prog)
-    ).
-  Next Obligation.
-    firstorder.
-  Qed.
-
-  Program Definition search_method_class_lookup
-    {P' : class -> method -> Method -> Prop}
-    (search: forall C m mrec, option (P' C m mrec)) : option (
-      forall C m mrec, method_lookup C m mrec -> P' C m mrec) :=
-      search_cast _ _ (
-        SM'.search_forall (fun C Crec =>
-          SM'.search_forall (fun m mrec =>
-            search C m mrec) (c_methods Crec)) (p_classes Prog)).
-  Next Obligation.
-    firstorder.
-  Qed.
-
-Definition search_unique_names : option (
-      forall C m mrec,
-      method_lookup C m mrec ->
-      NoDup (m_params mrec)) :=
-  search_method_class_lookup (fun _ _ mrec =>
-    search_NoDup string_dec (m_params mrec)
-  ).
+  Lemma method_lookup_nodup C m mr (H : method_lookup C m mr) : NoDup (m_params mr).
+  Proof.
+    unfold method_lookup in H.
+    destruct H as [Crec [H1 H2]].
+    unfold valid_program in Valid.
+    rewrite split_Prop, andb_true_iff in Valid.
+    destruct Valid as [H3 H4]; clear Valid.
+	induction (p_classes Prog); simpl in *; try intuition congruence.
+	destruct a; rewrite split_Prop in H3; simpl in *.
+	rewrite andb_true_iff in H3; destruct H3 as [H3 H5].
+	rewrite negb_true_iff in H3.
+	rewrite split_Prop in H4; simpl in *.
+	rewrite andb_true_iff in H4; destruct H4 as [H4 H6].
+	unfold valid_class in H4. rewrite split_Prop in H4; repeat rewrite andb_true_iff in H4.
+	destruct H4 as [[H4 _] H7].
+	destruct H1 as [H1 | H1]; [
+		inversion H1; repeat subst; clear H1 IHl|
+		apply IHl; assumption
+	].
+	clear H3 H4 H5 H6 l C Prog.
+	induction (c_methods Crec); simpl in *; try intuition congruence.
+	destruct a; simpl in *; rewrite split_Prop in H7; simpl in *.
+	rewrite andb_true_iff in H7; destruct H7 as [H1 H3].
+	destruct H2 as [H2 | H2]; [|apply IHl; assumption].
+	inversion H2; subst; clear H2 H3 IHl.
+	unfold valid_method in H1. apply nodup_sound; assumption.
+Qed.
 
 End Pwf.
 
-Definition lift_option_rel (T : Type) (R : relation T) : relation (option T) :=
-  fun x y => match x, y with
-               | Some x, Some y => R x y
-               | None, None => True
-               | _, _ => False
-             end.
-
-Infix "=^=" := (lift_option_rel equiv) (at level 70, no associativity).
-
-Instance opt_eq_rel T (R : relation T) {Eq : Equivalence R} : Equivalence (lift_option_rel R).
-Proof.
-  destruct Eq as [RR RS RT]; split.
-  intros [x |]; simpl; intuition.
-  intros [x |] [y |]; simpl; intuition.
-  intros [x |] [y |] [z |]; simpl; intuition eauto.
-Qed.
-
 Definition Prog_compat (P Q : Program) :=
-  forall C, ~ (SM.In C (p_classes P) /\ SM.In C (p_classes Q)).
+  forall C, ~ (In C (p_classes P) /\ In C (p_classes Q)).
 
 Definition Prog_sub (P Q : Program) :=
-  forall C crec, SM.find C (p_classes P) = Some crec ->
-    exists crec', SM.find C (p_classes Q) = Some crec' /\
-      SS.Equal (c_fields crec) (c_fields crec') /\
-      SM.Equal (c_methods crec) (c_methods crec').
-
-Definition optAddClass C crec oP : option Program :=
-  match oP with
-    | Some P => match SM.find C (p_classes P) with
-                  | Some _ => None
-                  | None   => Some (Build_Program (SM.add C crec (p_classes P)))
-                end
-    | None   => None
-  end.
-Definition Prog_comp (P Q : Program) := SM.fold optAddClass (p_classes P) (Some Q).
-Definition crec_eq (C D : Class) := SS.Equal (c_fields C) (c_fields D) /\ SM.Equal (c_methods C) (c_methods D).
-Definition Prog_eq (P Q : Program) :=
-  forall C, lift_option_rel crec_eq (SM.find C (p_classes P)) (SM.find C (p_classes Q)).
-
-Instance crec_eq_Equiv : Equivalence crec_eq.
-Proof.
-  split.
-  + intros P; split; reflexivity.
-  + intros P Q [HF HM]; split; symmetry; assumption.
-  + intros P Q R [HFPQ HMPQ] [HFQR HMQR]; split; etransitivity; eassumption.
-Qed.
-
-Instance Prog_eq_Equiv : Equivalence Prog_eq.
-Proof.
-  split.
-  + intros P C. reflexivity.
-  + intros P Q HPQ C; symmetry; apply HPQ.
-  + intros P Q R HPQ HQR C; etransitivity; revert C; eassumption.
-Qed.
-
-Definition uniq_params Prog := forall C m mrec, method_lookup Prog C m mrec -> NoDup (m_params mrec).
-Record Prog_wf := { program :> Program; prog_wf : uniq_params program}.
-
-Lemma SM'Empty_not_in : forall {elt} S, SM.Empty (elt := elt) S <-> (forall C, ~ SM.In C S).
-Proof.
-  split; intros.
-  + rewrite SM'.not_find_in_iff; destruct (SM.find C S) as [D |] eqn: Heq;
-    [rewrite <- SM'.find_mapsto_iff in Heq; contradiction (H _ _ Heq) | reflexivity].
-  + intros C v HMT; apply SM'.find_mapsto_iff in HMT; apply (H C); rewrite SM'.in_find_iff; congruence.
-Qed.
-
-Instance optAddClass_m : Proper (eq ==> eq ==> lift_option_rel Prog_eq ==> lift_option_rel Prog_eq) optAddClass.
-Proof.
-  intros D C Hdc d c HDC [P |] [Q |] HPQ; subst; simpl in *; try (contradiction || exact I); []; assert (HC := HPQ C).
-  destruct (SM.find C (p_classes P)) as [cP |] eqn: EQP; destruct (SM.find C (p_classes Q)) as [cQ |] eqn: EQQ;
-    try (contradiction || reflexivity); simpl; [].
-  intros D; simpl; rewrite !SM'.add_o; destruct (SM'.eq_dec C D); simpl; [reflexivity | apply HPQ].
-Qed.
-
-Lemma optAddClass_trneqk : SM'.transpose_neqkey (lift_option_rel Prog_eq) optAddClass.
-Proof.
-  intros x y C D [P |] NEQ; simpl; [| exact I].
-  destruct (SM.find y (p_classes P)) as [cyP |] eqn: EQyP; destruct (SM.find x (p_classes P)) as [cxP |] eqn: EQxP; simpl;
-    [exact I |..]; rewrite !SM'.add_neq_o, ?EQxP, ?EQyP; try congruence; simpl; try exact I; [].
-  intros z; simpl; rewrite !SM'.add_o; destruct (SM'.eq_dec x z); destruct (SM'.eq_dec y z); subst; congruence || reflexivity.
-Qed.
-Hint Resolve optAddClass_trneqk : program.
-
-Lemma Prog_comp_in x P Q (InPQ : match Prog_comp P Q with Some R => SM.In x (p_classes R) | None => False end) :
-  SM.In x (p_classes P) \/ SM.In x (p_classes Q).
-Proof.
-  destruct P as [P]; induction P using SM'.map_induction; unfold Prog_comp in *; simpl in *.
-  { right; destruct (SM.fold optAddClass P (Some Q)) as [R |] eqn: EQ; [| contradiction].
-    assert (HEQ : lift_option_rel Prog_eq (SM.fold optAddClass P (Some Q)) (Some R)) by (rewrite EQ; reflexivity).
-    rewrite SM'.fold_Empty with (eqA := lift_option_rel Prog_eq) in HEQ; auto with typeclass_instances.
-    specialize (HEQ x); rewrite SM'.in_find_iff in *; destruct (SM.find x (p_classes R)); [| congruence].
-    destruct (SM.find x (p_classes Q)); [congruence | contradiction].
-  }
-  destruct (SM.fold optAddClass P2 (Some Q)) as [R |] eqn: EQ; [| contradiction].  
-  assert (HEQ : lift_option_rel Prog_eq (SM.fold optAddClass P2 (Some Q)) (Some R)) by (rewrite EQ; reflexivity); clear EQ.
-  rewrite SM'.fold_Add with (eqA := lift_option_rel Prog_eq) in HEQ; eauto with typeclass_instances program.
-  destruct (SM.fold optAddClass P1 (Some Q)) as [S |] eqn: EQ; [| contradiction].
-  assert (HEQS : lift_option_rel Prog_eq (SM.fold optAddClass P1 (Some Q)) (Some S)) by (rewrite EQ; reflexivity).
-  simpl in *. destruct (SM.find x0 (p_classes S)) as [] eqn: EQx0; [contradiction |]; specialize (HEQ x); simpl in *.
-  rewrite SM'.in_find_iff, H0, SM'.add_o; rewrite SM'.add_o in HEQ; destruct (SM'.eq_dec x0 x); [subst; left; congruence |].
-  rewrite <- SM'.in_find_iff; apply IHP1; clear -InPQ HEQ n; rewrite SM'.in_find_iff in *; simpl in *.
-  destruct (SM.find x (p_classes S)); [congruence |]; destruct (SM.find x (p_classes R)); [contradiction | congruence].
-Qed.
-
-Lemma in_Prog_comp x P Q (INQ : SM.In x (p_classes Q)) : match Prog_comp P Q with Some R => SM.In x (p_classes R) | None => True end.
-Proof.
-  destruct P as [P]; induction P using SM'.map_induction; unfold Prog_comp in *; simpl in *.
-  { destruct (SM.fold optAddClass P (Some Q)) as [R |] eqn: EQ; [| exact I].
-    assert (EQR : lift_option_rel Prog_eq (SM.fold optAddClass P (Some Q)) (Some R)) by (rewrite EQ; reflexivity); clear EQ.
-    rewrite SM'.fold_Empty with (eqA := lift_option_rel Prog_eq) in EQR; auto with typeclass_instances;
-      specialize (EQR x); rewrite SM'.in_find_iff in *; simpl in *.
-    destruct (SM.find x (p_classes R)); [congruence |]; destruct (SM.find x (p_classes Q)); [contradiction | congruence].
-  }
-  destruct (SM.fold optAddClass P2 (Some Q)) as [R |] eqn: EQ; [| exact I].
-  assert (EQR : lift_option_rel Prog_eq (SM.fold optAddClass P2 (Some Q)) (Some R)) by (rewrite EQ; reflexivity); clear EQ.
-  rewrite SM'.fold_Add with (eqA := lift_option_rel Prog_eq) in EQR; eauto with typeclass_instances program.
-  destruct (SM.fold optAddClass P1 (Some Q)) as [S |] eqn: EQ; [| contradiction].
-  assert (EQS : lift_option_rel Prog_eq (SM.fold optAddClass P1 (Some Q)) (Some S)) by (rewrite EQ; reflexivity); clear EQ.
-  simpl in *; destruct (SM.find x0 (p_classes S)) as [v |] eqn: HEQ; [contradiction |]; specialize (EQR x); simpl in *.
-  rewrite SM'.in_find_iff in *; destruct (SM.find x (p_classes R)); [congruence |].
-  rewrite SM'.add_o in EQR; destruct (SM'.eq_dec x0 x); [contradiction |].
-  destruct (SM.find x (p_classes S)); [contradiction | congruence].
-Qed.
-  
-Lemma Prog_compat_comp : forall P Q, Prog_compat P Q <-> exists R, lift_option_rel Prog_eq (Prog_comp P Q) (Some R).
-Proof.
-  intros [P] Q; induction P using SM'.map_induction; split; intros.
-  + unfold Prog_comp; simpl; exists Q; rewrite SM'.fold_Empty; auto with typeclass_instances; reflexivity.
-  + rewrite SM'Empty_not_in in H; intros C [HF _]; simpl in HF; contradiction (H _ HF).
-  + { destruct (proj1 IHP1) as [R HR].
-    * intros C [HInP1 HInQ]; contradiction (H1 C); split; [| assumption]; simpl in *; rewrite SM'.in_find_iff in *.
-      rewrite H0, SM'.add_neq_o; [assumption | intros EQ; subst; contradiction].
-    * destruct (optAddClass x e (Some R)) as [S |] eqn: HS.
-      exists S; unfold Prog_comp; simpl; rewrite <- HS, SM'.fold_Add; eauto with typeclass_instances program; [].
-      unfold Prog_comp in HR; simpl in HR; rewrite HR; reflexivity.
-    contradiction (H1 x); simpl; split.
-    rewrite SM'.in_find_iff, H0, SM'.add_eq_o; congruence.
-    destruct (@Prog_comp_in x {| p_classes := P1 |} Q); [| simpl in *; contradiction | assumption].
-    destruct (Prog_comp {| p_classes := P1 |} Q) as [S |]; [| contradiction].
-      simpl in *; specialize (HR x); rewrite SM'.in_find_iff; destruct (SM.find x (p_classes R)); [| congruence].
-      destruct (SM.find x (p_classes S)); [congruence | contradiction].
-  }
-  + destruct H1 as [R EQ]; intros y [INP INQ]; simpl in *.
-  unfold Prog_comp in EQ; rewrite SM'.fold_Add with (eqA := lift_option_rel Prog_eq) in EQ; eauto with typeclass_instances program.
-  assert (INS := in_Prog_comp {| p_classes := P1 |} INQ); unfold Prog_comp in INS; simpl in INS.
-  destruct (SM.fold optAddClass P1 (Some Q)) as [S |] eqn: EQ1; [| contradiction].
-  simpl in *; rewrite SM'.in_find_iff in *; destruct (SM.find x (p_classes S)) as [] eqn: EQx; [contradiction |].
-  rewrite H0, SM'.add_o in INP; destruct (SM'.eq_dec x y); [congruence |].
-  eapply IHP1; [unfold Prog_comp; simpl; rewrite EQ1; eexists; reflexivity | simpl; rewrite !SM'.in_find_iff; split; eassumption].
-Qed.
+  forall C crec, In (C, crec) (p_classes P) ->
+    exists crec', In (C, crec') (p_classes Q) /\
+      c_fields crec = c_fields crec' /\
+      c_methods crec = c_methods crec'.
 
 Instance Prog_sub_preo : PreOrder Prog_sub.
 Proof.
@@ -266,12 +284,3 @@ Proof.
   destruct (HQR _ _ HLu) as [E [HLuR [HFs' HMs']]].
   exists E; split; [assumption | split; etransitivity; eassumption].
 Qed.
-
-Definition Prog_wf_sub (P Q : Prog_wf) := Prog_sub P Q.
-Instance Prog_wf_sub_preo : PreOrder Prog_wf_sub.
-Proof.
-	split.
-	+ intros x; unfold Prog_wf_sub. reflexivity.
-	+ intros x y z Hxy Hyz; unfold Prog_wf_sub in *; transitivity y; assumption.
-Qed.
-

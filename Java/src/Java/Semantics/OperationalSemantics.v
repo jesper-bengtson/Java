@@ -188,7 +188,7 @@ Require Import Compare_dec.
   Qed.
 
   Inductive alloc_arr_sem (x : var) (e : dexpr) : semCmdType :=
-  | alloc_arr_ok (P : Prog_wf) (s s' : stack) (hp : heap_ptr) (ha ha' : heap_arr) (n : nat)
+  | alloc_arr_ok (P : Program) (s s' : stack) (hp : heap_ptr) (ha ha' : heap_arr) (n : nat)
                  (Sfresh_ha : forall i, ~ In (n, i) ha) 
                  (Sha : alloc_heap_arr n (val_to_nat (eval e s)) ha === ha') 
                  (Ss : s' = stack_add x (varr n) s) :
@@ -233,14 +233,14 @@ Require Import Compare_dec.
     specialize (Sfresh_ha i). apply Sfresh_ha.
     destruct (sa_mul_inL Hha H). apply H3.
   Qed.
-    
+
   Inductive alloc_sem (x : var) (C : class) : semCmdType :=
-  | alloc_ok : forall (P : Prog_wf) (s s0 : stack) (h h0 : heap_ptr) (h' : heap_arr) n fields
+  | alloc_ok : forall (P : Program) (s s0 : stack) (h h0 : heap_ptr) (h' : heap_arr) n fields
       (Snotnull : (n, C) <> pnull)
       (Sfresh_h : forall f, ~ In ((n, C), f) h)
       (Sfields  : field_lookup P C fields)
       (Sh0      : sa_mul h
-        (SS.fold (fun f h' => add ((n, C), f) (pnull : val) h') fields heap_ptr_unit) h0)
+        (fold_right (fun f h' => add ((n, C), f) (pnull : val) h') heap_ptr_unit fields) h0)
       (Ss0      : s0 = stack_add x (vptr (n, C)) s),
       alloc_sem x C P 1 s (h, h') (Some (s0, (h0, h'))).
   Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _ _.
@@ -298,27 +298,27 @@ Require Import Compare_dec.
 
   Fixpoint create_stack (ps : list var) (vs : list val) : stack :=
     match ps, vs with
-      | nil, nil => stack_empty var
+      | nil, nil => stack_empty var val
       | p :: ps, v :: vs =>
         stack_add p v (create_stack ps vs)
-      | _, _ => stack_empty var
+      | _, _ => stack_empty var val
     end.
         
   Inductive call_sem (rvar : var) (C : open class) m es (c : cmd) (sc : semCmd)
     : semCmdType :=
-  | call_failS : forall (P : Prog_wf) s h
+  | call_failS : forall (P : Program) s h
       (HLFail  : forall mrec, ~ method_lookup P (C s) m mrec),
       call_sem rvar C m es c sc P 1 s h None
-  | call_failC : forall (P : Prog_wf) ps rexpr (s : stack) h n
+  | call_failC : forall (P : Program) ps rexpr (s : stack) h n
       (HLookup : method_lookup P (C s) m (Build_Method ps c rexpr))
       (HLen    : length ps = length es)
       (HFail   : sc P n (create_stack ps (eval_exprs s es)) h None),
       call_sem rvar C m es c sc P (S n) s h None
-  | call_failL : forall (P : Prog_wf) ps rexpr s h
+  | call_failL : forall (P : Program) ps rexpr s h
       (HLookup : method_lookup P (C s) m (Build_Method ps c rexpr))
       (HLen    : length ps <> length es),
       call_sem rvar C m es c sc P 1 s h None
-  | call_ok    : forall (P : Prog_wf) ps rexpr (s sr : stack) h hr n
+  | call_ok    : forall (P : Program) ps rexpr (s sr : stack) h hr n
       (HLookup : method_lookup P (C s) m (Build_Method ps c rexpr))
       (HLen    : length ps = length es)
       (HSem    : sc P n (create_stack ps (eval_exprs s es)) h (Some (sr, hr))),
@@ -378,28 +378,29 @@ Require Import Compare_dec.
     forall sc, semantics c sc -> not_modifies sc x.
 
   Lemma modifies_syn_sem c x :
-     ~ SS.In x (modifies c) -> c_not_modifies c x.
+     ~ List.In x (modifies c) -> c_not_modifies c x.
   Proof.
     induction c; simpl in *; intros HNM; intros sc HSem; inversion_clear HSem.
-    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HAsgn;
+    + intros P s s0 h h0 n HAsgn;
       simpl in *; inversion HAsgn; subst.
       rewrite stack_lookup_add2; trivial.
+      intuition congruence.
     + intros P s s0 h h0 n HSkip; simpl in *; inversion HSkip; subst; trivial.
     + intros P s s0 h h0 n HSeq; simpl in *; inversion HSeq; subst.
       transitivity (s2 x).
       * eapply IHc1; [| eassumption | eassumption]; intros HIn; apply HNM;
-        rewrite SS'.union_iff; auto.
+        rewrite in_app_iff; auto.
       * eapply IHc2; [| eassumption | eassumption]; intros HIn; apply HNM;
-        rewrite SS'.union_iff; auto.
+        rewrite in_app_iff; auto.
     + intros P s s0 h h0 n HND; simpl in *; inversion HND; subst; clear HND.
       * inversion H4; subst.
         apply assume_inv in H6; destruct H6; subst.
         eapply IHc1; [| eassumption | eassumption]; intros HIn; apply HNM;
-          rewrite SS'.union_iff; auto.
+          rewrite in_app_iff; auto.
       * inversion H4; subst.
         apply assume_inv in H6; destruct H6; subst.
         eapply IHc2; [| eassumption | eassumption]; intros HIn; apply HNM;
-        rewrite SS'.union_iff; auto.
+        rewrite in_app_iff; auto.
     + intros P s s0 h h0 n HKl; simpl in *; inversion HKl; subst; clear HKl.
       apply assume_inv in H6; destruct H6; subst; simpl in *.
       remember (Some (s0, h0)); induction H5; subst;
@@ -410,19 +411,23 @@ Require Import Compare_dec.
         eapply IHc; eassumption.
       * apply IHkleene_sem; assumption.
     + intros P s s0 h h0 n HWr; simpl in *; inversion HWr; subst; reflexivity.
-    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HRd; simpl in *;
-      inversion HRd; subst; rewrite stack_lookup_add2; trivial.
-    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n Hrd; simpl in *.
-      inversion Hrd; subst. rewrite stack_lookup_add2; [reflexivity | assumption].
+    + intros P s s0 h h0 n HRd; simpl in *;
+      inversion HRd; subst; rewrite stack_lookup_add2; trivial;
+      intuition congruence.
+    + intros P s s0 h h0 n Hrd; simpl in *.
+      inversion Hrd; subst. rewrite stack_lookup_add2; [reflexivity | intuition congruence ].
     + intros P s s0 h h0 n Hrd; simpl in *; inversion Hrd; reflexivity.
-    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n Hrd; simpl in *.
-      inversion Hrd; subst. rewrite stack_lookup_add2; [reflexivity | assumption].
-    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HCl; simpl in *;
-      inversion HCl; subst; rewrite stack_lookup_add2; trivial.
-    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HCl; simpl in *;
-      inversion HCl; subst; rewrite stack_lookup_add2; trivial.
-    + rewrite SS'.singleton_iff in HNM; intros P s s0 h h0 n HCl; simpl in *;
-      inversion HCl; subst; rewrite stack_lookup_add2; trivial.
+    + intros P s s0 h h0 n Hrd; simpl in *.
+      inversion Hrd; subst. rewrite stack_lookup_add2; [reflexivity | intuition congruence].
+    + intros P s s0 h h0 n HCl; simpl in *;
+      inversion HCl; subst; rewrite stack_lookup_add2; trivial;
+      intuition congruence.
+    + intros P s s0 h h0 n HCl; simpl in *;
+      inversion HCl; subst; rewrite stack_lookup_add2; trivial;
+      intuition congruence.
+    + intros P s s0 h h0 n HCl; simpl in *;
+      inversion HCl; subst; rewrite stack_lookup_add2; trivial;
+      intuition congruence.
     + intros P s s0 h h0 n HAs; inversion HAs; subst; reflexivity.
   Qed.
 
@@ -468,9 +473,9 @@ Open Scope open_scope.
   Definition method_spec C m (ps : list var) (rn : var) (P Q : sasn) := (
     NoDup (rn :: ps) /\\
     Exists ps' : (list var), Exists c : cmd, Exists re : dexpr,
-      [prog] (fun X : Prog_wf => method_lookup X C m (Build_Method ps' c re)
+      [prog] (fun X : Program => method_lookup X C m (Build_Method ps' c re)
         /\ length ps = length ps' /\
-        (forall x, List.In x ps' -> ~ SS.In x (modifies c)))
+        (forall x, List.In x ps' -> ~ List.In x (modifies c)))
       //\\ {[ P //! zip ps (List.map var_expr ps') ]}
          c {[ Q //! zip (rn :: ps) (eval re :: (List.map var_expr ps'))]}
     ).
@@ -577,14 +582,14 @@ Section StructuralRules.
   Qed.
 
   Definition subst_mod_asn (R: sasn) (c: cmd) : sasn :=
-    Exists vs, apply_subst R (subst_fresh vs (SS.elements (modifies c))).
+    Exists vs, apply_subst R (subst_fresh vs (modifies c)).
 
   Lemma rule_frame_ax P Q R c : 
     {[ P ]} c {[ Q ]} |--
     {[ P ** R ]} c {[ Q ** subst_mod_asn R c ]}.
   Proof.
     apply rule_frame_ax_list. intros x HnotIn. apply modifies_syn_sem.
-    rewrite SS'.In_elements_iff. assumption.
+    assumption.
   Qed.
 
   Lemma rule_frame P Q R c G 
