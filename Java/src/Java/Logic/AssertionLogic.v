@@ -6,7 +6,8 @@
 Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps String Rel.
 Require Import RelationClasses Setoid Morphisms Program. 
 Require Import MapInterface MapFacts.
-Require Import Open Stack Lang OpenILogic Pure ILEmbed PureInsts.
+Require Import Charge.Open.Open.
+Require Import Charge.Open.Stack Lang OpenILogic Pure ILEmbed PureInsts.
 Require Import UUSepAlg SepAlgInsts HeapArr.
 
 Require Import ExtLib.Core.RelDec.

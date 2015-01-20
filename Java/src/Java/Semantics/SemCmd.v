@@ -1,6 +1,6 @@
 Require Import Program SepAlg OpenILogic AssertionLogic SpecLogic SepAlgMap.
 Require Import MapInterface MapFacts.
-Require Import ILInsts ILogic ILEmbed Open Subst Stack Lang.
+Require Import ILInsts ILogic ILEmbed Charge.Open.Open Subst Stack Lang.
 
 Import SepAlgNotations.
 
