@@ -909,7 +909,7 @@ Time Qed.
 Print rtac_sound.
 Print rtac_spec.
 
-Lemma test_swap2 : mkSwap 40.
+Lemma test_swap2 : mkSwap 20.
 Proof.
   unfold mkSwap, mkSwapPre, mkSwapPost, mkSwapProg, mkSwapPostAux, mkRead, mkWrite, mkWriteAux.
   
@@ -1068,6 +1068,7 @@ Proof.
   run_rtac reify_imp term_table AUTO_sound.
 Qed.
   
+Print test_true.
 
 
 
@@ -1194,7 +1195,7 @@ Qed.
 
 Lemma test_and2 : forall (P Q R T : Prop),
 	 Q -> P -> R -> (P /\ Q /\ R) \/
-	    (Q /\ T).
+	    (Q /\ T /\ (R /\ R) /\ Q).
 Proof.
   run_rtac reify_imp term_table AUTO''_sound.
 Qed.

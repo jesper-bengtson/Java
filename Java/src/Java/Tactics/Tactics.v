@@ -151,6 +151,18 @@ Ltac cbv_denote :=
           
           exprT_GetVAs exprT_GetUAs
           
+          (* Denotation *)
+          
+          Charge.ModularFunc.Denotation.fun_to_typ
+          Charge.ModularFunc.Denotation.fun_to_typ2
+          Charge.ModularFunc.Denotation.fun_to_typ3
+          Charge.ModularFunc.Denotation.fun_to_typ4
+          
+          Charge.ModularFunc.Denotation.typ_to_fun
+          Charge.ModularFunc.Denotation.typ_to_fun2
+          Charge.ModularFunc.Denotation.typ_to_fun3
+
+          
           (* ILogicFunc*)
           
           ILogicFunc.mkEntails ILogicFunc.mkTrue ILogicFunc.mkFalse 
@@ -163,7 +175,12 @@ Ltac cbv_denote :=
           ILogicFunc.RSym_ilfunc 
           Charge.ModularFunc.ILogicFunc.ILogicFuncInst
           
-          ILogicFunc.funcD ILogicFunc.typ2_cast_quant ILogicFunc.typ2_cast_bin
+          ILogicFunc.funcD ILogicFunc.typ2_cast_quant
+		  Charge.ModularFunc.ILogicFunc.trueD
+		  Charge.ModularFunc.ILogicFunc.falseD
+		  Charge.ModularFunc.ILogicFunc.andD
+		  Charge.ModularFunc.ILogicFunc.orD
+		  Charge.ModularFunc.ILogicFunc.implD
           
           (* BILogicFunc *)
           
@@ -174,7 +191,9 @@ Ltac cbv_denote :=
           BILogicFuncSumL BILogicFuncSumR BILogicFuncExpr
           BILogicFunc.RSym_bilfunc BILogicFunc.BILogicFuncInst
           
-          BILogicFunc.funcD BILogicFunc.typ2_cast_bin
+		  Charge.ModularFunc.BILogicFunc.empD
+		  Charge.ModularFunc.BILogicFunc.starD
+		  Charge.ModularFunc.BILogicFunc.wandD
           
           BILogicFunc.typeof_bilfunc
           
@@ -200,8 +219,9 @@ Ltac cbv_denote :=
           EmbedFunc.EmbedFuncSumL EmbedFunc.EmbedFuncSumR EmbedFuncExpr
           EmbedFunc.RSym_embed_func EmbedFunc.EmbedFuncInst
           
-          EmbedFunc.funcD EmbedFunc.typ2_cast_bin
+          EmbedFunc.funcD 
           
+		  Charge.ModularFunc.EmbedFunc.embedD
 
           EmbedFunc.typeof_embed_func
           
@@ -248,9 +268,16 @@ Ltac cbv_denote :=
 		  OpenFunc.OpenFuncInst OpenFunc.open_func_symD
 		  
 		  OpenFunc.typeof_open_func OpenFunc.RSym_OpenFunc
-		  OpenFunc.fun1_wrap OpenFunc.fun2_wrap OpenFunc.fun3_wrap OpenFunc.fun4_wrap
-		  OpenFunc.fun1D OpenFunc.fun2D
 		  OpenFunc.RelDec_open_func
+
+		  Charge.ModularFunc.OpenFunc.constD
+		  Charge.ModularFunc.OpenFunc.apD
+		  Charge.ModularFunc.OpenFunc.stack_getD
+		  Charge.ModularFunc.OpenFunc.stack_setD
+		  Charge.ModularFunc.OpenFunc.applySubstD
+		  Charge.ModularFunc.OpenFunc.singleSubstD
+
+
 		  
           (* BaseType *)
           
