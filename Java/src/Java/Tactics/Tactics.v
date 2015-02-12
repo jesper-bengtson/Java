@@ -428,5 +428,4 @@ Ltac run_rtac_debug reify term_table tac_sound :=
 	  end
 	| _ => idtac tac_sound "is not a soudness theorem."
   end.
-  
  
