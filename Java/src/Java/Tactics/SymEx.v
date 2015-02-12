@@ -608,8 +608,6 @@ Definition THEN (r1 r2 : rtac typ (expr typ func)) :=
 
 Definition EQSUBST := THEN (EAPPLY eq_to_subst_lemma) (SUBST typ func).
 
-
-
 (*
 Notation "'ap_eq' '[' x ',' y ']'" :=
 	 (ap (T := Fun stack) (ap (T := Fun stack) (pure (T := Fun stack) (@eq val)) x) y).
@@ -686,12 +684,6 @@ Definition solve_alloc rw : rtac typ (expr typ func) :=
     (FIRST (SOLVE (CANCELLATION typ func tySpec (fun _ => false)) ::
                         FIELD_LOOKUP ::
                         THEN FOLD (solve_entailment rw) :: nil)).
-
-Check MINIFY.
-Print rtacK.
-Check runOnGoals (SUBST typ func).
-Check THENK.
-Print rtacK.
 
 Definition simStep (rw : rewriter (typ := typ) (func := func)) (r : rtac typ (expr typ func)) :=
     THEN (THEN (THEN (THEN (SUBST typ func)
@@ -1048,7 +1040,12 @@ Definition true_lemma : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_imp LTrue.
 Defined.
 Print true_lemma.
-
+(*
+true_lemma = 
+{| vars := nil; premises := nil; 
+  concl := Inj (inl (inl (inl (inl (inl (inl (inl (inr (ilf_true tyProp))))))))) |}
+     : lemma typ (expr typ func) (expr typ func)
+*)
 Lemma true_lemma_sound : 
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil true_lemma.
 Proof.
@@ -1073,7 +1070,16 @@ Print test_true.
 
 
 
+(*
 
+test_true = 
+let tbl := FMapPositive.PositiveMap.Leaf (SymEnv.function RType_typ) in
+let e := mkTrue tyProp in
+run_rtac_Solved AUTO (TopSubst (expr typ func) nil nil) e AUTO_sound
+  (eq_refl<:run_tac AUTO (GGoal (mkTrue tyProp)) = Solved (TopSubst (expr typ func) nil nil))
+     : True
+
+*)
 
 
 
@@ -1195,7 +1201,56 @@ Qed.
 
 Lemma test_and2 : forall (P Q R T : Prop),
 	 Q -> P -> R -> (P /\ Q /\ R) \/
-	    (Q /\ T /\ (R /\ R) /\ Q).
+	    (Q /\ T /\ (R /\ R) /\ (P /\ Q) /\ Q).
 Proof.
   run_rtac reify_imp term_table AUTO''_sound.
 Qed.
+(*
+Ltac run_rtac reify term_table tac_sound :=
+  match type of tac_sound with
+    | rtac_sound ?tac =>
+	  let name := fresh "e" in
+	  match goal with
+	    | |- ?P => 
+	      reify_aux reify term_table P name;
+	      let t := eval vm_compute in (typeof_expr nil nil name) in
+	      let goal := eval unfold name in name in
+	      match t with
+	        | Some ?t =>
+	          let goal_result := constr:(run_tac tac (GGoal name)) in 
+	          let result := eval vm_compute in goal_result in
+	          match result with
+	            | More_ ?s ?g => 
+	              cut (goalD_Prop nil nil g); [
+	                let goal_resultV := g in
+	               (* change (goalD_Prop nil nil goal_resultV -> exprD_Prop nil nil name);*)
+	                exact_no_check (@run_rtac_More _ tac _ _ _ tac_sound
+	                	(@eq_refl (Result (CTop nil nil)) (More_ s goal_resultV) <:
+	                	   run_tac tac (GGoal goal) = (More_ s goal_resultV)))
+	                | cbv_denote
+	              ]
+	            | Solved ?s =>
+	              exact_no_check (@run_rtac_Solved _ tac s name tac_sound 
+	                (@eq_refl (Result (CTop nil nil)) (Solved s) <: run_tac tac (GGoal goal) = Solved s))
+	            | Fail => idtac "Tactic" tac "failed."
+	            | _ => idtac "Error: run_rtac could not resolve the result from the tactic :" tac
+	          end
+	        | None => idtac "expression " goal "is ill typed" t
+	      end
+	  end
+	| _ => idtac tac_sound "is not a soudness theorem."
+  end.
+  *)
+Require Import Charge.Tactics.Rtac.PullQuant.
+  
+Lemma PULL_EXISTSL_sound : rtac_sound (THEN (REPEAT 10 (INTRO typ func)) (PULL_EXISTSL typ func ilops)).
+Proof.
+  admit.
+Qed.
+
+Lemma test_pull_quant_left  (P : sasn) (Q : nat -> sasn) :
+  P //\\ (Exists x : nat, Q x) |-- P.
+Proof.
+  run_rtac reify_imp term_table PULL_EXISTSL_sound.
+  
+  Print func.
