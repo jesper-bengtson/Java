@@ -3,7 +3,6 @@
 	<name>Java</name>
 	<comment></comment>
 	<projects>
-		<project>Charge!</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
