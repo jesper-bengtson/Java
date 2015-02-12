@@ -1,6 +1,8 @@
 Require Import DecidableType DecidableTypeEx.
 Require Import ZArith Coq.Strings.String.
-Require Import Stack Open Util OpenILogic.
+
+Require Import Java.Util.
+
 Require Import Coq.Bool.Bool.
 
 Require Import ExtLib.Core.RelDec.
@@ -8,7 +10,10 @@ Require Import ExtLib.Data.String.
 Require Import ExtLib.Data.Z.
 Require Import ExtLib.Tactics.Consider.
 
-Require Import Subst.
+Require Import Charge.Open.Stack.
+Require Import Charge.Open.Open.
+Require Import Charge.Open.OpenILogic.
+Require Import Charge.Open.Subst.
 
 Definition class := String.string.
 Definition var := String.string.
