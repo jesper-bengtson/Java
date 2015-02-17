@@ -139,7 +139,7 @@ Set Strict Implicit.
     			     end
     }.
 
-    Global Instance RelDec_Correct_ilfunc : RelDec_Correct RelDec_java_func.
+    Global Instance RelDec_Correct_java_func : RelDec_Correct RelDec_java_func.
     Proof.
       constructor.
       destruct x; destruct y; simpl;

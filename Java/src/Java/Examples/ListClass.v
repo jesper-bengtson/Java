@@ -1,4 +1,4 @@
-Require Import AxiomaticSemantics String AssertionLogic ILogic ILEmbed BILogic Lang Stack ZArith List ListModel.
+Require Import AxiomaticSemantics String AssertionLogic ILogic ILEmbed BILogic Lang Stack ZArith Coq.Lists.List ListModel.
 Require Import Program SpecLogic OperationalSemantics.
 
 Set Implicit Arguments.
@@ -30,7 +30,33 @@ Definition add_body :=
     Forall xs : list val, method_spec "List" "add" ("this"::"n"::nil) "" 
                                     (fun s => List (s "this") xs) 
                                     (fun s => List (s "this") ((s "n")::xs)).
-
+Print method_spec.
+Lemma method_specL C m args r P Q G args' c re Pr
+  (HProg : G |-- prog_eq Pr)
+  (Hargs : NoDup (r::args))
+  (H : method_lookup Pr C m {| m_params := args'; m_body := c; m_ret := re|})
+  (Hlength : length args = length args')
+  (Htriple : G |-- {[Subst.apply_subst P
+       (Subst.substl_trunc (Subst.zip args (map Open.var_expr args')))]} c
+  {[Subst.apply_subst Q
+      (Subst.substl_trunc
+         (Subst.zip (r :: args) (eval re :: map Open.var_expr args')))]} ) :
+  G |-- method_spec C m args r P Q.
+Proof.
+  Require Import Charge.Logics.ILInsts.
+  Local Transparent ILPre_Ops.
+  intros Pr' n HG.
+  split; [apply Hargs|].
+  eexists args', c, re.
+  specialize (HProg _ _ HG). simpl in HProg.
+  split. simpl. intros.
+  specialize (HProg _ H0).
+  destruct HProg; subst.
+  repeat split; try assumption.
+  admit. (* This should be provable from valid_program *)
+  apply Htriple.
+  assumption.
+Qed.
             
 Lemma ListCorrect : prog_eq ListProg |-- add_spec.
 Proof.
