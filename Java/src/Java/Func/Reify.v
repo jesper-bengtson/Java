@@ -154,7 +154,7 @@ Reify Pattern patterns_java += (RHasType (list field) (?0)) => (fun (fs : id (li
 Reify Pattern patterns_java += (RHasType class (?0)) => (fun (c : id class) => mkString (func := func) c).
 
 Reify Pattern patterns_java += (RHasType (@list dexpr) (?0)) => (fun (es : id (@list dexpr)) => mkExprList es).
-Reify Pattern patterns_java += (RHasType (@list String.string) (?0)) => (fun (vs : id (@list String.string)) => mkVarList vs).
+Reify Pattern patterns_java += (RHasType (@list String.string) (?0)) => (fun (vs : id (@list String.string)) => mkFields vs).
 Reify Pattern patterns_java += (!! (@eq) @ ?0) => (fun (x : function reify_imp_typ) => fEq (func := expr typ func) x).
 
 (** Intuitionistic Operators **)

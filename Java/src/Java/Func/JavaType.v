@@ -10,6 +10,7 @@ Require Import Charge.ModularFunc.ILogicFunc.
 Require Import Charge.ModularFunc.BILogicFunc.
 Require Import Charge.ModularFunc.EmbedFunc.
 Require Import Charge.ModularFunc.LaterFunc.
+Require Import Charge.ModularFunc.SemiDecEqTyp.
 Require Import Charge.Open.Subst.
 Require Import Charge.Logics.ILInsts.
 Require Import Charge.Logics.BILInsts.
@@ -39,6 +40,7 @@ Inductive typ : Type :=
 | tySpec : typ
 | tyAsn : typ
 | tyProg : typ
+| tyMethod : typ
 | tyCmd : typ
 | tyDExpr : typ
 | tySubst : typ.
@@ -94,6 +96,7 @@ Fixpoint type_cast_typ (a b : typ) : option (a = b) :=
        end
     | tyString, tyString => Some eq_refl
     | tyCmd, tyCmd => Some eq_refl
+    | tyMethod, tyMethod => Some eq_refl
     | tyDExpr, tyDExpr => Some eq_refl
     | tyAsn, tyAsn => Some eq_refl
     | tySubst, tySubst => Some eq_refl
@@ -157,6 +160,7 @@ Fixpoint typD (t : typ) : Type :=
     | tyVal => val
     | tyString => string
     | tyProg => Program
+    | tyMethod => Method
     | tyCmd => cmd
     | tyDExpr => dexpr
     | tySubst => @subst var val
@@ -322,3 +326,36 @@ Definition lops : @later_ops _ RType_typ :=
 	  | tySpec => Some should_also_not_be_necessary
 	  | _ => None
     end.
+
+Fixpoint edt (t : typ) : typD t -> typD t -> option bool :=
+  match t return typD t -> typD t -> option bool with
+    | tyBool => fun e1 e2 => Some (e1 ?[ eq ] e2)
+    | tyVal => fun e1 e2 => Some (e1 ?[ eq ] e2)
+    | tyString => fun e1 e2 => Some (e1 ?[ eq ] e2)
+    | tyNat => fun e1 e2 => Some (e1 ?[ eq ] e2)
+    | tyProg => fun e1 e2 => Some (e1 ?[ eq ] e2)
+    | tyCmd => fun e1 e2 => Some (e1 ?[ eq ] e2)
+    | tyDExpr => fun e1 e2 => Some (e1 ?[ eq ] e2)
+    | tyList tyString => fun e1 e2 => Some (e1 ?[ eq ] e2)
+    | tyPair t1 t2 =>
+      fun e1 e2 =>
+        match edt t1 (fst e1) (fst e2), edt t2 (snd e1) (snd e2) with
+          | Some a, Some b => Some (a && b)
+          | _, _ => None
+        end
+    | _ => fun _ _ => None
+  end.
+
+Require Import ExtLib.Tactics.
+
+Lemma edtOk : eq_dec_typOk edt.
+Proof.
+  intros t e1 e2.
+  induction t; simpl in *; try apply I; try (consider (e1 ?[ eq ] e2); intuition congruence).
+  destruct t; simpl in *; try apply I.
+  consider (e1 ?[ eq ] e2); intuition congruence.
+  destruct e1, e2; simpl.
+  forward; inv_all; subst.
+  specialize (IHt1 t t3); specialize (IHt2 t0 t4).
+  destruct b0, b1; rewrite H in IHt1; rewrite H0 in IHt2; simpl; intuition congruence.
+Qed.

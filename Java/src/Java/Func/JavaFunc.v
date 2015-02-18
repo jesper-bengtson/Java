@@ -38,18 +38,13 @@ Set Implicit Arguments.
 Set Strict Implicit.
 
 	Inductive java_func :=
-	| pVal (_ : val)
-	| pVarList (_ : list Lang.var) 
-	| pProg (_ : Program)
-	| pCmd (_ : cmd)
-	| pDExpr (_ : dexpr)
-	| pFields (_ : list field)
-	
+
 	| pMethodSpec
 	| pProgEq
 	| pTriple
 	| pTypeOf
 	| pFieldLookup
+	| pMethodLookup
 	
 	| pPointsto
 	| pNull
@@ -69,16 +64,9 @@ Set Strict Implicit.
 			| x::xs, y :: ys => andb (f x y) (beq_list f xs ys)
 			| _, _ => false
 		end.
-
+Check method_lookup.
 	Definition typeof_java_func bf :=
 		match bf with
-		    | pVal _ => Some tyVal
-		    | pVarList _ => Some tyVarList
-		    | pProg _ => Some tyProg
-		    | pCmd _ => Some tyCmd
-		    | pDExpr _ => Some tyDExpr
-		    | pFields _ => Some tyFields
-		
 		    | pMethodSpec => Some (tyArr tyString (tyArr tyString (tyArr tyVarList
 		    	 (tyArr tyString (tyArr tySasn (tyArr tySasn tySpec))))))
 		    | pProgEq => Some (tyArr tyProg tySpec)
@@ -87,6 +75,7 @@ Set Strict Implicit.
 		    | pTypeOf => Some (tyArr tyString (tyArr tyVal tyProp))
 		    
 		    | pFieldLookup => Some (tyArr tyProg (tyArr tyString (tyArr tyFields tyProp)))
+		    | pMethodLookup => Some (tyArr tyProg (tyArr tyString (tyArr tyString (tyArr tyMethod tyProp))))
 		    
 		    | pPointsto => Some (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn)))
 		    
@@ -104,13 +93,6 @@ Set Strict Implicit.
 
 	Definition java_func_eq (a b : java_func) : option bool :=
 	  match a , b with
-		| pVal a, pVal b => Some (a ?[ eq ] b)
-	    | pVarList a, pVarList b => Some (a ?[ eq ] b)
-	    | pProg a, pProg b => Some (a ?[ eq ] b)
-	    | pCmd a, pCmd b => Some (a ?[ eq ] b)
-	    | pDExpr e1, pDExpr e2 => Some (e1 ?[ eq ] e2)
-	    | pFields a, pFields b => Some (a ?[ eq ] b)
-	        
 	    | pMethodSpec, pMethodSpec => Some true
 	    | pProgEq, pProgEq => Some true
 		| pTriple, pTriple => Some true
@@ -119,6 +101,7 @@ Set Strict Implicit.
 	
 	    | pPointsto, pPointsto => Some true
 	    | pFieldLookup, pFieldLookup => Some true
+	    | pMethodLookup, pMethodLookup => Some true
 	
 	    | pNull, pNull => Some true
 	    | pPlus, pPlus => Some true
@@ -155,13 +138,6 @@ Definition set_fold_fun (x : String.string) (f : field) (P : sasn) :=
 								| Some t => typD t
 								| None => unit
 							  end with
-              | pProg p => p
-              | pVal v => v
-              | pVarList vs => vs
-              | pCmd c => c
-              | pDExpr e => e
-              | pFields fs => fs
-
               | pMethodSpec => method_spec
               | pProgEq => prog_eq
               | pTriple => triple
@@ -169,6 +145,7 @@ Definition set_fold_fun (x : String.string) (f : field) (P : sasn) :=
               | pTypeOf => typeof
                             
               | pFieldLookup => field_lookup
+              | pMethodLookup => method_lookup
               
               | pPointsto => pointsto
               
@@ -194,32 +171,27 @@ Definition set_fold_fun (x : String.string) (f : field) (P : sasn) :=
 	Proof.
 		split; intros.
 		destruct a, b; simpl; try apply I; try reflexivity.
-		+ consider (v ?[ eq ] v0); intuition congruence.
-		+ consider (l ?[ eq ] l0); intuition congruence.
-		+ consider (p ?[ eq ] p0); intuition congruence. 
-		+ consider (c ?[ eq ] c0); intuition congruence. 
-		+ consider (d ?[ eq ] d0); intuition congruence. 
-		+ consider (l ?[ eq ] l0); intuition congruence. 
 	Qed.		
 
 
 Definition func := (SymEnv.func + @ilfunc typ + @bilfunc typ + 
-                    @base_func typ + @list_func typ + @open_func typ _ _ + 
+                    @base_func typ RType_typ + @list_func typ + @open_func typ _ _ + 
                     @embed_func typ + @later_func typ + java_func)%type.
 
 Section MakeJavaFunc.
-	Definition mkVal v : expr typ func := Inj (inr (pVal v)).
-	Definition mkVarList vs : expr typ func := Inj (inr (pVarList vs)).
-	Definition mkProg P : expr typ func := Inj (inr (pProg P)).
-	Definition mkCmd c : expr typ func := Inj (inr (pCmd c)).
-	Definition mkDExpr e : expr typ func := Inj (inr (pDExpr e)).
-	Definition mkFields fs : expr typ func := Inj (inr (pFields fs)).
+
+	Definition mkVal v : expr typ func := Inj (inl (inl (inl (inl (inl (inr (pConst tyVal v))))))).
+	Definition mkProg P : expr typ func := Inj (inl (inl (inl (inl (inl (inr (pConst tyProg P))))))).
+	Definition mkCmd c : expr typ func := Inj (inl (inl (inl (inl (inl (inr (pConst tyCmd c))))))).
+	Definition mkDExpr e : expr typ func := Inj (inl (inl (inl (inl (inl (inr (pConst tyDExpr e))))))).
+	Definition mkFields fs : expr typ func := Inj (inl (inl (inl (inl (inl (inr (pConst (tyList tyString) fs))))))).
 
 	Definition fMethodSpec : expr typ func := Inj (inr pMethodSpec).
 	Definition fProgEq : expr typ func := Inj (inr pProgEq).
 	Definition fTriple : expr typ func := Inj (inr pTriple).
 	Definition fTypeOf : expr typ func := Inj (inr pTypeOf).
 	Definition fFieldLookup : expr typ func := Inj (inr pFieldLookup).
+	Definition fMethodLookup : expr typ func := Inj (inr pMethodLookup).
 	Definition fPointsto : expr typ func := Inj (inr pPointsto).
 	Definition mkNull : expr typ func := Inj (inr pNull).
 
@@ -293,10 +265,16 @@ Check RSym.
 
   Global Instance RSym_func : RSym func.
     repeat (apply RSym_sum; [|apply _]).
+    apply RSym_sum; [|apply (RSym_BaseFunc (edt := edt))].
+    repeat (apply RSym_sum; [|apply _]).
     apply (RSym_func java_env).
   Defined.
-
-  Global Instance RelDec_expr : RelDec (@eq func) := _.
+  
+  Global Instance RSymOk_func : RSymOk RSym_func.
+  Proof.
+    repeat (apply RSymOk_sum); try apply _.
+    apply (RSymOk_BaseFunc (edtOk := edtOk)).
+  Qed.
 
   Global Instance Expr_expr : ExprI.Expr _ (expr typ func) := @Expr_expr typ func _ _ _.
   Global Instance Expr_ok : @ExprI.ExprOk typ RType_typ (expr typ func) Expr_expr := ExprOk_expr.
@@ -373,7 +351,7 @@ Check RSym.
 
   Definition test_lemma :=
     @lemmaD typ (expr typ func) RType_typ Expr_expr (expr typ func)
-            (fun tus tvs e => exprD' tus tvs e tyProp)
+            (fun tus tvs e => exprD' tus tvs tyProp e)
             _
             nil nil.
 End JavaFunc.
