@@ -49,6 +49,11 @@ Set Strict Implicit.
 	| pPointsto
 	| pNull
 	
+	| pMethodBody
+	| pMethodArgs
+	| pMethodRet
+	
+	
 	| pPlus
 	| pMinus
 	| pTimes
@@ -64,7 +69,7 @@ Set Strict Implicit.
 			| x::xs, y :: ys => andb (f x y) (beq_list f xs ys)
 			| _, _ => false
 		end.
-Check method_lookup.
+
 	Definition typeof_java_func bf :=
 		match bf with
 		    | pMethodSpec => Some (tyArr tyString (tyArr tyString (tyArr tyVarList
@@ -78,8 +83,11 @@ Check method_lookup.
 		    | pMethodLookup => Some (tyArr tyProg (tyArr tyString (tyArr tyString (tyArr tyMethod tyProp))))
 		    
 		    | pPointsto => Some (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn)))
-		    
 		    | pNull => Some tyVal
+		    
+		    | pMethodBody => Some (tyArr tyMethod tyCmd)
+		    | pMethodArgs => Some (tyArr tyMethod (tyList tyString))
+		    | pMethodRet => Some (tyArr tyMethod tyDExpr)
 		    
 		    | pPlus => Some (tyArr tyVal (tyArr tyVal tyVal))
 		    | pMinus => Some (tyArr tyVal (tyArr tyVal tyVal))
@@ -102,6 +110,10 @@ Check method_lookup.
 	    | pPointsto, pPointsto => Some true
 	    | pFieldLookup, pFieldLookup => Some true
 	    | pMethodLookup, pMethodLookup => Some true
+	    
+	    | pMethodBody, pMethodBody => Some true
+	    | pMethodArgs, pMethodArgs => Some true
+	    | pMethodRet, pMethodRet => Some true
 	
 	    | pNull, pNull => Some true
 	    | pPlus, pPlus => Some true
@@ -151,6 +163,10 @@ Definition set_fold_fun (x : String.string) (f : field) (P : sasn) :=
               
               | pNull => null
               
+              | pMethodBody => m_body
+              | pMethodArgs => m_params
+              | pMethodRet => m_ret
+              
               | pPlus => eplus
               | pMinus => eminus
               | pTimes => etimes
@@ -178,10 +194,15 @@ Definition func := (SymEnv.func + @ilfunc typ + @bilfunc typ +
                     @base_func typ RType_typ + @list_func typ + @open_func typ _ _ + 
                     @embed_func typ + @later_func typ + java_func)%type.
 
+
+    Notation pProg P := (Inj (inl (inl (inl (inl (inl (inr (pConst tyProg P)))))))).
+    Notation pMethod M := (Inj (inl (inl (inl (inl (inl (inr (pConst tyMethod M)))))))).
+
 Section MakeJavaFunc.
 
 	Definition mkVal v : expr typ func := Inj (inl (inl (inl (inl (inl (inr (pConst tyVal v))))))).
-	Definition mkProg P : expr typ func := Inj (inl (inl (inl (inl (inl (inr (pConst tyProg P))))))).
+	Definition mkProg P : expr typ func := pProg P.
+	Definition mkMethod M : expr typ func := pMethod M.
 	Definition mkCmd c : expr typ func := Inj (inl (inl (inl (inl (inl (inr (pConst tyCmd c))))))).
 	Definition mkDExpr e : expr typ func := Inj (inl (inl (inl (inl (inl (inr (pConst tyDExpr e))))))).
 	Definition mkFields fs : expr typ func := Inj (inl (inl (inl (inl (inl (inr (pConst (tyList tyString) fs))))))).
@@ -195,6 +216,10 @@ Section MakeJavaFunc.
 	Definition fPointsto : expr typ func := Inj (inr pPointsto).
 	Definition mkNull : expr typ func := Inj (inr pNull).
 
+	Definition fMethodBody : expr typ func := Inj (inr pMethodBody).
+	Definition fMethodArgs : expr typ func := Inj (inr pMethodArgs).
+	Definition fMethodRet : expr typ func := Inj (inr pMethodRet).	
+	
 	Definition fPlus : expr typ func := Inj (inr pPlus).
 	Definition fMinus : expr typ func := Inj (inr pMinus).
 	Definition fTimes : expr typ func := Inj (inr pTimes).
@@ -208,6 +233,10 @@ Section MakeJavaFunc.
 	Definition mkFieldLookup P C f : expr typ func := App (App (App fFieldLookup P) C) f.
 	Definition mkTypeOf C x : expr typ func := App (App fTypeOf C) x.
 	Definition mkProgEq P := App fProgEq P.
+	
+	Definition mkMethodBody (M : Method) : expr typ func := App fMethodBody (mkMethod M).
+	Definition mkMethodArgs (M : Method) : expr typ func := App fMethodArgs (mkMethod M).
+	Definition mkMethodRet (M : Method) : expr typ func := App fMethodRet (mkMethod M).
 	
 	Definition mkExprList es :=
 		(fold_right (fun (e : dexpr) (acc : expr typ func) => 

@@ -233,13 +233,12 @@ Ltac cbv_denote :=
           BaseFunc.mkNat BaseFunc.mkString BaseFunc.mkBool
           BaseFunc.mkEq BaseFunc.mkPair
           
-          BaseFunc.fNat BaseFunc.fString BaseFunc.fBool
+          BaseFunc.fConst
           BaseFunc.fEq BaseFunc.fPair
           
           BaseFunc.RSym_BaseFunc
           
           BaseFunc.typeof_base_func BaseFunc.base_func_eq BaseFunc.base_func_symD
-          BaseFunc.RelDec_base_func
           
           (* ListFunc *)
           
@@ -314,7 +313,7 @@ Ltac cbv_denote :=
           JavaFunc.Expr_expr
           mkPointstoVar
           JavaFunc.RSym_func JavaFunc.java_env
-          JavaFunc.mkVal JavaFunc.mkVarList
+          JavaFunc.mkVal JavaFunc.mkFields
           JavaFunc.mkProg JavaFunc.mkCmd JavaFunc.mkDExpr JavaFunc.mkFields
           JavaFunc.fMethodSpec JavaFunc.fProgEq JavaFunc.fTriple JavaFunc.fTypeOf
           JavaFunc.fFieldLookup JavaFunc.fPointsto JavaFunc.mkNull

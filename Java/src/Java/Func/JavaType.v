@@ -170,13 +170,13 @@ Inductive tyAcc_typ : typ -> typ -> Prop :=
 | tyAcc_tyArrL : forall a b, tyAcc_typ a (tyArr a b)
 | tyAcc_tyArrR : forall a b, tyAcc_typ a (tyArr b a).
 
-Instance RType_typ : RType typ :=
+Global Instance RType_typ : RType typ :=
 { typD := typD
 ; tyAcc := tyAcc_typ
 ; type_cast := type_cast_typ
 }.
 
-Instance Typ2_Fun : Typ2 _ (fun x y : Type => x -> y) :=
+Global Instance Typ2_Fun : Typ2 _ (fun x y : Type => x -> y) :=
 { typ2 := tyArr
 ; typ2_cast := fun _ _ => eq_refl
 ; typ2_match := fun T t tr =>
@@ -186,7 +186,7 @@ Instance Typ2_Fun : Typ2 _ (fun x y : Type => x -> y) :=
                   end
 }.
 
-Instance Typ2Ok_Fun : Typ2Ok Typ2_Fun.
+Global Instance Typ2Ok_Fun : Typ2Ok Typ2_Fun.
 Proof.
   split; intros.
   + reflexivity.

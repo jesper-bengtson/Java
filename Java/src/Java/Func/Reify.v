@@ -202,6 +202,12 @@ Reify Pattern patterns_java += (!! method_spec) => (fMethodSpec).
 
 
 Reify Pattern patterns_java += (!! triple) => (fTriple).
+Reify Pattern patterns_java += (!!method_lookup) => fMethodLookup.
+Reify Pattern patterns_java += (!!field_lookup) => fFieldLookup.
+Reify Pattern patterns_java += (!!m_ret) => fMethodRet.
+Reify Pattern patterns_java += (!!m_body) => fMethodBody.
+Reify Pattern patterns_java += (!!m_params) => fMethodArgs.
+
 Reify Pattern patterns_java += (!! eval @ (RHasType dexpr (?0))) => (fun e : id dexpr => evalDExpr e).
 Reify Pattern patterns_java += (!! stack_get) => (fStackGet (typ := typ) (func := expr typ func)).
 Reify Pattern patterns_java += (!! stack_add (val := val)) => (fStackSet (typ := typ) (func := expr typ func)).

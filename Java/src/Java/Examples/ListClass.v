@@ -30,29 +30,30 @@ Definition add_body :=
     Forall xs : list val, method_spec "List" "add" ("this"::"n"::nil) "" 
                                     (fun s => List (s "this") xs) 
                                     (fun s => List (s "this") ((s "n")::xs)).
-Print method_spec.
-Lemma method_specL C m args r P Q G args' c re Pr
+
+Lemma method_specL C m args r P Q G M Pr
   (HProg : G |-- prog_eq Pr)
   (Hargs : NoDup (r::args))
-  (H : method_lookup Pr C m {| m_params := args'; m_body := c; m_ret := re|})
-  (Hlength : length args = length args')
+  (H : method_lookup Pr C m M)
+  (Hlength : length args = length (m_params M))
   (Htriple : G |-- {[Subst.apply_subst P
-       (Subst.substl_trunc (Subst.zip args (map Open.var_expr args')))]} c
+       (Subst.substl_trunc (Subst.zip args (map (fun x s => s x) (m_params M))))]} (m_body M)
   {[Subst.apply_subst Q
       (Subst.substl_trunc
-         (Subst.zip (r :: args) (eval re :: map Open.var_expr args')))]} ) :
+         (Subst.zip (r :: args) (eval (m_ret M) :: map Open.var_expr (m_params M))))]} ) :
   G |-- method_spec C m args r P Q.
 Proof.
   Require Import Charge.Logics.ILInsts.
   Local Transparent ILPre_Ops.
   intros Pr' n HG.
   split; [apply Hargs|].
-  eexists args', c, re.
+  eexists (m_params M), (m_body M), (m_ret M).
   specialize (HProg _ _ HG). simpl in HProg.
   split. simpl. intros.
   specialize (HProg _ H0).
   destruct HProg; subst.
   repeat split; try assumption.
+  destruct M; simpl. apply H.
   admit. (* This should be provable from valid_program *)
   apply Htriple.
   assumption.

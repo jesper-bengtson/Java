@@ -136,6 +136,18 @@ Fixpoint class_lookup_aux C (lst : list (string * Class)) :=
 
 Definition class_lookup C P := class_lookup_aux C (p_classes P).
 
+Fixpoint method_lookup_aux m (lst : list (string * Method)) :=
+	match lst with
+		| nil => None
+		| (m', M)::ls => if m ?[ eq ] m' then Some M else method_lookup_aux m ls
+	end.
+
+Definition method_lookup' C M P :=
+  match class_lookup C P with 
+    | Some Crec => method_lookup_aux M (c_methods Crec)
+    | None => None
+  end.
+
 Lemma split_Prop {A B C : Type} (lst : list (A * B)) (P : list A -> list B -> C) : 
 	(let (a, b) := split lst in P a b) =
 	P (fst (split lst)) (snd (split lst)).
