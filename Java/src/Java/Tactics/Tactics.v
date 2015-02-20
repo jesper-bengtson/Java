@@ -254,6 +254,9 @@ Ltac cbv_denote :=
           ListFunc.typeof_list_func ListFunc.list_func_eq ListFunc.list_func_symD
           ListFunc.RelDec_list_func
           
+          ListFunc.nilD ListFunc.consD ListFunc.mapD ListFunc.zipD ListFunc.NoDupD ListFunc.foldD
+          ListFunc.listD ListFunc.listD_sym
+          
 		  (* OpenFunc *)
 		  
 		  OpenFunc.mkConst OpenFunc.mkAp OpenFunc.mkNull OpenFunc.mkStackGet
@@ -282,6 +285,9 @@ Ltac cbv_denote :=
           
           BaseType.tyPair BaseType.tyNat BaseType.tyString BaseType.tyBool
           BaseType.btPair BaseType.btNat BaseType.btBool BaseType.btString
+          
+          BaseType.natD BaseType.boolD BaseType.stringD BaseType.pairD
+          BaseType.natD_sym BaseType.boolD_sym BaseType.stringD_sym BaseType.pairD_sym
           
           (* ListType *)
           

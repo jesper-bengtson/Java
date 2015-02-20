@@ -316,131 +316,12 @@ Example test_pull_exists : test_lemma (pull_exists_lemma). Admitted.
 
 Require Import Charge.ModularFunc.BaseFunc.
 
-Definition fieldLookupTac : rtac typ (expr typ func) :=
-	fun tus tvs n m c s e =>
-		match e with
-		  | App (App (App (Inj (inr pFieldLookup)) (Inj (inr (pProg P)))) C) f =>
-		    match baseS C with
-		      | Some C' =>
-		        match C' with
-		          | pString C'' =>
-				  	match class_lookup C'' P with
-		    	      | Some Class =>
-		    	        match @exprUnify (ctx_subst c) typ func _ _ _ _ _ 3
-		                                 tus tvs 0 f (mkFields (c_fields Class)) tyVarList s with
-		                  | Some s => Solved s
-		                  | None   => Fail
-		                end
-		    	      | None => Fail 
-				    end
-				  | _ => Fail
-				end
-			  | None => Fail
-			end
-		  | _ => Fail
-		end.
-
-Definition FIELD_LOOKUP := fieldLookupTac.
-
 Require Import ExtLib.Tactics.
-
-
-Lemma FIELD_LOOKUP_sound : rtac_sound FIELD_LOOKUP.
-Proof.
-  unfold rtac_sound, rtac_spec; intros.
-  unfold FIELD_LOOKUP, fieldLookupTac in H.
-  destruct g; subst; try apply I.
-  forward.
-  simpl in H10.
-  forward.
-  SearchAbout exprUnify'.
-  Print exprUnify'.
-  Print ExprUnify_common.unify_sound_ind.
-  pose proof (exprUnify_sound).
-  specialize(H13 (ctx_subst ctx) typ func _ _ _ _ _ _ _ _ _ _ 3).
-  red in H13.
-  red in H13.
-  apply H13 with (tv' := nil) in H10; clear H13; [|assumption].
-  forward_reason; split; auto.
-  forward. simpl in H13.
-  simpl in H15.
-  unfold Ctx.propD, exprD'_typ0 in H15.
-  forward; inv_all; subst.
-  simpl in H15.
-  autorewrite with exprD_rw in H15; [|apply _];
-  simpl in H15; forward; inv_all; subst.
-  autorewrite with exprD_rw in H0.
-  simpl in H0; forward; inv_all; subst.
-  autorewrite with exprD_rw in H2; [|apply _];
-  simpl in H2; forward; inv_all; subst.
-  autorewrite with exprD_rw in H2; [|apply _];
-  simpl in H2; forward; inv_all; subst.
-  unfold funcAs in H2. simpl in H2.
-  forward; inv_all; subst.
-  pose proof (pctxD_substD H12 H14).
-  destruct H as [? [? ?]].
-  specialize (H13 _ _ _ H5 eq_refl H).
-  forward; inv_all; subst.
-  destruct H6 as [? [? ?]].
-  pose proof (substD_pctxD _ H10 H14 H6).
-  destruct H13 as [? [? ?]].
-  simpl in *. unfold Expr_expr.
-  rewrite H13.
-  split. admit.
-  intros. unfold exprT_App, exprT_Inj in *; simpl in *.
-  destruct e0; inv_all; try congruence.
-  destruct f; try congruence.
-  destruct s1; try congruence.
-  destruct s1; try congruence.
-  destruct s1; try congruence.
-  destruct s1; try congruence.
-  destruct s1; try congruence.
-  inv_all; subst. simpl in *.
-  Check Ap_pctxD.
-  gather_facts.
-  eapply Pure_pctxD; eauto.
-  intros.
-  specialize (H7 _ _ H8).
-  destruct H7 as [? ?]. specialize (H15 HList.Hnil). simpl in H15.
-  rewrite H15; clear H15.
-  unfold field_lookup. exists c; split; [|reflexivity].
-  autorewrite with exprD_rw in H3; [|apply _];
-  simpl in H2; forward; inv_all; subst.
-  simpl.
-  unfold eq_rect_r. simpl.
-  
-  Require Import ExtLib.Data.String.
-  
-  Lemma class_lookup_sound s p c (H : class_lookup s p = Some c) : In (s, c) (p_classes p).
-  Proof.
-    destruct p. induction p_classes; simpl in *.
-    * unfold class_lookup in H. simpl in H; congruence.
-    * unfold class_lookup in H. simpl in H.
-      destruct a; simpl in *. consider (s ?[ eq ] s0); intros; subst.
-      + left. rewrite rel_dec_eq_true in H; inv_all; subst; [reflexivity| apply _|reflexivity].
-      + right. rewrite rel_dec_neq_false in H; [apply IHp_classes; apply H | apply _ | apply H0].
-  Qed.
-  
-  apply class_lookup_sound.
-  apply H9.
-  apply _.
-Qed.
 
 Require Import Charge.ModularFunc.ListFunc.
 
-	Definition foldTac (e : expr typ func) (args : list (expr typ func))
-	: expr typ func :=
-	  match listS e with
-	    | Some (pFold t u) =>
-	      match args with
-	        | f :: acc :: (Inj (inr (pFields fs)))::nil =>
-	            fold_right (fun x acc => beta (beta (App (App f (mkString x)) acc))) acc fs
-	        | _ => apps e args
-	      end
-	    | _ => apps e args
-	  end.
-
 Require Import MirrorCore.Lambda.ExprTac.
+(*
 
   Lemma foldTacOk : partial_reducer_ok foldTac.
   Proof.
@@ -575,6 +456,9 @@ Proof.
   
   *)
 Qed.
+
+*)
+
 Check apps.
 Definition BETA := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all (fun _ => @apps typ func)).
 
@@ -606,7 +490,9 @@ Let EAPPLY lem := THEN' (EAPPLY typ func lem) (MINIFY typ func).
 Definition THEN (r1 r2 : rtac typ (expr typ func)) := 
   THEN (THEN (THEN (INSTANTIATE typ func) (runOnGoals r1)) (runOnGoals (INSTANTIATE typ func))) (runOnGoals r2).
 
-Definition EQSUBST := THEN (EAPPLY eq_to_subst_lemma) (SUBST typ func).
+Check SUBST.
+
+Definition EQSUBST := THEN (EAPPLY eq_to_subst_lemma) (SUBST (ilp := ilp) (bilp := bilp) typ func).
 
 (*
 Notation "'ap_eq' '[' x ',' y ']'" :=
@@ -626,8 +512,15 @@ Definition match_ap_eq (e : expr typ func) : bool :=
 	  	end
 	  | _ => false
 	end.
+Check @PULLCONJUNCTL.
+Instance notehu : RelDec (@eq (expr typ func)).
+apply RelDec_eq_expr.
+apply _.
+apply _.
+split.
+a
 
-Definition PULLEQL := PULLCONJUNCTL typ func match_ap_eq ilops.
+Definition PULLEQL := @PULLCONJUNCTL typ func RType_typ _ _ _ match_ap_eq _ _ _.
 
                         (*
 	THEN (INSTANTIATE typ func subst) (runOnGoals (THEN (THEN (TRY FIELD_LOOKUP) 

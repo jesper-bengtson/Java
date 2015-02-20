@@ -195,8 +195,8 @@ Definition func := (SymEnv.func + @ilfunc typ + @bilfunc typ +
                     @embed_func typ + @later_func typ + java_func)%type.
 
 
-    Notation pProg P := (Inj (inl (inl (inl (inl (inl (inr (pConst tyProg P)))))))).
-    Notation pMethod M := (Inj (inl (inl (inl (inl (inl (inr (pConst tyMethod M)))))))).
+Notation pProg P := (Inj (inl (inl (inl (inl (inl (inr (pConst tyProg P)))))))).
+Notation pMethod M := (Inj (inl (inl (inl (inl (inl (inr (pConst tyMethod M)))))))).
 
 Section MakeJavaFunc.
 
@@ -285,7 +285,11 @@ Check RSym.
 	  RSym_embed_func _ eops.
   Global Instance RSym_later_func : RSym (@later_func typ) :=
 	  RSym_later_func _ lops.
-
+(*
+  Global Instance RelDec_func : RelDec (@eq func).
+  repeat apply RelDec_eq_pair; try apply _.
+  apply _.
+*)
   Global Instance RSym_open_func : RSym (@open_func typ _ _) :=
 	  @RSym_OpenFunc _ _ _ RType_typ _ _ _ _ _ _ _ _.
 

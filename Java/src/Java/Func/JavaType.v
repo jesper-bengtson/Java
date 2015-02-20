@@ -327,6 +327,42 @@ Definition lops : @later_ops _ RType_typ :=
 	  | _ => None
     end.
 
+Definition ilp : il_pointwise :=
+  fun t =>
+    match t with
+      | tySasn => true
+      | tyPure => true
+      | _ => false
+    end.
+
+Definition bilp : bil_pointwise :=
+  fun t =>
+    match t with
+      | tySasn => true
+      | _ => false
+    end.
+
+Lemma ilpOk : il_pointwiseOk _ ilops ilp.
+Proof.
+  intros t; simpl; destruct t; try apply I.
+  destruct t1; simpl; try apply I.
+  destruct t1_1; try apply I.
+  destruct t1_2; try apply I.
+  destruct t2; simpl; try apply I.
+  repeat split.
+  repeat split.
+Qed.
+
+Lemma BilpOk : bil_pointwiseOk _ bilops bilp.
+Proof.
+  intros t; simpl; destruct t; try apply I.
+  destruct t1; simpl; try apply I.
+  destruct t1_1; try apply I.
+  destruct t1_2; try apply I.
+  destruct t2; simpl; try apply I.
+  repeat split.
+Qed.
+
 Fixpoint edt (t : typ) : typD t -> typD t -> option bool :=
   match t return typD t -> typD t -> option bool with
     | tyBool => fun e1 e2 => Some (e1 ?[ eq ] e2)
