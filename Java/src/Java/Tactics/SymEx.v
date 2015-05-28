@@ -39,7 +39,7 @@ Require Import MirrorCore.Reify.Reify.
 
 Require Import Java.Func.Reify.
 
-Require Import Charge.Tactics.Rtac.Subst.
+Require Import Charge.Tactics.Open.Subst.
 
 
 Require Import Java.Language.Lang.
@@ -490,9 +490,7 @@ Let EAPPLY lem := THEN' (EAPPLY typ func lem) (MINIFY typ func).
 Definition THEN (r1 r2 : rtac typ (expr typ func)) := 
   THEN (THEN (THEN (INSTANTIATE typ func) (runOnGoals r1)) (runOnGoals (INSTANTIATE typ func))) (runOnGoals r2).
 
-Check SUBST.
-
-Definition EQSUBST := THEN (EAPPLY eq_to_subst_lemma) (SUBST (ilp := ilp) (bilp := bilp) typ func).
+Definition EQSUBST := THEN (EAPPLY eq_to_subst_lemma) (SUBST (ilp := ilp) (bilp := bilp) (eilp := eops) typ func).
 
 (*
 Notation "'ap_eq' '[' x ',' y ']'" :=

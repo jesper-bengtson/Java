@@ -15,10 +15,10 @@ Require Import Charge.Open.Open.
 Require Import Charge.Open.OpenILogic.
 Require Import Charge.Open.Subst.
 
-Definition class := String.string.
-Definition var := String.string.
-Definition ptr := (nat * class)%type.
-Definition arrptr := nat.
+Definition class : Type := String.string.
+Definition var : Type := String.string.
+Definition ptr : Type := (nat * class)%type.
+Definition arrptr : Type:= nat.
 
 Instance RelDec_ptr : RelDec (@eq ptr) := {
 	rel_dec p1 p2 :=
@@ -34,7 +34,7 @@ Proof.
 	consider (c ?[ eq ] c0); intros; subst; simpl; try intuition congruence.
 Defined.
 
-Inductive val : Set :=
+Inductive val : Type :=
 | vint :> Z -> val
 | vbool :> bool -> val
 | vptr :> ptr -> val

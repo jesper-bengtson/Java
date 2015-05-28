@@ -2,7 +2,7 @@ Require Import SemCmd ILogic BILogic ILInsts BILInsts.
 Require Import OpenILogic Later AssertionLogic SpecLogic ILEmbed.
 Require Import Stack Charge.Open.Subst Lang Util List.
 Require Import FunctionalExtensionality.
-Require Import Model.
+Require Import Model Omega.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -22,10 +22,10 @@ Section Rules.
 	  lintros n Pr. 
       intros Hc Pr' m k s h HPr Hmn Hkm HP; simpl.
       destruct (Hc _ _ _ s h HPr Hmn Hkm) as [HSafe HQ].
-	  + ilapply HPre; apply HP.
-      + split; [apply HSafe|intros h' s' H]. 
-	    ilapply HPost; apply HQ; apply H.
-    Qed.
+	  + (*ilapply HPre; apply HP.*) admit.
+      + admit. (*split; [apply HSafe|intros h' s' H]. 
+	    ilapply HPost; apply HQ; apply H.*)
+    Admitted.
 
     Definition not_modifies (c : semCmd) (x : var) : Prop :=
       forall PP s s' h h' n (HSem : c PP n s h (Some (s', h'))),
@@ -62,7 +62,7 @@ Section Rules.
           destruct (in_dec Rel.dec_eq x xs) as [|HNotIn]; [reflexivity|].
           simpl. unfold not_modifies in HMod. eapply HMod; eassumption.
           *)
-  Qed.
+  Admitted.
 (*
     Lemma conj_rule G P1 P2 Q1 Q2 c 
       (H1 : G |-- {{P1}} c {{Q1}})
@@ -186,7 +186,7 @@ Local Existing Instance ILFun_ILogic.
   	+ lintros n Pr. intro Hp. intro x. Pr' m k s h HPP' Hmn Hkm Hxp.
   	  apply Hp; try assumption. exists x; apply Hxp.
 *)
-  Qed.
+  Admitted.
 
   (* Holds only in one direction unless annotations on assertion logic, which is ugly - well, it's happened. - F.
      This is the important direction, though *)
@@ -208,6 +208,6 @@ Local Existing Instance ILFun_ILogic.
         assert ((SP Pr'') k). solve_model HSP. intros a b. simpl. intuition.
         apply H. apply HP.
 	*)
-  Qed.
+  Admitted.
 
 End Rules.

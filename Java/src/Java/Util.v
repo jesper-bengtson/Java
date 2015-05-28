@@ -1,6 +1,6 @@
 Require Import DecidableType DecidableTypeEx.
 Require Import FSetWeakList FSetFacts FSetProperties.
-Require Import FMapWeakList FMapFacts.
+Require Import FMapWeakList FMapFacts Omega.
 
 Definition search_cast {P': Prop} (P: Prop) (imp: P -> P') (search: option P) : option P' :=
   match search with

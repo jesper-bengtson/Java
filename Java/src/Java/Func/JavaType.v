@@ -1,5 +1,6 @@
 Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Data.Fun.
+Require Import ExtLib.Tactics.
 
 Require Import MirrorCore.TypesI.
 
@@ -10,7 +11,7 @@ Require Import Charge.ModularFunc.ILogicFunc.
 Require Import Charge.ModularFunc.BILogicFunc.
 Require Import Charge.ModularFunc.EmbedFunc.
 Require Import Charge.ModularFunc.LaterFunc.
-Require Import Charge.ModularFunc.SemiDecEqTyp.
+Require Import Charge.ModularFunc.SemiEqDecTyp.
 Require Import Charge.Open.Subst.
 Require Import Charge.Logics.ILInsts.
 Require Import Charge.Logics.BILInsts.
@@ -31,7 +32,7 @@ Set Strict Implicit.
 Inductive typ : Type :=
 | tyArr : typ -> typ -> typ
 | tyList : typ -> typ
-| tyPair : typ -> typ -> typ
+| tyProd : typ -> typ -> typ
 | tyBool : typ
 | tyVal : typ
 | tyString : typ
@@ -54,7 +55,7 @@ Notation "'tyFields'" := (tyList tyString).
 
 Notation "'tyVarList'" := (tyList tyString).
 Notation "'tyDExprList'" := (tyList tyDExpr).
-Notation "'tySubstList'" := (tyList (tyPair tyString tyExpr)).
+Notation "'tySubstList'" := (tyList (tyProd tyString tyExpr)).
 
 Fixpoint type_cast_typ (a b : typ) : option (a = b) :=
   match a as a , b as b return option (a = b) with
@@ -75,12 +76,12 @@ Fixpoint type_cast_typ (a b : typ) : option (a = b) :=
                 end)
         | _ , _ => None
       end
-    | tyPair x y , tyPair a b =>
+    | tyProd x y , tyProd a b =>
       match type_cast_typ x a , type_cast_typ y b with
         | Some pf , Some pf' =>
           Some (match pf in _ = t
                     , pf' in _ = t'
-                      return tyPair x y = tyPair t t'
+                      return tyProd x y = tyProd t t'
                 with
                   | eq_refl , eq_refl => eq_refl
                 end)
@@ -151,7 +152,7 @@ Fixpoint typD (t : typ) : Type :=
   match t with
     | tyArr a b => typD a -> typD b
     | tyList a => @list (typD a)
-    | tyPair a b => (typD a * typD b)%type
+    | tyProd a b => (typD a * typD b)%type
     | tyProp => Prop
     | tyNat => nat
     | tyBool => bool
@@ -245,35 +246,47 @@ Instance BaseType_typ : BaseType typ := {
   tyNat := tyNat;
   tyBool := tyBool;
   tyString := tyString;
-  tyPair := tyPair
+  tyProd := tyProd
 }.
 
-Instance BaseTypeD_typ : BaseTypeD := {
+Lemma btProd_eq (a b c d : typ) (H : tyProd a b = tyProd c d) : a = c /\ b = d.
+Proof.
+  inversion H; subst.
+  split; reflexivity.
+Qed.
+
+Instance BaseTypeD_typ : BaseTypeD BaseType_typ := {
 	btNat := eq_refl;
 	btBool := eq_refl;
 	btString := eq_refl;
-	btPair := fun _ _ => eq_refl
+	btProd := fun _ _ => eq_refl;
+	tyProd_inj := btProd_eq
 }.
 
 Instance ListType_typ : ListType typ := {
 	tyList := tyList
 }.
 
-Instance ListTypeD_typ : ListTypeD := {
-	btList := fun _ => eq_refl
+Lemma btList_eq (a b : typ) (H : tyList a = tyList b) : a = b.
+Proof.
+  inversion H; subst; reflexivity.
+Qed.
+
+Instance ListTypeD_typ : ListTypeD ListType_typ := {
+	btList := fun _ => eq_refl;
+	tyList_inj := btList_eq
 }.
 
 Instance SubstType_typ : SubstType typ := {
-	tyVal := tyVal;
-	tySubst := tySubst
+	tyVal := tyVal
 }.
 
 Definition null' : TypesI.typD tyVal := null.
-
+(*
 Program Instance SubstTypeD_typ : @SubstTypeD typ _ _ _ := {
 	stSubst := eq_refl
 }.
-
+*)
 Definition should_not_be_necessary : ILogicOps (TypesI.typD tySpec).
 Proof.
   simpl.
@@ -342,7 +355,54 @@ Definition bilp : bil_pointwise :=
       | _ => false
     end.
 
-Lemma ilpOk : il_pointwiseOk _ ilops ilp.
+Definition eilp : eil_pointwise :=
+  fun t u =>
+    match t, u with
+      | tyStack, tyProp => true
+      | tyStack, tyAsn => true
+      | _, _ => false
+    end.
+(*
+Lemma eilpOk : eil_pointwiseOk eops eilp.
+Proof.
+  intros t u; simpl.
+  destruct t; try apply I.
+  destruct u; try apply I.
+  remember (type_cast_typ t1 u1).
+  destruct o; try apply I.
+  destruct t1; subst.
+  destruct t1_1.
+  Focus 6.
+  destruct t1_2.
+  Focus 5.
+  destruct t2.
+  Focus 8.
+  destruct u2.
+  Focus 10.
+  match goal with
+    |- match ?a with | Some _ => _ | None => _ end => remember a
+  end.
+  destruct o.
+  intros.
+  pose proof eilf_pointwise_embed_eq (gs := eops) (eilp := eilp).
+  rewrite @eilf_pointwise_embed_eq.
+  simpl. reflexivity.
+  Print il_pointwiseOk.
+  simpl.
+  unfold Denotation.tyArrD, Denotation.tyArrD', Denotation.trmD, Denotation.tyArrR, Denotation.tyArrR', Denotation.trmR, eq_rect_r, eq_rect, eq_sym, id.
+  simpl.
+  unfold ILEmbed.embed.
+  simpl.
+  destruct e.
+  simpl. reflexivity.
+  reflexivity.
+  remember (eops tyProp tySasn).
+  destruct o.
+  rewrite <- Heqo0.
+Print eil_pointwiseOk.
+*)
+(*
+Lemma ilpOk : il_pointwiseOk ilops ilp.
 Proof.
   intros t; simpl; destruct t; try apply I.
   destruct t1; simpl; try apply I.
@@ -353,7 +413,7 @@ Proof.
   repeat split.
 Qed.
 
-Lemma BilpOk : bil_pointwiseOk _ bilops bilp.
+Lemma BilpOk : bil_pointwiseOk bilops bilp.
 Proof.
   intros t; simpl; destruct t; try apply I.
   destruct t1; simpl; try apply I.
@@ -362,7 +422,7 @@ Proof.
   destruct t2; simpl; try apply I.
   repeat split.
 Qed.
-
+*)
 Fixpoint edt (t : typ) : typD t -> typD t -> option bool :=
   match t return typD t -> typD t -> option bool with
     | tyBool => fun e1 e2 => Some (e1 ?[ eq ] e2)
@@ -373,7 +433,7 @@ Fixpoint edt (t : typ) : typD t -> typD t -> option bool :=
     | tyCmd => fun e1 e2 => Some (e1 ?[ eq ] e2)
     | tyDExpr => fun e1 e2 => Some (e1 ?[ eq ] e2)
     | tyList tyString => fun e1 e2 => Some (e1 ?[ eq ] e2)
-    | tyPair t1 t2 =>
+    | tyProd t1 t2 =>
       fun e1 e2 =>
         match edt t1 (fst e1) (fst e2), edt t2 (snd e1) (snd e2) with
           | Some a, Some b => Some (a && b)
@@ -382,16 +442,34 @@ Fixpoint edt (t : typ) : typD t -> typD t -> option bool :=
     | _ => fun _ _ => None
   end.
 
-Require Import ExtLib.Tactics.
+Instance SemiEqDecTyp_edt : SemiEqDecTyp typ := {
+    semi_eq_dec_typ := edt
+  }.
 
-Lemma edtOk : eq_dec_typOk edt.
+Definition edtOk : 
+  forall t a b,
+    match edt t a b with
+      | Some true => a = b
+      | Some false => a <> b
+      | None => True
+    end.
 Proof.
-  intros t e1 e2.
-  induction t; simpl in *; try apply I; try (consider (e1 ?[ eq ] e2); intuition congruence).
+  induction t; simpl in *; intros; try apply I; try (consider (e1 ?[ eq ] e2); intuition congruence).
   destruct t; simpl in *; try apply I.
-  consider (e1 ?[ eq ] e2); intuition congruence.
-  destruct e1, e2; simpl.
-  forward; inv_all; subst.
+  consider (a ?[ eq ] b); intuition congruence.
+  destruct a, b; simpl.
+  forward. inv_all; subst. 
   specialize (IHt1 t t3); specialize (IHt2 t0 t4).
   destruct b0, b1; rewrite H in IHt1; rewrite H0 in IHt2; simpl; intuition congruence.
+  consider (a ?[ eq ] b); intuition congruence.
+  consider (a ?[ eq ] b); intuition congruence.
+  consider (a ?[ eq ] b); intuition congruence.
+  consider (a ?[ eq ] b); intuition congruence.
+  consider (a ?[ eq ] b); intuition congruence.
+  consider (a ?[ eq ] b); intuition congruence.
+  consider (a ?[ eq ] b); intuition congruence.
 Qed.
+
+Instance SemiEqDecTypOk_edt : SemiEqDecTypOk SemiEqDecTyp_edt := {
+    semi_eq_dec_typOk := edtOk
+  }.

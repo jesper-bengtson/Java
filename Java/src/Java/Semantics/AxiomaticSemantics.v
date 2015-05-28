@@ -16,8 +16,6 @@ Require Import Charge.Open.Stack.
 Require Import Charge.Open.Subst.
 Require Import Charge.SepAlg.SepAlgMap.
 Require Import Charge.SepAlg.SepAlgInsts.
-Require Import Charge.Tactics.ILEmbedTac.
-Require Import Charge.Tactics.ILQuantTac.
 Require Import Charge.Tactics.Model.
 
 Require Import Java.Logic.SpecLogic.
@@ -46,7 +44,7 @@ Proof.
   apply @seq_rule. (* Universe inconsistency, is fixed in trunk *)
   *)
   admit.
-Qed.
+Admitted.
 
 
 Lemma rule_seq c1 c2 (P Q R : sasn) G
@@ -72,7 +70,7 @@ Proof.
   repeat (apply landR); [apply ltrueR | apply landL1 | apply ltrueR | apply landL2];
   reflexivity.
 *)
-Qed.
+Admitted.
 
 Lemma rule_if (e : dexpr) c1 c2 (P Q : sasn) G
       (Hc1 : G |-- {[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c1 {[Q]})
@@ -97,7 +95,7 @@ Proof.
     etransitivity; [apply ltrueR | apply @assume_rule]
   ].
 *)
-Qed.
+Admitted.
   
 Lemma rule_while (e : dexpr) c (P : sasn) G
       (Hc : G |-- {[@lembedand vlogic sasn _ _ (vlogic_eval e) P]} c {[P]}) :
@@ -110,14 +108,14 @@ Lemma rule_assert (e : dexpr) P G
       (HPe : P |-- embed(vlogic_eval e)) :
   G |-- {[ P ]} cassert e {[ P ]}.
 Proof.
-  unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
+  unfold triple. apply lforallR; intro sc. apply lpropimplR; intro Hsem.
   inversion Hsem; subst.
   rewrite <- assert_rule; [apply ltrueR | apply HPe]. 
 Qed.
 
 Lemma rule_skip_ax P : |-- {[P]} cskip {[P]}.
 Proof.
-  unfold triple. lforallR sc. apply lpropimplR; intro Hsem.
+  unfold triple. apply lforallR; intro sc. apply lpropimplR; intro Hsem.
   inversion Hsem; subst. apply @skip_rule.
 Qed.
 
@@ -155,7 +153,7 @@ Local Existing Instance ILFun_ILogic.
      {[ Exists v : val, @lembedand vlogic sasn _ _ (open_eq (x /V) (apply_subst e (@subst1 Lang.var val _ `v x)))  
               (apply_subst P (@subst1 Lang.var val _ `v x)) ]}.
   Proof.
-    unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
+    unfold triple in *; intros. apply lforallR; intro sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst; clear Hsem.
     unfold sem_triple; simpl; split; intros.
     + intro HFail; inversion HFail; subst. apply Snotin; clear Snotin HFail.
@@ -239,7 +237,7 @@ Require Import HeapArr.
   Lemma rule_write (x : Lang.var) (f : field) (e : expr) (e' : dexpr) :
     (@ltrue spec _ |-- {[ `pointsto x/V `f e ]} cwrite x f e' {[ `pointsto x/V `f (eval e')]}).
   Proof.
-    unfold triple in *; intros. lforallR sc. apply lpropimplR; intros Hsem.
+    unfold triple in *; intros. apply lforallR; intro sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
     unfold sem_triple; simpl; split; intros; destruct H3 as [H3 H5]. clear H.
     + intros Hsafe.
@@ -469,7 +467,6 @@ Qed.
     (* safety *)
     + intro HFail. inversion HFail; subst.
       * contradiction (HLFail _ HML).
-      Check method_lookup_function.
       * assert (HR := method_lookup_function HValid HML HLookup).
         injection HR; intros; subst; clear HR HLookup.
         edestruct HOK with (x := sc) (x2 := m' - 1) (k := n0) (h := h) 
@@ -575,7 +572,7 @@ Qed.
   Lemma xist_from_post U P c (Q : U -> sasn) :
     (Exists x:U, {[ P ]} c {[ Q x ]}) |-- {[ P ]} c {[ Exists x, Q x ]}.
   Proof.
-  	lexistsL x. eapply roc_post; [|lexistsR x]; reflexivity.
+  	apply lexistsL; intro x. eapply roc_post; [|apply lexistsR with x]; reflexivity.
   Qed.
 
 Ltac existentialise y v :=
@@ -599,7 +596,7 @@ Ltac existentialise y v :=
   Lemma rule_assign x (e : dexpr) (P : sasn) (G : spec) :
     G |-- {[P [{(eval e) // x}]]} cassign x e {[P]}.
   Proof.
-  	unfold triple; lforallR sc; apply lpropimplR; intro Hsem.
+  	unfold triple; apply lforallR; intro sc; apply lpropimplR; intro Hsem.
   	inversion Hsem; subst. simpl; split; intros.
   	+ intro HFail. inversion HFail.
   	+ inversion H4; subst.
@@ -734,7 +731,7 @@ Proof.
   specialize (HPP _ _ HF); destruct HPP as [crec' [HF' [HT' _]]].
   subst; eexists; split; [eassumption | eexists; split; rewrite ?SM'.find_mapsto_iff; eassumption || reflexivity].
   *)
-Qed.
+Admitted.
 (*
 Lemma equiv_alloc_same fields fields' P p
   (HEq : SS.Equal fields fields') :
@@ -749,8 +746,6 @@ Proof.
 *)
 Qed.
 *)
-Check @sepSP.
-Check triple.
 
   Lemma rule_alloc_ax (x : Lang.var) (C : class) (fields : list field) :
     @lentails spec _ ([prog](fun Pr => field_lookup Pr C fields)) 
@@ -813,7 +808,7 @@ Check triple.
       rewrite add_eq_o; [|assumption]. reflexivity.
       do 4 (rewrite add_neq_o; [|assumption]). reflexivity.
     *)
-Qed.
+Admitted.
 (*
   Lemma rule_alloc : forall (x : var) C fields (PP : Prog_wf),
     field_lookup PP C fields ->

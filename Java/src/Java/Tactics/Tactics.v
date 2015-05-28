@@ -139,7 +139,7 @@ Ltac cbv_denote :=
           
           TypesI.typD 
           typ2_match typ2 typ2_cast
-          typ0_match typ0 typ0_cast SubstTypeD_typ
+          typ0_match typ0 typ0_cast
           (* ExprI *)
           
           MirrorCore.VariablesI.Var ExprVariables.ExprVar_expr
@@ -153,14 +153,25 @@ Ltac cbv_denote :=
           
           (* Denotation *)
           
-          Charge.ModularFunc.Denotation.fun_to_typ
-          Charge.ModularFunc.Denotation.fun_to_typ2
-          Charge.ModularFunc.Denotation.fun_to_typ3
-          Charge.ModularFunc.Denotation.fun_to_typ4
+          Charge.ModularFunc.Denotation.tyArrD
+          Charge.ModularFunc.Denotation.tyArrD2
+          Charge.ModularFunc.Denotation.tyArrD3
+          Charge.ModularFunc.Denotation.tyArrD4
           
-          Charge.ModularFunc.Denotation.typ_to_fun
-          Charge.ModularFunc.Denotation.typ_to_fun2
-          Charge.ModularFunc.Denotation.typ_to_fun3
+          Charge.ModularFunc.Denotation.tyArrD'
+          Charge.ModularFunc.Denotation.tyArrD2'
+          Charge.ModularFunc.Denotation.tyArrD3'
+          Charge.ModularFunc.Denotation.tyArrD4'
+          
+          Charge.ModularFunc.Denotation.tyArrR
+          Charge.ModularFunc.Denotation.tyArrR2
+          Charge.ModularFunc.Denotation.tyArrR3
+          Charge.ModularFunc.Denotation.tyArrR4
+
+          Charge.ModularFunc.Denotation.tyArrR'
+          Charge.ModularFunc.Denotation.tyArrR2'
+          Charge.ModularFunc.Denotation.tyArrR3'
+          Charge.ModularFunc.Denotation.tyArrR4'
 
           
           (* ILogicFunc*)
@@ -255,7 +266,7 @@ Ltac cbv_denote :=
           ListFunc.RelDec_list_func
           
           ListFunc.nilD ListFunc.consD ListFunc.mapD ListFunc.zipD ListFunc.NoDupD ListFunc.foldD
-          ListFunc.listD ListFunc.listD_sym
+          ListType.listE ListType.listR ListType.listE
           
 		  (* OpenFunc *)
 		  
@@ -283,11 +294,11 @@ Ltac cbv_denote :=
 		  
           (* BaseType *)
           
-          BaseType.tyPair BaseType.tyNat BaseType.tyString BaseType.tyBool
-          BaseType.btPair BaseType.btNat BaseType.btBool BaseType.btString
+          BaseType.tyProd BaseType.tyNat BaseType.tyString BaseType.tyBool
+          BaseType.btProd BaseType.btNat BaseType.btBool BaseType.btString
           
-          BaseType.natD BaseType.boolD BaseType.stringD BaseType.pairD
-          BaseType.natD_sym BaseType.boolD_sym BaseType.stringD_sym BaseType.pairD_sym
+          BaseType.natD BaseType.boolD BaseType.stringD BaseType.prodD BaseType.prodR BaseType.pairE
+          BaseType.natR BaseType.boolR BaseType.stringR
           
           (* ListType *)
           
@@ -295,8 +306,7 @@ Ltac cbv_denote :=
           
           (* SubstType *)
           
-          SubstType.tyVal SubstType.tySubst
-          SubstType.stSubst
+          SubstType.tyVal
           
           (* JavaType *)
          

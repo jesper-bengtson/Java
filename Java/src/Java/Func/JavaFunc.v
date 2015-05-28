@@ -23,7 +23,7 @@ Require Import MirrorCore.Lambda.Expr.
 Require Import MirrorCore.syms.SymEnv.
 Require Import MirrorCore.syms.SymSum.
 Require Import MirrorCore.Subst.FMapSubst.
-
+Set Printing Universes.
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
 Require Import Java.Language.Lang.
@@ -280,9 +280,9 @@ Check RSym.
   Global Instance RSym_ilfunc : RSym (@ilfunc typ) := 
 	  RSym_ilfunc ilops.
   Global Instance RSym_bilfunc : RSym (@bilfunc typ) := 
-	  RSym_bilfunc _ bilops.
+	  RSym_bilfunc bilops.
   Global Instance RSym_embed_func : RSym (@embed_func typ) :=
-	  RSym_embed_func _ eops.
+	  RSym_embed_func eops.
   Global Instance RSym_later_func : RSym (@later_func typ) :=
 	  RSym_later_func _ lops.
 (*
@@ -291,14 +291,12 @@ Check RSym.
   apply _.
 *)
   Global Instance RSym_open_func : RSym (@open_func typ _ _) :=
-	  @RSym_OpenFunc _ _ _ RType_typ _ _ _ _ _ _ _ _.
+	  @RSym_OpenFunc _ _ _ RType_typ _ _ _ _ _ _.
 
   Global Existing Instance RSym_sum.
   Global Existing Instance RSymOk_sum.
 
   Global Instance RSym_func : RSym func.
-    repeat (apply RSym_sum; [|apply _]).
-    apply RSym_sum; [|apply (RSym_BaseFunc (edt := edt))].
     repeat (apply RSym_sum; [|apply _]).
     apply (RSym_func java_env).
   Defined.
@@ -306,11 +304,10 @@ Check RSym.
   Global Instance RSymOk_func : RSymOk RSym_func.
   Proof.
     repeat (apply RSymOk_sum); try apply _.
-    apply (RSymOk_BaseFunc (edtOk := edtOk)).
   Qed.
 
   Global Instance Expr_expr : ExprI.Expr _ (expr typ func) := @Expr_expr typ func _ _ _.
-  Global Instance Expr_ok : @ExprI.ExprOk typ RType_typ (expr typ func) Expr_expr := ExprOk_expr.
+  Global Instance Expr_ok : @ExprI.ExprOk typ RType_typ (expr typ func) Expr_expr := @ExprOk_expr _ _ _ _ _ _ _ _.
 
   Require Import MirrorCore.VariablesI.
   Require Import MirrorCore.Lambda.ExprVariables.
@@ -326,11 +323,11 @@ Check RSym.
   Global Instance SS : SubstI.Subst subst (expr typ func) :=
     @FMapSubst.SUBST.Subst_subst _.
   Global Instance SU : SubstI.SubstUpdate subst (expr typ func) :=
-    @FMapSubst.SUBST.SubstUpdate_subst _ _. 
+    @FMapSubst.SUBST.SubstUpdate_subst _ _ _ _. 
   Global Instance SO : SubstI.SubstOk SS := 
-    @FMapSubst.SUBST.SubstOk_subst typ RType_typ (expr typ func) _ _.
-  Global Instance SUO :SubstI.SubstUpdateOk SU SO :=  @FMapSubst.SUBST.SubstUpdateOk_subst typ RType_typ (expr typ func) _ _ _.
-
+    @FMapSubst.SUBST.SubstOk_subst typ RType_typ (expr typ func) _.
+  Global Instance SUO :SubstI.SubstUpdateOk SU SO :=  @FMapSubst.SUBST.SubstUpdateOk_subst typ RType_typ (expr typ func) _ _.
+(*
   Global Instance MA : MentionsAny (expr typ func) := {
     mentionsAny := ExprCore.mentionsAny
   }.
@@ -339,7 +336,7 @@ Check RSym.
   Proof.
     admit.
   Qed.
-
+*)
   Lemma evalDexpr_wt (e : dexpr) : 
 	  typeof_expr nil nil (evalDExpr e) = Some tyExpr.
   Proof.

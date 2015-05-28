@@ -1,4 +1,4 @@
-Require Import Later Program ILogic ILEmbed ILInsts.
+Require Import Later Program ILogic ILEmbed ILInsts Omega.
 
 (*
 Local Existing Instance ILLaterNat.
@@ -24,15 +24,14 @@ Definition mk_spec (f: Program -> nat -> Prop)
   (HSPred: forall k P P', Prog_sub P P' -> f P k -> f P' k) : spec.
   refine (mkILPreFrm (fun k => mkILPreFrm (f k) _) _).
 Proof.
-  assert (forall k P P', Prog_sub P P' -> f P k -> f P' k) as HProg.
-  intros k P P' HPP' S'. eapply HSPred; eassumption. 
-  intros p p' Hp'' n S'; simpl in *. eapply HProg; eassumption.
-  Grab Existential Variables.
-  intros n m Hnk S'. generalize dependent m. induction n; intros.
-  + assert (m = 0) by omega; subst. apply S'.
-  + destruct (gt_eq_gt_dec m (S n)) as [[H | H] | H]; [| | omega].
-    * apply IHn. apply Hnat. apply S'. omega.
-    * subst. apply S'.
+  + intros n m Hnk S'. generalize dependent m. induction n; intros.
+    - assert (m = 0) by omega; subst. apply S'.
+    - destruct (gt_eq_gt_dec m (S n)) as [[H | H] | H]; [| | omega].
+      * apply IHn. apply Hnat. apply S'. omega.
+      * subst. apply S'.
+  + assert (forall k P P', Prog_sub P P' -> f P k -> f P' k) as HProg.
+    intros k' P P' HPP' S'. eapply HSPred; eassumption. 
+    intros p p' Hp'' n S'; simpl in *. eapply HProg; eassumption.
 Defined.
 
 Program Definition prog_spec (X : Program -> Prop) : spec :=

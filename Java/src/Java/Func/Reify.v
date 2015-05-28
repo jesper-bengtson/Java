@@ -55,15 +55,8 @@ Reify Declare Syntax reify_imp_typ :=
 
 Reify Declare Typed Table term_table : BinNums.positive => reify_imp_typ.
 
-Check term_table.
-
-Locate exprD.
-
 Require Import MirrorCore.ExprI.
 
-Check @exprD.
-Print Expr.
-Print RType.
 Let Ext x := @ExprCore.Inj typ func (inl (inl (inl (inl (inl (inl (inl (inl x)))))))).
 
 Reify Declare Syntax reify_imp :=
@@ -115,7 +108,7 @@ Reify Pattern patterns_java_typ += (!! (@vlogic Lang.var val)) => tyPure.
 Reify Pattern patterns_java_typ += (!! Prop) => tyProp.
 Reify Pattern patterns_java_typ += (!! spec) => tySpec.
 
-Reify Pattern patterns_java_typ += (!! @prod @ ?0 @ ?1) => (fun (x y : function reify_imp_typ) => tyPair x y).
+Reify Pattern patterns_java_typ += (!! @prod @ ?0 @ ?1) => (fun (x y : function reify_imp_typ) => tyProd x y).
 Reify Pattern patterns_java_typ += (!! (@list String.string)) => tyVarList.
 Reify Pattern patterns_java_typ += (!! (@list field)) => tyFields.
 Reify Pattern patterns_java_typ += (!! (@list (@Open.expr (Lang.var) val))) => tyVarList.
@@ -255,6 +248,7 @@ Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
   pose ((fun (_ : @Stack.stack Lang.var val) => null) : @Open.expr Lang.var val) as e2.
   pose ((fun (_ : Lang.stack) => null) : Lang.stack -> val) as e3.
 
+  reify_imp (pure (T := Fun Lang.stack) pointsto).
 
   reify_imp (pure (T := Fun Lang.stack) pointsto).
 
