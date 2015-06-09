@@ -189,9 +189,12 @@ Definition set_fold_fun (x : String.string) (f : field) (P : sasn) :=
 		destruct a, b; simpl; try apply I; try reflexivity.
 	Qed.		
 
+Global Instance RelDec_bf_false : RelDec (@eq (@base_func typ RType_typ)) := {
+  rel_dec := fun a b => match (base_func_eq a b) with | Some t => t | None => false end
+}.
 
 Definition func := (SymEnv.func + @ilfunc typ + @bilfunc typ + 
-                    @base_func typ RType_typ + @list_func typ + @open_func typ _ _ + 
+                    @base_func typ RType_typ + @list_func typ + @open_func typ _ _+ 
                     @embed_func typ + @later_func typ + java_func)%type.
 
 

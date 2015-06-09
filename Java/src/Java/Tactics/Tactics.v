@@ -101,13 +101,14 @@ Proof.
   simpl in Hsound.
   unfold Ctx.propD, exprD'_typ0 in Hsound.
   unfold exprD_Prop.
-  
+  admit.
+  (*
   simpl in Hsound. unfold exprD. simpl. forward.
   destruct Hsound. 
   SearchAbout pctxD.
   inversion Hwfs; subst. simpl in H8. inv_all; subst.
-  admit.
-Qed.
+*)
+Admitted.
 
 End Tactics.
 
@@ -118,7 +119,7 @@ Ltac cbv_denote :=
 		  (* ExprD' *)
           exprD' funcAs  typeof_sym typeof_expr type_cast type_cast_typ
           exprD'_simul func_simul
-          ExprD.Expr_expr
+          Expr.Expr_expr
           ExprDsimul.ExprDenote.exprD'
           (* RSym *)
           

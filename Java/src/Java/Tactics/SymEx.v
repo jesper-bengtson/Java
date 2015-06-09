@@ -67,14 +67,27 @@ Definition cancelTest n :=
 Section blurb.
 
 Context {fs : Environment}.
-          
-Time Eval vm_compute in typeof_expr nil nil (cancelTest 10).
-Check THEN.
-Check runOnGoals.
-Time Eval vm_compute in 
-	(THEN (REPEAT 10 (INTRO typ func)) 
+
+Goal True.
+Proof.
+  pose (typeof_expr nil nil (cancelTest 11)) as o.
+  vm_compute in o.
+  apply I.
+Qed.
+
+
+Goal True.
+Proof.
+pose
+	((THEN (REPEAT 10 (INTRO typ func))
 	(runOnGoals (CANCELLATION typ func tySasn is_pure))) 
-		nil nil 0 0 (CTop nil nil) (ctx_empty (expr := expr typ func)) (cancelTest 10).
+		nil nil 0 0 (CTop nil nil) (ctx_empty (expr := expr typ func)) (cancelTest 1)) as r.    
+simpl in r.
+unfold THEN in r.
+simpl in r.
+apply I.
+Qed.
+
 
 Fixpoint search_NoDup
     {A} (A_dec: forall a b: A, {a=b}+{a=b->False}) (l: list A) : option (NoDup l) :=
@@ -139,7 +152,6 @@ Definition method_specI : stac typ (expr typ func) subst :=
 Definition skip_lemma : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_imp rule_skip.
 Defined.
-Print skip_lemma.
 
 Lemma skip_lemma_sound : 
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil skip_lemma.
@@ -154,7 +166,6 @@ Example test_skip_lemma : test_lemma skip_lemma. Admitted.
 Definition skip_lemma2 : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_imp rule_skip2.
 Defined.
-Print skip_lemma2.
 
 Example test_skip_lemma2 : test_lemma skip_lemma2. Admitted.
 
@@ -162,7 +173,6 @@ Definition seq_lemma (c1 c2 : cmd) : lemma typ (expr typ func) (expr typ func).
 Proof.
   reify_lemma reify_imp (@rule_seq c1 c2).
 Defined.
-Print seq_lemma.
 
 Lemma seq_lemma_sound c1 c2 : 
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil (seq_lemma c1 c2).
@@ -214,7 +224,6 @@ Proof.
     unfold exprT_App, exprT_Inj, Rcast_val, Rcast in * ; simpl in *.
     eapply rule_if; [eapply H | eapply H0].
 
-  Print if_lemma.
   vm_compute.
   unfold lemmaD'. simpl.
   unfold exprD'_typ0. simpl.
@@ -240,7 +249,7 @@ Proof.
   eapply rule_read_fwd; [eapply H | eapply H0].
   *)
   admit.
-Qed.
+Admitted.
 
 
 Example test_read_lemma x y f : test_lemma (read_lemma x y f). Admitted.
@@ -273,7 +282,7 @@ Definition assign_lemma (x : var) (e : dexpr) : lemma typ (expr typ func) (expr 
 Proof.
   reify_lemma reify_imp (@rule_assign_fwd x e).
 Defined.
-Print assign_lemma.
+
 Example test_assign_lemma x e : test_lemma (assign_lemma x e). Admitted.
 
 Definition alloc_lemma (x : var) (C : class) : lemma typ (expr typ func) (expr typ func).
@@ -287,7 +296,9 @@ Proof.
   reify_lemma reify_imp (@pull_exists val).
 Defined.
 Example test_pull_exists_lemma : test_lemma pull_exists_lemma. Admitted.
+(*
 Eval vm_compute in pull_exists_lemma.
+*)
 
 Definition ent_exists_right_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
@@ -299,18 +310,17 @@ Definition eq_to_subst_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
   reify_lemma reify_imp eq_to_subst.
 Defined.
+(*
 Eval vm_compute in eq_to_subst_lemma.
+*)
 Example test_eq_lemma : test_lemma (eq_to_subst_lemma). Admitted.
-Check rule_static_complete.
+
 Definition scall_lemma (x : Lang.var) (C : class) (m : string) (es : list dexpr) 
   : lemma typ (expr typ func) (expr typ func).
 Proof.
   reify_lemma reify_imp rule_static_complete.
 Qed.
 
-Print scall_lemma.
-
-Print pull_exists_lemma.
 
 Example test_pull_exists : test_lemma (pull_exists_lemma). Admitted.
 
@@ -459,7 +469,6 @@ Qed.
 
 *)
 
-Check apps.
 Definition BETA := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all (fun _ => @apps typ func)).
 
 Lemma BETA_sound : rtac_sound BETA.
@@ -480,7 +489,7 @@ Proof.
   SearchAbout beta_all.
   rewrite <- H.*)
   admit.
-Qed.
+Admitted.
 
 Definition THEN' := @MirrorCore.RTac.Then.THEN typ (expr typ func).
 Require Import Charge.Tactics.Rtac.Minify.
@@ -490,7 +499,7 @@ Let EAPPLY lem := THEN' (EAPPLY typ func lem) (MINIFY typ func).
 Definition THEN (r1 r2 : rtac typ (expr typ func)) := 
   THEN (THEN (THEN (INSTANTIATE typ func) (runOnGoals r1)) (runOnGoals (INSTANTIATE typ func))) (runOnGoals r2).
 
-Definition EQSUBST := THEN (EAPPLY eq_to_subst_lemma) (SUBST (ilp := ilp) (bilp := bilp) (eilp := eops) typ func).
+Definition EQSUBST := THEN (EAPPLY eq_to_subst_lemma) (SUBST (ilp := ilp) (bilp := bilp) (eilp := eilp) typ func).
 
 (*
 Notation "'ap_eq' '[' x ',' y ']'" :=
@@ -510,15 +519,8 @@ Definition match_ap_eq (e : expr typ func) : bool :=
 	  	end
 	  | _ => false
 	end.
-Check @PULLCONJUNCTL.
-Instance notehu : RelDec (@eq (expr typ func)).
-apply RelDec_eq_expr.
-apply _.
-apply _.
-split.
-a
 
-Definition PULLEQL := @PULLCONJUNCTL typ func RType_typ _ _ _ match_ap_eq _ _ _.
+Definition PULLEQL : rtac typ (expr typ func) := @PULLCONJUNCTL typ func RType_typ _ _ _ match_ap_eq _ _ _ ilops.
 
                         (*
 	THEN (INSTANTIATE typ func subst) (runOnGoals (THEN (THEN (TRY FIELD_LOOKUP) 
@@ -569,22 +571,23 @@ Definition solve_entailment (rw : rewriter (typ := typ) (func := func)) : rtac t
 	           (STEP_REWRITE rw)) (REPEAT 1000 (INTRO typ func))) 
 	              (CANCELLATION typ func tySasn is_pure)::
 	           nil))).
-
+(*
 Definition solve_alloc rw : rtac typ (expr typ func) :=
     THEN (INSTANTIATE typ func)
     (FIRST (SOLVE (CANCELLATION typ func tySpec (fun _ => false)) ::
                         FIELD_LOOKUP ::
                         THEN FOLD (solve_entailment rw) :: nil)).
+*)
 
 Definition simStep (rw : rewriter (typ := typ) (func := func)) (r : rtac typ (expr typ func)) :=
-    THEN (THEN (THEN (THEN (SUBST typ func)
+    THEN (THEN (THEN (THEN (SUBST typ func (ilp := ilp) (bilp := bilp) (eilp := eilp))
     	(TRY PULL_TRIPLE_EXISTS)) (STEP_REWRITE rw)) (REPEAT 10 PULL_TRIPLE_EXISTS)) r.
 
 Fixpoint tripleE (c : cmd) rw : rtac typ (expr typ func) :=
 	match c with
 	    | cskip => simStep rw (THEN (EAPPLY skip_lemma) (solve_entailment rw))
-	    | calloc x C => simStep rw (THEN (EAPPLY (alloc_lemma x C)) 
-	        (FIRST (solve_alloc rw::solve_entailment rw::nil)))
+	(*    | calloc x C => simStep rw (THEN (EAPPLY (alloc_lemma x C)) 
+	        (FIRST (solve_alloc rw::solve_entailment rw::nil)))*)
 		| cseq c1 c2 => simStep rw (THEN' (EAPPLY (seq_lemma c1 c2))
 		    (THENK (runOnGoals (TRY (tripleE c1 rw))) (THENK (MINIFY typ func) (runOnGoals (tripleE c2 rw)))))
 		| cassign x e => simStep rw (THEN (EAPPLY (assign_lemma x e)) (solve_entailment rw))
@@ -600,7 +603,7 @@ Definition symE rw : rtac typ (expr typ func) :=
 			| App (App (Inj f) G) H =>
 			  match ilogicS f, H with
 			  	| Some (ilf_entails tySpec), (* tySpec is a pattern, should be checked for equality with tySpec *)
-			  	  App (App (App (Inj (inr pTriple)) P) Q) (Inj (inr (pCmd c))) =>
+			  	  App (App (App (Inj (inr pTriple)) P) Q) (Inj (inl (inl (inl (inl (inl (inr (pConst tyCmd c)))))))) =>
 			  	  	tripleE c rw
 			  	| _, _ => FAIL
 			  end
@@ -614,22 +617,22 @@ Definition runTac rw :=
 Lemma runTac_sound rw : rtac_sound (runTac rw).
 Proof.
   admit.
-Qed.
+Admitted.
 
 Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr typ func :=
-   mkAp tyVal tyAsn 
+   mkAp (func := func) tyVal tyAsn 
         (mkAp tyString (tyArr tyVal tyAsn)
               (mkAp tyVal (tyArr tyString (tyArr tyVal tyAsn))
-                    (mkConst (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn))) 
+                    (OpenFunc.mkConst (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn))) 
                              fPointsto)
                     x)
-              (mkConst tyString (mkString f)))
-        e.
+              (OpenFunc.mkConst (func := func) tyString (mkConst (func := func) tyString f)))
+        e  .
         
 Require Import Java.Semantics.OperationalSemantics.
 Require Import Java.Logic.SpecLogic.
 Require Import Java.Logic.AssertionLogic.
-Require Import Java.Examples.ListClass.
+
 Require Import Charge.Logics.ILogic.
 
 Fixpoint seq_skip n := 
@@ -650,10 +653,9 @@ Definition testSkip n : Prop :=
 Lemma INTRO_sound : rtac_sound (INTRO typ func).
 Proof.
   admit.
-Qed.
+Admitted.
 
 Require Import Java.Tactics.Tactics.
-Check IDTAC_sound.
 
 Ltac rtac_result reify term_table tac :=
 	  let name := fresh "e" in
@@ -677,8 +679,11 @@ Proof.
   unfold testSkip; simpl.
   
   Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
+  (*
+  Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
+*)
 Time Qed.
-
+(*
 Definition test_alloc : expr typ func :=
 	mkEntails tySpec (mkProgEq (mkProg ListProg))
 		(mkTriple (mkTrue tySasn) (mkCmd (cseq (calloc "x" "NodeC") cskip)) (mkFalse tySasn)).
@@ -1145,3 +1150,6 @@ Proof.
   run_rtac reify_imp term_table PULL_EXISTSL_sound.
   
   Print func.
+*)
+
+*)
