@@ -466,8 +466,8 @@ Proof.
   
   *)
 Qed.
-
 *)
+Locate rw_fail.
 
 Definition BETA := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all (fun _ => @apps typ func)).
 
@@ -673,17 +673,66 @@ Ltac rtac_result reify term_table tac :=
 	      end
 	  end.
 	  
-Lemma test_skip_lemma3 : testSkip 10.
+Ltac run_rtac_test reify term_table tac_sound :=
+  match type of tac_sound with
+    | rtac_sound ?tac =>
+	  let name := fresh "e" in
+	  match goal with
+	    | |- ?P => 
+	      reify_aux reify term_table P name;
+	      let t := eval vm_compute in (typeof_expr nil nil name) in
+	      let goal := eval unfold name in name in
+	      match t with
+	        | Some ?t =>
+	          let goal_result := constr:(run_tac tac (GGoal name)) in 
+	          let result := eval simpl in goal_result in idtac result
+	          (*
+	          match result with
+	            | More_ ?s ?g => 
+	              cut (goalD_Prop nil nil g); [
+	                let goal_resultV := g in
+	               (* change (goalD_Prop nil nil goal_resultV -> exprD_Prop nil nil name);*)
+	                exact_no_check (@run_rtac_More _ tac _ _ _ tac_sound
+	                	(@eq_refl (Result (CTop nil nil)) (More_ s goal_resultV) <:
+	                	   run_tac tac (GGoal goal) = (More_ s goal_resultV)))
+	                | cbv_denote
+	              ]
+	            | Solved ?s =>
+	              exact_no_check (@run_rtac_Solved _ tac s name tac_sound 
+	                (@eq_refl (Result (CTop nil nil)) (Solved s) <: run_tac tac (GGoal goal) = Solved s))
+	            | Fail => idtac "Tactic" tac "failed."
+	            | _ => idtac "Error: run_rtac could not resolve the result from the tactic :" tac
+	          end
+	          *)
+	        | None => idtac "expression " goal "is ill typed" t
+	      end 
+	  end
+	| _ => idtac tac_sound "is not a soudness theorem."
+  end.
+	  
+(*
+Lemma test_skip_lemma3 : testSkip 1.
 Proof.
   idtac "start".
   unfold testSkip; simpl.
+  run_rtac_print_code reify_imp term_table (@runTac_sound rw_fail).
+  run_rtac_test reify_imp term_table (@runTac_sound rw_fail).
+  let t := eval vm_compute in (typeof_expr nil nil e) in idtac t.
+  let t := type of (@runTac_sound rw_fail) in idtac t.
+
   
-  Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
-  (*
+  let goal_result := constr:(run_tac (runTac rw_fail) (GGoal e)) in 
+  
+  
+  
+  let result := eval simpl in goal_result in pose result.
+
+
+   (*
   Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
 *)
-Time Qed.
-(*
+Qed.
+
 Definition test_alloc : expr typ func :=
 	mkEntails tySpec (mkProgEq (mkProg ListProg))
 		(mkTriple (mkTrue tySasn) (mkCmd (cseq (calloc "x" "NodeC") cskip)) (mkFalse tySasn)).
@@ -861,7 +910,7 @@ Time Qed.
 
 End blurb.
 
-Instance EmptyEnv : Environment := {
+Global Instance EmptyEnv : Environment := {
   java_env := SymEnv.from_list nil
 }.
 
@@ -1152,4 +1201,5 @@ Proof.
   Print func.
 *)
 
-*)
+
+End blurb.
