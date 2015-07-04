@@ -107,7 +107,7 @@ Proof.
   SearchAbout pctxD.
   inversion Hwfs; subst. simpl in H8. inv_all; subst.
   admit.
-Qed.
+Admitted.
 
 End Tactics.
 
@@ -118,7 +118,7 @@ Ltac cbv_denote :=
 		  (* ExprD' *)
           exprD' funcAs  typeof_sym typeof_expr type_cast type_cast_typ
           exprD'_simul func_simul
-          ExprD.Expr_expr
+          Expr.Expr_expr
           ExprDsimul.ExprDenote.exprD'
           (* RSym *)
           
@@ -152,6 +152,10 @@ Ltac cbv_denote :=
           exprT_GetVAs exprT_GetUAs
           
           (* Denotation *)
+          
+          Charge.ModularFunc.Denotation.trmD
+          Charge.ModularFunc.Denotation.trmR
+          Charge.ModularFunc.Denotation.funE
           
           Charge.ModularFunc.Denotation.tyArrD
           Charge.ModularFunc.Denotation.tyArrD2
@@ -241,7 +245,7 @@ Ltac cbv_denote :=
           BaseFunc.BaseFuncSumL BaseFunc.BaseFuncSumR BaseFunc.BaseFuncExpr
           
           BaseFunc.BaseFuncInst
-          BaseFunc.mkNat BaseFunc.mkString BaseFunc.mkBool
+          BaseFunc.mkNat BaseFunc.mkString BaseFunc.mkBool BaseFunc.mkConst
           BaseFunc.mkEq BaseFunc.mkPair
           
           BaseFunc.fConst
@@ -302,7 +306,7 @@ Ltac cbv_denote :=
           
           (* ListType *)
           
-          ListType.tyList ListType.btList
+          ListType.tyList ListType.btList ListType.listD ListType.listE ListType.listR
           
           (* SubstType *)
           

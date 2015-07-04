@@ -40,14 +40,14 @@ Lemma eq_to_subst x (e : Lang.stack -> val) (P Q : sasn)
 Proof.
   
   admit.
-Qed.
+Admitted.
 
 Lemma ent_left_exists {A} (P : sasn) (Q : A -> sasn)
 	(H : exists x, P |-- Q x) :
 	P |-- lexists Q.
 Proof.
   admit.
-Qed.
+Admitted.
 
 Lemma rule_seq c1 c2 (P Q R : sasn) G
       (Hc1 : G |-- {[P]} c1 {[Q]})
@@ -130,7 +130,7 @@ Require Import Charge.Logics.BILogic.
 	G |-- {[ P ]} calloc x C {[ Q ]}.
   Proof.
   	admit.
-  Qed.
+  Admitted.
 
   Lemma rule_static_complete (x : Lang.var) C (m : String.string) (es : list dexpr) (ps : list String.string) (r : Lang.var) G
     (P Q F Pm Qm : sasn)
@@ -144,7 +144,7 @@ Require Import Charge.Logics.BILogic.
                            apply_subst F (subst1 (pure (T := Fun stack) v) x)]}.
 Proof.
 	admit.
-Qed.
+Admitted.
 (*
 Lemma rule_dynamic_complete (x y : Lang.var) (m : String.string) (es : list dexpr) (ps : list String.string) C (r : Lang.var) G
     (P Q F Pm Qm : sasn)

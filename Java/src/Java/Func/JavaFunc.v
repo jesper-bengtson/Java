@@ -141,10 +141,10 @@ Set Strict Implicit.
       try solve [ try rewrite Bool.andb_true_iff ;
                   repeat rewrite rel_dec_correct; intuition congruence ].                  	
     Qed.
-
+(*
 Definition set_fold_fun (x : String.string) (f : field) (P : sasn) :=
-	(`pointsto) (x/V) `f `null ** P.
-
+	(liftn pointsto) (x/V) `f `null ** P.
+*)
   	 Definition java_func_symD bf :=
 		match bf as bf return match typeof_java_func bf with
 								| Some t => typD t

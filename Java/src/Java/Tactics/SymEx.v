@@ -1,3 +1,10 @@
+(*
+Add LoadPath "/Users/jebe/git/coq-ext-lib/theories" as ExtLib.
+Add LoadPath "/Users/jebe/git/mirror-core/theories" as MirrorCore.
+Add LoadPath "/Users/jebe/git/Charge/Charge!/bin/Charge" as Charge.
+Add LoadPath "/Users/jebe/git/Java/Java/bin/Java" as Java.
+Add LoadPath "/Users/jebe/git/mirror-core/src".
+*)
 Require Import Coq.Strings.String.
 Require Import Coq.PArith.BinPos.
 Require Import ExtLib.Core.RelDec.
@@ -63,14 +70,14 @@ Definition cancelTest n :=
       mkForall tySasn tyProp
       (mkForall tySasn tyProp
           (mkEntails tySasn (mkStars n (Var 0) (Var 1)) (mkStars n (Var 1) (Var 0)))).
-          
+
+
 Section blurb.
 
 Context {fs : Environment}.
-          
+
 Time Eval vm_compute in typeof_expr nil nil (cancelTest 10).
-Check THEN.
-Check runOnGoals.
+
 Time Eval vm_compute in 
 	(THEN (REPEAT 10 (INTRO typ func)) 
 	(runOnGoals (CANCELLATION typ func tySasn is_pure))) 
@@ -240,7 +247,7 @@ Proof.
   eapply rule_read_fwd; [eapply H | eapply H0].
   *)
   admit.
-Qed.
+Admitted.
 
 
 Example test_read_lemma x y f : test_lemma (read_lemma x y f). Admitted.
@@ -480,7 +487,7 @@ Proof.
   SearchAbout beta_all.
   rewrite <- H.*)
   admit.
-Qed.
+Admitted.
 
 Definition THEN' := @MirrorCore.RTac.Then.THEN typ (expr typ func).
 Require Import Charge.Tactics.Rtac.Minify.
@@ -490,7 +497,7 @@ Let EAPPLY lem := THEN' (EAPPLY typ func lem) (MINIFY typ func).
 Definition THEN (r1 r2 : rtac typ (expr typ func)) := 
   THEN (THEN (THEN (INSTANTIATE typ func) (runOnGoals r1)) (runOnGoals (INSTANTIATE typ func))) (runOnGoals r2).
 
-Definition EQSUBST := THEN (EAPPLY eq_to_subst_lemma) (SUBST (ilp := ilp) (bilp := bilp) (eilp := eops) typ func).
+Definition EQSUBST := THEN (EAPPLY eq_to_subst_lemma) (SUBST (ilp := ilp) (bilp := bilp) (eilp := eilp) typ func).
 
 (*
 Notation "'ap_eq' '[' x ',' y ']'" :=
@@ -512,13 +519,11 @@ Definition match_ap_eq (e : expr typ func) : bool :=
 	end.
 Check @PULLCONJUNCTL.
 Instance notehu : RelDec (@eq (expr typ func)).
-apply RelDec_eq_expr.
-apply _.
-apply _.
-split.
-a
+apply RelDec_eq_expr; try apply _.
+admit.
+Admitted.
 
-Definition PULLEQL := @PULLCONJUNCTL typ func RType_typ _ _ _ match_ap_eq _ _ _.
+Definition PULLEQL := @PULLCONJUNCTL typ func RType_typ _ _ _ match_ap_eq _ _ _ ilops.
 
                         (*
 	THEN (INSTANTIATE typ func subst) (runOnGoals (THEN (THEN (TRY FIELD_LOOKUP) 
@@ -570,6 +575,10 @@ Definition solve_entailment (rw : rewriter (typ := typ) (func := func)) : rtac t
 	              (CANCELLATION typ func tySasn is_pure)::
 	           nil))).
 
+Require Import Java.Tactics.FieldLookup.
+Require Import Charge.Tactics.Open.Subst.
+Require Import Charge.Tactics.Lists.Fold.
+
 Definition solve_alloc rw : rtac typ (expr typ func) :=
     THEN (INSTANTIATE typ func)
     (FIRST (SOLVE (CANCELLATION typ func tySpec (fun _ => false)) ::
@@ -577,7 +586,7 @@ Definition solve_alloc rw : rtac typ (expr typ func) :=
                         THEN FOLD (solve_entailment rw) :: nil)).
 
 Definition simStep (rw : rewriter (typ := typ) (func := func)) (r : rtac typ (expr typ func)) :=
-    THEN (THEN (THEN (THEN (SUBST typ func)
+    THEN (THEN (THEN (THEN (SUBST (ilp := ilp) (bilp := bilp) (eilp := eilp) typ func)
     	(TRY PULL_TRIPLE_EXISTS)) (STEP_REWRITE rw)) (REPEAT 10 PULL_TRIPLE_EXISTS)) r.
 
 Fixpoint tripleE (c : cmd) rw : rtac typ (expr typ func) :=
@@ -600,7 +609,8 @@ Definition symE rw : rtac typ (expr typ func) :=
 			| App (App (Inj f) G) H =>
 			  match ilogicS f, H with
 			  	| Some (ilf_entails tySpec), (* tySpec is a pattern, should be checked for equality with tySpec *)
-			  	  App (App (App (Inj (inr pTriple)) P) Q) (Inj (inr (pCmd c))) =>
+			  	  App (App (App (Inj (inr pTriple)) P) Q) 
+                                      (Inj (inl (inl (inl (inl (inl (inr (pConst tyCmd c)))))))) =>
 			  	  	tripleE c rw
 			  	| _, _ => FAIL
 			  end
@@ -614,22 +624,25 @@ Definition runTac rw :=
 Lemma runTac_sound rw : rtac_sound (runTac rw).
 Proof.
   admit.
-Qed.
+Admitted.
 
-Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr typ func :=
+Definition mkString2 s : expr typ func := mkString s.
+
+Print mkString2.
+
+Definition mkPointsto (x : expr typ func) f (e : expr typ func) : expr typ func :=
    mkAp tyVal tyAsn 
         (mkAp tyString (tyArr tyVal tyAsn)
               (mkAp tyVal (tyArr tyString (tyArr tyVal tyAsn))
-                    (mkConst (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn))) 
+                    (Charge.ModularFunc.OpenFunc.mkConst (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn))) 
                              fPointsto)
                     x)
-              (mkConst tyString (mkString f)))
+              (Charge.ModularFunc.OpenFunc.mkConst tyString (mkString f)))
         e.
         
 Require Import Java.Semantics.OperationalSemantics.
 Require Import Java.Logic.SpecLogic.
 Require Import Java.Logic.AssertionLogic.
-Require Import Java.Examples.ListClass.
 Require Import Charge.Logics.ILogic.
 
 Fixpoint seq_skip n := 
@@ -650,7 +663,7 @@ Definition testSkip n : Prop :=
 Lemma INTRO_sound : rtac_sound (INTRO typ func).
 Proof.
   admit.
-Qed.
+Admitted.
 
 Require Import Java.Tactics.Tactics.
 Check IDTAC_sound.
@@ -670,13 +683,74 @@ Ltac rtac_result reify term_table tac :=
 	        | None => idtac "expression " goal "is ill typed" t 
 	      end
 	  end.
-	  
+
+Goal True.
+  pose fTriple.
+  clear -e.
+  unfold fTriple in e.
+  (* GREGORY: This looks good, but vm_compute goes into an infinite loop *)
+  
+  Set Printing All.
+  vm_compute in e.
+  apply I.
+Qed.
+
 Lemma test_skip_lemma3 : testSkip 10.
 Proof.
   idtac "start".
   unfold testSkip; simpl.
   
   Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
+unfold e in r.
+
+unfold run_tac, runTac, runOnGoals  in r.
+pose (fEntails tySpec : expr typ func).
+pose (fTriple : expr typ func).
+clear -e0 e1.
+assert True.
+unfold fEntails in e0.
+simpl in e0.
+Set Printing All.
+vm_compute in e0.
+cbv in e0.
+simpl in e0.
+vm_compute in e1.
+unfold RType_typ in e0.
+Check type_cast_typ.
+vm_compute in i.
+simpl in e0.
+cuunfold fTriple in e0.
+clear -e0.
+Set Printing All.
+unfold SymEnv.func in e0.
+unfold SubstType_typ in e0.
+vm_compute in e0.
+unfold bilfunc in e0.
+native_compute in e0.
+unfold java_func in e0.
+unfold embed_func in e0.
+vm_compute in e0.
+pose (
+         (App (fForall tySpec tyProp)
+            (Abs tySpec
+               (App (fForall tySasn tyProp)
+                  (Abs tySasn
+                     (App (App (fEntails tySpec) (ExprCore.Var 1))
+                        (App (App (App (Inj (inr pTriple)) (ExprCore.Var 0)) (ExprCore.Var 0)) 
+(Inj (inl (inl (inl (inl (inl (inr (pConst tyCmd cskip))))))))))))))).
+
+Print mkCmd.
+
+vm_compute in e0.
+
+vm_compute in r.
+unfold run_tac in r.
+simpl in r.
+unfold runTac in r.
+native_compute in r.
+unfold THEN, REPEAT, INTRO, INSTANTIATE in r.
+simpl in r.
+vm_compute in r.
 Time Qed.
 
 Definition test_alloc : expr typ func :=
@@ -1145,3 +1219,4 @@ Proof.
   run_rtac reify_imp term_table PULL_EXISTSL_sound.
   
   Print func.
+*)

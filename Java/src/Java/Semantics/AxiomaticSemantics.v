@@ -147,7 +147,7 @@ Local Existing Instance ILFun_Ops.
 Local Existing Instance ILFun_ILogic.
 
   Lemma rule_read_fwd (x y : Lang.var) (f : field) (e : Open.expr) (P : sasn)
-    (HPT : P |-- `pointsto y/V `f e) :
+    (HPT : P |-- fun s => pointsto (s y) f (e s)) :
    @ltrue spec _ |-- 
      {[ P ]} cread x y f 
      {[ Exists v : val, @lembedand vlogic sasn _ _ (open_eq (x /V) (apply_subst e (@subst1 Lang.var val _ `v x)))  
@@ -235,7 +235,8 @@ Require Import HeapArr.
   Qed.
 *)
   Lemma rule_write (x : Lang.var) (f : field) (e : expr) (e' : dexpr) :
-    (@ltrue spec _ |-- {[ `pointsto x/V `f e ]} cwrite x f e' {[ `pointsto x/V `f (eval e')]}).
+    (@ltrue spec _ |-- {[ fun s => pointsto (s x) f (e s) ]} cwrite x f e' 
+                       {[ fun s => pointsto (s x) f (eval e' s)]}).
   Proof.
     unfold triple in *; intros. apply lforallR; intro sc. apply lpropimplR; intros Hsem.
     inversion Hsem; subst.
@@ -272,8 +273,8 @@ Require Import HeapArr.
   Hint Rewrite subst_fresh0 : open.
 
   Lemma rule_write_frame G (P Q : sasn) (x : Lang.var) (f : field) (e : expr) (e' : dexpr)
-        (H : P |-- Q ** `pointsto x/V `f e) :
-    @lentails spec _ G ({[ P ]} cwrite x f e' {[ Q ** `pointsto x/V `f (eval e')]}).
+        (H : P |-- Q ** fun s => pointsto (s x) f (e s)) :
+    @lentails spec _ G ({[ P ]} cwrite x f e' {[ Q ** fun s => pointsto (s x) f (eval e' s) ]}).
   Proof.
     rewrite H.
     eapply roc; [rewrite sepSPC; reflexivity | rewrite sepSPC; reflexivity|].
@@ -750,8 +751,8 @@ Qed.
   Lemma rule_alloc_ax (x : Lang.var) (C : class) (fields : list field) :
     @lentails spec _ ([prog](fun Pr => field_lookup Pr C fields)) 
     	(triple ltrue (Exists p:ptr,
-      @lembedand vlogic sasn _ _ (@land vlogic _ (`typeof `C (x/V)) (open_eq x /V `(vptr p)))
-     (fold_right (fun f Q => @sepSP sasn _ (`pointsto (open_const (vptr p)) (open_const f) (open_const null)) Q) (@ltrue sasn _) fields))
+      @lembedand vlogic sasn _ _ (@land vlogic _ (fun s => typeof C (s x)) (open_eq x /V `(vptr p)))
+     (fold_right (fun f Q => @sepSP sasn _ (fun _ => pointsto (vptr p) C null) Q) (@ltrue sasn _) fields))
      (calloc x C)).
   Proof.
 	admit.

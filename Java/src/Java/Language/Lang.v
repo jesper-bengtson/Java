@@ -183,7 +183,11 @@ Fixpoint eval_aux (s : stack) (e : dexpr) : val :=
 
 Program Definition eval e : expr := fun s => eval_aux s e.
 
-Definition vlogic_eval (e : dexpr) : vlogic := `eq ((eval e)) (`true).
+Definition vlogic_eval     (e : dexpr) : vlogic := fun s => eval e s = true.
+(*
+`eq ( eval e) (`true). 
+*)
+(*fun s => eval e s = true.*)
 
 Definition eval_exprs (s : stack) (es : list dexpr) :=
   map (fun e => eval_aux s e) es.
@@ -303,3 +307,4 @@ Notation "'While' e 'Do' c" := (cwhile e c) (at level 65) : cmd_scope.
 
 Arguments Scope cscall [ _ _ _ list_scope ].
 Arguments Scope cdcall [ _ _ _ list_scope ].
+

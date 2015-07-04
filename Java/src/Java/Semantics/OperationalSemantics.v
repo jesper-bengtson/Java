@@ -386,7 +386,8 @@ Require Import Compare_dec.
         (seq_cmd (assume_cmd (vlogic_eval e)) sc)) (assume_cmd (vlogic_eval (E_not e))))
   | semdcall  : forall (x y : Lang.var) m es c sc 
       (HSem     : semantics c sc),
-      semantics (cdcall x y m es) (call_cmd x ((liftn val_class) (var_expr y)) m ((E_var y) :: es) c sc)
+      semantics (cdcall x y m es) 
+        (call_cmd x ((fun e s => val_class (e s)) (var_expr y)) m ((E_var y) :: es) c sc)
   | semscall  : forall (x : Lang.var) (C : class) m es c sc
       (HSem     : semantics c sc),
       semantics (cscall x C m es) (call_cmd x (open_const C) m es c sc)
