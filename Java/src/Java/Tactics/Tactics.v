@@ -101,12 +101,13 @@ Proof.
   simpl in Hsound.
   unfold Ctx.propD, exprD'_typ0 in Hsound.
   unfold exprD_Prop.
-  
+  admit.
+  (*
   simpl in Hsound. unfold exprD. simpl. forward.
   destruct Hsound. 
   SearchAbout pctxD.
   inversion Hwfs; subst. simpl in H8. inv_all; subst.
-  admit.
+*)
 Admitted.
 
 End Tactics.
@@ -406,6 +407,24 @@ Ltac run_rtac reify term_table tac_sound :=
 	            | Fail => idtac "Tactic" tac "failed."
 	            | _ => idtac "Error: run_rtac could not resolve the result from the tactic :" tac
 	          end
+	        | None => idtac "expression " goal "is ill typed" t
+	      end
+	  end
+	| _ => idtac tac_sound "is not a soudness theorem."
+  end.
+
+Ltac run_rtac_print_code reify term_table tac_sound :=
+  match type of tac_sound with
+    | rtac_sound ?tac =>
+	  let name := fresh "e" in
+	  match goal with
+	    | |- ?P => 
+	      reify_aux reify term_table P name;
+	      let t := eval vm_compute in (typeof_expr nil nil name) in
+	      let goal := eval unfold name in name in
+	      match t with
+	        | Some ?t =>
+	          let goal_result := constr:(run_tac tac (GGoal name)) in idtac goal_result
 	        | None => idtac "expression " goal "is ill typed" t
 	      end
 	  end

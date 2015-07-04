@@ -1,10 +1,10 @@
-(*
+
 Add LoadPath "/Users/jebe/git/coq-ext-lib/theories" as ExtLib.
 Add LoadPath "/Users/jebe/git/mirror-core/theories" as MirrorCore.
 Add LoadPath "/Users/jebe/git/Charge/Charge!/bin/Charge" as Charge.
 Add LoadPath "/Users/jebe/git/Java/Java/bin/Java" as Java.
 Add LoadPath "/Users/jebe/git/mirror-core/src".
-*)
+
 Require Import Coq.Strings.String.
 Require Import Coq.PArith.BinPos.
 Require Import ExtLib.Core.RelDec.
@@ -78,11 +78,6 @@ Context {fs : Environment}.
 
 Time Eval vm_compute in typeof_expr nil nil (cancelTest 10).
 
-Time Eval vm_compute in 
-	(THEN (REPEAT 10 (INTRO typ func)) 
-	(runOnGoals (CANCELLATION typ func tySasn is_pure))) 
-		nil nil 0 0 (CTop nil nil) (ctx_empty (expr := expr typ func)) (cancelTest 10).
-
 Fixpoint search_NoDup
     {A} (A_dec: forall a b: A, {a=b}+{a=b->False}) (l: list A) : option (NoDup l) :=
   match l with
@@ -146,7 +141,6 @@ Definition method_specI : stac typ (expr typ func) subst :=
 Definition skip_lemma : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_imp rule_skip.
 Defined.
-Print skip_lemma.
 
 Lemma skip_lemma_sound : 
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil skip_lemma.
@@ -161,7 +155,6 @@ Example test_skip_lemma : test_lemma skip_lemma. Admitted.
 Definition skip_lemma2 : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_imp rule_skip2.
 Defined.
-Print skip_lemma2.
 
 Example test_skip_lemma2 : test_lemma skip_lemma2. Admitted.
 
@@ -169,7 +162,6 @@ Definition seq_lemma (c1 c2 : cmd) : lemma typ (expr typ func) (expr typ func).
 Proof.
   reify_lemma reify_imp (@rule_seq c1 c2).
 Defined.
-Print seq_lemma.
 
 Lemma seq_lemma_sound c1 c2 : 
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil (seq_lemma c1 c2).
@@ -221,7 +213,6 @@ Proof.
     unfold exprT_App, exprT_Inj, Rcast_val, Rcast in * ; simpl in *.
     eapply rule_if; [eapply H | eapply H0].
 
-  Print if_lemma.
   vm_compute.
   unfold lemmaD'. simpl.
   unfold exprD'_typ0. simpl.
@@ -280,7 +271,7 @@ Definition assign_lemma (x : var) (e : dexpr) : lemma typ (expr typ func) (expr 
 Proof.
   reify_lemma reify_imp (@rule_assign_fwd x e).
 Defined.
-Print assign_lemma.
+
 Example test_assign_lemma x e : test_lemma (assign_lemma x e). Admitted.
 
 Definition alloc_lemma (x : var) (C : class) : lemma typ (expr typ func) (expr typ func).
@@ -294,7 +285,9 @@ Proof.
   reify_lemma reify_imp (@pull_exists val).
 Defined.
 Example test_pull_exists_lemma : test_lemma pull_exists_lemma. Admitted.
+(*
 Eval vm_compute in pull_exists_lemma.
+*)
 
 Definition ent_exists_right_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
@@ -306,18 +299,17 @@ Definition eq_to_subst_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
   reify_lemma reify_imp eq_to_subst.
 Defined.
+(*
 Eval vm_compute in eq_to_subst_lemma.
+*)
 Example test_eq_lemma : test_lemma (eq_to_subst_lemma). Admitted.
-Check rule_static_complete.
+
 Definition scall_lemma (x : Lang.var) (C : class) (m : string) (es : list dexpr) 
   : lemma typ (expr typ func) (expr typ func).
 Proof.
   reify_lemma reify_imp rule_static_complete.
 Qed.
 
-Print scall_lemma.
-
-Print pull_exists_lemma.
 
 Example test_pull_exists : test_lemma (pull_exists_lemma). Admitted.
 
@@ -463,10 +455,9 @@ Proof.
   
   *)
 Qed.
-
 *)
+Locate rw_fail.
 
-Check apps.
 Definition BETA := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all (fun _ => @apps typ func)).
 
 Lemma BETA_sound : rtac_sound BETA.
@@ -517,13 +508,8 @@ Definition match_ap_eq (e : expr typ func) : bool :=
 	  	end
 	  | _ => false
 	end.
-Check @PULLCONJUNCTL.
-Instance notehu : RelDec (@eq (expr typ func)).
-apply RelDec_eq_expr; try apply _.
-admit.
-Admitted.
 
-Definition PULLEQL := @PULLCONJUNCTL typ func RType_typ _ _ _ match_ap_eq _ _ _ ilops.
+Definition PULLEQL : rtac typ (expr typ func) := @PULLCONJUNCTL typ func RType_typ _ _ _ match_ap_eq _ _ _ ilops.
 
                         (*
 	THEN (INSTANTIATE typ func subst) (runOnGoals (THEN (THEN (TRY FIELD_LOOKUP) 
@@ -579,6 +565,7 @@ Require Import Java.Tactics.FieldLookup.
 Require Import Charge.Tactics.Open.Subst.
 Require Import Charge.Tactics.Lists.Fold.
 
+
 Definition solve_alloc rw : rtac typ (expr typ func) :=
     THEN (INSTANTIATE typ func)
     (FIRST (SOLVE (CANCELLATION typ func tySpec (fun _ => false)) ::
@@ -586,14 +573,14 @@ Definition solve_alloc rw : rtac typ (expr typ func) :=
                         THEN FOLD (solve_entailment rw) :: nil)).
 
 Definition simStep (rw : rewriter (typ := typ) (func := func)) (r : rtac typ (expr typ func)) :=
-    THEN (THEN (THEN (THEN (SUBST (ilp := ilp) (bilp := bilp) (eilp := eilp) typ func)
+    THEN (THEN (THEN (THEN (SUBST typ func (ilp := ilp) (bilp := bilp) (eilp := eilp))
     	(TRY PULL_TRIPLE_EXISTS)) (STEP_REWRITE rw)) (REPEAT 10 PULL_TRIPLE_EXISTS)) r.
 
 Fixpoint tripleE (c : cmd) rw : rtac typ (expr typ func) :=
 	match c with
 	    | cskip => simStep rw (THEN (EAPPLY skip_lemma) (solve_entailment rw))
-	    | calloc x C => simStep rw (THEN (EAPPLY (alloc_lemma x C)) 
-	        (FIRST (solve_alloc rw::solve_entailment rw::nil)))
+	(*    | calloc x C => simStep rw (THEN (EAPPLY (alloc_lemma x C)) 
+	        (FIRST (solve_alloc rw::solve_entailment rw::nil)))*)
 		| cseq c1 c2 => simStep rw (THEN' (EAPPLY (seq_lemma c1 c2))
 		    (THENK (runOnGoals (TRY (tripleE c1 rw))) (THENK (MINIFY typ func) (runOnGoals (tripleE c2 rw)))))
 		| cassign x e => simStep rw (THEN (EAPPLY (assign_lemma x e)) (solve_entailment rw))
@@ -626,23 +613,20 @@ Proof.
   admit.
 Admitted.
 
-Definition mkString2 s : expr typ func := mkString s.
-
-Print mkString2.
-
-Definition mkPointsto (x : expr typ func) f (e : expr typ func) : expr typ func :=
-   mkAp tyVal tyAsn 
+Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr typ func :=
+   mkAp (func := func) tyVal tyAsn 
         (mkAp tyString (tyArr tyVal tyAsn)
               (mkAp tyVal (tyArr tyString (tyArr tyVal tyAsn))
-                    (Charge.ModularFunc.OpenFunc.mkConst (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn))) 
+                    (OpenFunc.mkConst (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn))) 
                              fPointsto)
                     x)
-              (Charge.ModularFunc.OpenFunc.mkConst tyString (mkString f)))
-        e.
+              (OpenFunc.mkConst (func := func) tyString (mkConst (func := func) tyString f)))
+        e  .
         
 Require Import Java.Semantics.OperationalSemantics.
 Require Import Java.Logic.SpecLogic.
 Require Import Java.Logic.AssertionLogic.
+
 Require Import Charge.Logics.ILogic.
 
 Fixpoint seq_skip n := 
@@ -666,7 +650,6 @@ Proof.
 Admitted.
 
 Require Import Java.Tactics.Tactics.
-Check IDTAC_sound.
 
 Ltac rtac_result reify term_table tac :=
 	  let name := fresh "e" in
@@ -696,10 +679,26 @@ Goal True.
 Qed.
 
 Lemma test_skip_lemma3 : testSkip 10.
+	  
+(*
+Lemma test_skip_lemma3 : testSkip 1.
 Proof.
   idtac "start".
   unfold testSkip; simpl.
+  run_rtac_print_code reify_imp term_table (@runTac_sound rw_fail).
+  run_rtac_test reify_imp term_table (@runTac_sound rw_fail).
+  let t := eval vm_compute in (typeof_expr nil nil e) in idtac t.
+  let t := type of (@runTac_sound rw_fail) in idtac t.
+
   
+  let goal_result := constr:(run_tac (runTac rw_fail) (GGoal e)) in 
+  
+  
+  
+  let result := eval simpl in goal_result in pose result.
+
+
+   (*
   Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
 unfold e in r.
 
@@ -752,6 +751,7 @@ unfold THEN, REPEAT, INTRO, INSTANTIATE in r.
 simpl in r.
 vm_compute in r.
 Time Qed.
+Qed.
 
 Definition test_alloc : expr typ func :=
 	mkEntails tySpec (mkProgEq (mkProg ListProg))
@@ -930,7 +930,7 @@ Time Qed.
 
 End blurb.
 
-Instance EmptyEnv : Environment := {
+Global Instance EmptyEnv : Environment := {
   java_env := SymEnv.from_list nil
 }.
 
@@ -1220,3 +1220,6 @@ Proof.
   
   Print func.
 *)
+
+
+End blurb.
