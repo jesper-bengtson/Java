@@ -14,9 +14,9 @@ Section MethodLookup.
   Definition METHOD_LOOKUP : rtac typ (expr typ func) :=
     fun tus tvs n m c s e =>
       match e with
-        | App (App (App (App (Inj (inr pMethodLookup)) (pProg P)) C) m) M =>
+        | App (App (App (App (Inj ({|ExtLib.Data.SumN.index := 1%positive; SumN.value := pMethodLookup|})) (Inj (inr (pProg P)))) C) m) M =>
 		  match baseS C, baseS m with
-		    | Some (pConst tyString C'), Some (pConst tyString m') =>
+		    | Some (pString C'), Some (pString m') =>
 		      match method_lookup' C' m' P with
 		        | Some Method =>
 		          match @exprUnify (ctx_subst c) typ func _ _ _ _ _ 3

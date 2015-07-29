@@ -56,8 +56,9 @@ Reify Declare Syntax reify_imp_typ :=
 Reify Declare Typed Table term_table : BinNums.positive => reify_imp_typ.
 
 Require Import MirrorCore.ExprI.
+Require Import ExtLib.Data.SumN.
 
-Let Ext x := @ExprCore.Inj typ func (inl (inl (inl (inl (inl (inl (inl (inl x)))))))).
+Let Ext (x : SymEnv.func) := @ExprCore.Inj typ func (Into (ts := func_map) x 2 eq_refl).
 
 Reify Declare Syntax reify_imp :=
   { (@Patterns.CFirst _

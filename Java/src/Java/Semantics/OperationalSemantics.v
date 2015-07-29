@@ -1,19 +1,26 @@
-Require Import Program SepAlg SepAlgInsts AssertionLogic SpecLogic SepAlgMap.
-Require Import MapInterface MapFacts Omega.
+Require Import Containers.MapInterface Containers.MapFacts Omega.
 
-Require Import Charge.Logics.ILInsts.
-Require Import Charge.Logics.ILogic.
-Require Import Charge.Logics.ILEmbed.
-Require Import Charge.Logics.BILogic.
-Require Import Charge.Open.OpenILogic. 
-Require Import Charge.Open.Open.
-Require Import Charge.Open.Subst.
-Require Import Charge.Open.Stack.
+Require Import ChargeCore.Logics.ILInsts.
+Require Import ChargeCore.Logics.ILogic.
+Require Import ChargeCore.Logics.ILEmbed.
+Require Import ChargeCore.Logics.BILogic.
+Require Import ChargeCore.Open.OpenILogic. 
+Require Import ChargeCore.Open.Open.
+Require Import ChargeCore.Open.Subst.
+Require Import ChargeCore.Open.Stack.
+Require Import ChargeCore.Open.OpenILogic.
+Require Import ChargeCore.SepAlg.SepAlgInsts.
+Require Import ChargeCore.SepAlg.SepAlg.
+
+Require Import Charge.SepAlg.SepAlgMap.
 
 Require Import Java.Language.Lang.
+Require Import Java.Language.Program.
 Require Import Java.Semantics.SemCmd.
 Require Import Java.Semantics.SemCmdRules.
 Require Import Java.Logic.HeapArr.
+Require Import Java.Logic.AssertionLogic.
+Require Import Java.Logic.SpecLogic.
 
 Import SepAlgNotations.
 
@@ -634,7 +641,7 @@ Section StructuralRules.
   Qed.
   
   Lemma existentialise_triple (x : Lang.var) (P Q : sasn) c (G : spec) 
-	(H : forall (v : val), G |-- {[@lembedand vlogic sasn _ _ (open_eq (x/V) (`v)) P]} c {[Q]}) :
+	(H : forall (v : val), G |-- {[@lembedand vlogic sasn _ _ (open_eq (var_expr x) (V_expr v)) P]} c {[Q]}) :
     G |-- {[P]} c {[Q]}.
   Proof.
     eapply roc_pre; [apply existentialise_var with (x0 := x)|].

@@ -10,10 +10,10 @@ Require Import ExtLib.Data.String.
 Require Import ExtLib.Data.Z.
 Require Import ExtLib.Tactics.Consider.
 
-Require Import Charge.Open.Stack.
-Require Import Charge.Open.Open.
-Require Import Charge.Open.OpenILogic.
-Require Import Charge.Open.Subst.
+Require Import ChargeCore.Open.Stack.
+Require Import ChargeCore.Open.Open.
+Require Import ChargeCore.Open.OpenILogic.
+Require Import ChargeCore.Open.Subst.
 
 Definition class : Type := String.string.
 Definition var : Type := String.string.
@@ -29,9 +29,9 @@ Instance RelDec_ptr : RelDec (@eq ptr) := {
 
 Instance RelDec_Correct_ptr : RelDec_Correct RelDec_ptr.
 Proof.
-	split; intros; destruct x, y; simpl.
-	consider (n ?[ eq ] n0); intros;
-	consider (c ?[ eq ] c0); intros; subst; simpl; try intuition congruence.
+  split; intros; destruct x, y; simpl.
+  consider (n ?[ eq ] n0); intros;
+  consider (c ?[ eq ] c0); intros; subst; simpl; try intuition congruence.
 Defined.
 
 Inductive val : Type :=
@@ -183,7 +183,7 @@ Fixpoint eval_aux (s : stack) (e : dexpr) : val :=
 
 Program Definition eval e : expr := fun s => eval_aux s e.
 
-Definition vlogic_eval     (e : dexpr) : vlogic := fun s => eval e s = true.
+Definition vlogic_eval (e : dexpr) : vlogic := fun s => eval e s = true.
 (*
 `eq ( eval e) (`true). 
 *)

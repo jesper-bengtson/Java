@@ -1,6 +1,22 @@
-Require Import Program SepAlg OpenILogic AssertionLogic SpecLogic SepAlgMap.
-Require Import MapInterface MapFacts Omega.
-Require Import ILInsts ILogic ILEmbed Charge.Open.Open Charge.Open.Subst Stack Lang.
+Require Import ChargeCore.SepAlg.SepAlg.
+
+Require Import ChargeCore.Logics.ILogic.
+Require Import ChargeCore.Logics.ILInsts.
+Require Import ChargeCore.Logics.ILEmbed.
+
+Require Import ChargeCore.Open.Open.
+Require Import ChargeCore.Open.Subst.
+Require Import ChargeCore.Open.Stack.
+Require Import ChargeCore.Open.OpenILogic.
+
+Require Import Charge.SepAlg.SepAlgMap.
+
+Require Import Java.Language.Lang.
+Require Import Java.Language.Program.
+Require Import Java.Logic.AssertionLogic.
+Require Import Java.Logic.SpecLogic.
+
+Require Import Containers.MapInterface Containers.MapFacts Omega.
 
 Import SepAlgNotations.
 
@@ -149,6 +165,7 @@ Section Commands.
      assume command -- this command is a bit of a hack that just skips if
      a check holds and loops otherwise, this way allowing to encode if/while
      using nondeterministic choice/Kleene star *)
+
   Inductive assume_sem (p : vlogic) : semCmdType :=
   | assume_ok : forall P s h, p s -> assume_sem p P 1 s h (Some (s, h)).
   Program Definition assume_cmd P := @Build_semCmd (assume_sem P) _ _.

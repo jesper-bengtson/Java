@@ -4,19 +4,14 @@ Require Import ExtLib.Tactics.
 
 Require Import MirrorCore.TypesI.
 
-Require Import Charge.ModularFunc.BaseType.
-Require Import Charge.ModularFunc.ListType.
-Require Import Charge.ModularFunc.SubstType.
-Require Import Charge.ModularFunc.ILogicFunc.
-Require Import Charge.ModularFunc.BILogicFunc.
-Require Import Charge.ModularFunc.EmbedFunc.
-Require Import Charge.ModularFunc.LaterFunc.
-Require Import Charge.ModularFunc.SemiEqDecTyp.
-Require Import Charge.Open.Subst.
-Require Import Charge.Logics.ILInsts.
-Require Import Charge.Logics.BILInsts.
-Require Import Charge.Logics.ILogic.
-Require Import Charge.Logics.Later.
+Require Import Charge.Views.ILogicView.
+Require Import Charge.Views.BILogicView.
+Require Import Charge.Views.EmbedView.
+Require Import ChargeCore.Open.Subst.
+Require Import ChargeCore.Logics.ILInsts.
+Require Import ChargeCore.Logics.BILInsts.
+Require Import ChargeCore.Logics.ILogic.
+Require Import ChargeCore.Logics.Later.
 
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
@@ -169,7 +164,10 @@ Fixpoint typD (t : typ) : Type :=
 
 Inductive tyAcc_typ : typ -> typ -> Prop :=
 | tyAcc_tyArrL : forall a b, tyAcc_typ a (tyArr a b)
-| tyAcc_tyArrR : forall a b, tyAcc_typ a (tyArr b a).
+| tyAcc_tyArrR : forall a b, tyAcc_typ a (tyArr b a)
+| tyAcc_tyProdL : forall a b, tyAcc_typ a (tyProd a b)
+| tyAcc_tyProdR : forall a b, tyAcc_typ a (tyProd b a)
+| tyAcc_tyList : forall a, tyAcc_typ a (tyList a).
 
 Global Instance RType_typ : RType typ :=
 { typD := typD
@@ -177,7 +175,7 @@ Global Instance RType_typ : RType typ :=
 ; type_cast := type_cast_typ
 }.
 
-Global Instance Typ2_Fun : Typ2 _ (fun x y : Type => x -> y) :=
+Global Instance Typ2_Fun : Typ2 _ Fun :=
 { typ2 := tyArr
 ; typ2_cast := fun _ _ => eq_refl
 ; typ2_match := fun T t tr =>
@@ -191,11 +189,54 @@ Global Instance Typ2Ok_Fun : Typ2Ok Typ2_Fun.
 Proof.
   split; intros.
   + reflexivity.
-  + apply tyAcc_tyArrL.
-  + apply tyAcc_tyArrR.
+  + apply (tyAcc_tyArrL).
+  + apply (tyAcc_tyArrR).
   + unfold Rty in *. inversion H; subst; intuition congruence.
   + destruct x; try solve [right; reflexivity].
     left; exists x1, x2, eq_refl. reflexivity.
+  + destruct pf; reflexivity.
+Qed.
+
+Global Instance Typ2_prod : Typ2 _ prod :=
+{ typ2 := tyProd
+; typ2_cast := fun _ _ => eq_refl
+; typ2_match := fun T t tr =>
+                  match t as t return T (typD t) -> T (typD t) with
+                    | tyProd a b => fun _ => tr a b
+                    | _ => fun fa => fa
+                  end
+}.
+
+Global Instance Typ2Ok_prod : Typ2Ok Typ2_prod.
+Proof.
+  split; intros.
+  + reflexivity.
+  + apply (tyAcc_tyProdL).
+  + apply tyAcc_tyProdR.
+  + unfold Rty in *. inversion H; subst; intuition congruence.
+  + destruct x; try solve [right; reflexivity].
+    left; exists x1, x2, eq_refl. reflexivity.
+  + destruct pf; reflexivity.
+Qed.
+
+Global Instance Typ1_list : Typ1 _ list :=
+{ typ1 := tyList
+; typ1_cast := fun _ => eq_refl
+; typ1_match := fun T t tr =>
+                  match t as t return T (typD t) -> T (typD t) with
+                    | tyList a => fun _ => tr a
+                    | _ => fun fa => fa
+                  end
+}.
+
+Global Instance Typ1Ok_list : Typ1Ok Typ1_list.
+Proof.
+  split; intros.
+  + reflexivity.
+  + apply (tyAcc_tyList).
+  + unfold Rty in *. inversion H; subst; intuition congruence.
+  + destruct x; try solve [right; reflexivity].
+    left; exists x, eq_refl. reflexivity.
   + destruct pf; reflexivity.
 Qed.
 
@@ -218,68 +259,86 @@ Proof.
     { destruct pf. reflexivity. }
 Qed.
 
+Instance Typ0_nat : Typ0 _ nat :=
+{ typ0 := tyNat
+; typ0_cast := eq_refl
+; typ0_match := fun T t tr =>
+                  match t as t return T (typD t) -> T (typD t) with
+                    | tyNat => fun _ => tr
+                    | _ => fun fa => fa
+                  end
+}.
+
+Instance Typ0Ok_nat : Typ0Ok Typ0_nat.
+Proof.
+    constructor.
+    { reflexivity. }
+    { destruct x; try solve [ right ; reflexivity ].
+      { left. exists eq_refl. reflexivity. } }
+    { destruct pf. reflexivity. }
+Qed.
+
+Instance Typ0_string : Typ0 _ string :=
+{ typ0 := tyString
+; typ0_cast := eq_refl
+; typ0_match := fun T t tr =>
+                  match t as t return T (typD t) -> T (typD t) with
+                    | tyString => fun _ => tr
+                    | _ => fun fa => fa
+                  end
+}.
+
+Instance Typ0Ok_string : Typ0Ok Typ0_string.
+Proof.
+    constructor.
+    { reflexivity. }
+    { destruct x; try solve [ right ; reflexivity ].
+      { left. exists eq_refl. reflexivity. } }
+    { destruct pf. reflexivity. }
+Qed.
+
+Instance Typ0_val : Typ0 _ val :=
+{ typ0 := tyVal
+; typ0_cast := eq_refl
+; typ0_match := fun T t tr =>
+                  match t as t return T (typD t) -> T (typD t) with
+                    | tyVal => fun _ => tr
+                    | _ => fun fa => fa
+                  end
+}.
+
+Instance Typ0Ok_val : Typ0Ok Typ0_val.
+Proof.
+    constructor.
+    { reflexivity. }
+    { destruct x; try solve [ right ; reflexivity ].
+      { left. exists eq_refl. reflexivity. } }
+    { destruct pf. reflexivity. }
+Qed.
+
 Instance RTypeOk_typ : @RTypeOk _ RType_typ.
 Proof.
-	split; intros.
-	+ reflexivity.
-	+ unfold well_founded.
-	  intros. induction a; simpl; constructor; intros; inversion H; subst.
-	  assumption. assumption.
-	+ destruct pf; reflexivity.
-	+ destruct pf1, pf2; reflexivity.
-	+ apply type_cast_typ_refl.
-	+ intro H1. inversion H1; subst.
-	  rewrite type_cast_typ_refl in H. inversion H.
-	+ intros x.
-	  induction x; intros y; destruct y; try (right; congruence); try (left; congruence).
-	  * destruct (IHx1 y1) as [Hx1 | Hx1]; clear IHx1;
-	    destruct (IHx2 y2) as [Hx2 | Hx2]; clear IHx2;
-	    try (right; congruence); try (left; congruence).
-	  * destruct (IHx y) as [Hx | Hx]; clear IHx; [
-	    left; congruence | right; congruence].
-	  * destruct (IHx1 y1) as [Hx1 | Hx1]; clear IHx1;
-	    destruct (IHx2 y2) as [Hx2 | Hx2]; clear IHx2;
-	    try (right; congruence); try (left; congruence).
+  split; intros.
+  + reflexivity.
+  + unfold well_founded.
+    intros. induction a; simpl; constructor; intros; inversion H; subst; assumption.
+  + destruct pf; reflexivity.
+  + destruct pf1, pf2; reflexivity.
+  + apply type_cast_typ_refl.
+  + intro H1. inversion H1; subst.
+    rewrite type_cast_typ_refl in H. inversion H.
+  + intros x.
+    induction x; intros y; destruct y; try (right; congruence); try (left; congruence).
+    * destruct (IHx1 y1) as [Hx1 | Hx1]; clear IHx1;
+      destruct (IHx2 y2) as [Hx2 | Hx2]; clear IHx2;
+      try (right; congruence); try (left; congruence).
+    * destruct (IHx y) as [Hx | Hx]; clear IHx; [
+	left; congruence | right; congruence].
+    * destruct (IHx1 y1) as [Hx1 | Hx1]; clear IHx1;
+      destruct (IHx2 y2) as [Hx2 | Hx2]; clear IHx2;
+      try (right; congruence); try (left; congruence).
 Qed.
 
-Instance BaseType_typ : BaseType typ := {
-  tyNat := tyNat;
-  tyBool := tyBool;
-  tyString := tyString;
-  tyProd := tyProd
-}.
-
-Lemma btProd_eq (a b c d : typ) (H : tyProd a b = tyProd c d) : a = c /\ b = d.
-Proof.
-  inversion H; subst.
-  split; reflexivity.
-Qed.
-
-Instance BaseTypeD_typ : BaseTypeD BaseType_typ := {
-	btNat := eq_refl;
-	btBool := eq_refl;
-	btString := eq_refl;
-	btProd := fun _ _ => eq_refl;
-	tyProd_inj := btProd_eq
-}.
-
-Instance ListType_typ : ListType typ := {
-	tyList := tyList
-}.
-
-Lemma btList_eq (a b : typ) (H : tyList a = tyList b) : a = b.
-Proof.
-  inversion H; subst; reflexivity.
-Qed.
-
-Instance ListTypeD_typ : ListTypeD ListType_typ := {
-	btList := fun _ => eq_refl;
-	tyList_inj := btList_eq
-}.
-
-Instance SubstType_typ : SubstType typ := {
-	tyVal := tyVal
-}.
 
 Definition null' : TypesI.typD tyVal := null.
 (*
@@ -332,14 +391,14 @@ Definition eops : @embed_ops _ RType_typ :=
       | tyProp, tyAsn => Some _
       | _ , _ => None
     end.
-
+(*
 Definition lops : @later_ops _ RType_typ :=
   fun t =>
     match t return option (ILLOperators (TypesI.typD t)) with
 	  | tySpec => Some should_also_not_be_necessary
 	  | _ => None
     end.
-
+*)
 Definition ilp : il_pointwise :=
   fun t =>
     match t with
@@ -441,7 +500,7 @@ Fixpoint edt (t : typ) : typD t -> typD t -> option bool :=
         end
     | _ => fun _ _ => None
   end.
-
+(*
 Instance SemiEqDecTyp_edt : SemiEqDecTyp typ := {
     semi_eq_dec_typ := edt
   }.
@@ -473,3 +532,5 @@ Qed.
 Instance SemiEqDecTypOk_edt : SemiEqDecTypOk SemiEqDecTyp_edt := {
     semi_eq_dec_typOk := edtOk
   }.
+
+*)

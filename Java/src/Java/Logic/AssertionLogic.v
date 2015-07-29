@@ -3,15 +3,39 @@
    make this easier. Ideally, this file should not be larger than a few tens of lines
    at most. *)
 
-Require Import ILogic ILInsts SepAlg BILogic BILInsts IBILogic SepAlgMap Maps String Rel.
-Require Import RelationClasses Setoid Morphisms Program. 
-Require Import MapInterface MapFacts.
-Require Import Charge.Open.Open.
-Require Import Charge.Open.Stack Lang OpenILogic Pure ILEmbed PureInsts.
-Require Import UUSepAlg SepAlgInsts HeapArr.
-
 Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Data.String.
+
+Require Import ChargeCore.Logics.ILogic. 
+Require Import ChargeCore.Logics.ILInsts. 
+Require Import ChargeCore.Logics.BILogic. 
+Require Import ChargeCore.Logics.BILInsts. 
+Require Import ChargeCore.Logics.IBILogic.
+Require Import ChargeCore.Logics.Pure.
+Require Import ChargeCore.Logics.ILEmbed.
+Require Import ChargeCore.Logics.PureInsts.
+Require Import ChargeCore.Open.OpenILogic.
+Require Import ChargeCore.Rel.
+
+Require Import ChargeCore.SepAlg.SepAlg. 
+Require Import Charge.SepAlg.SepAlgMap. 
+
+Require Import ChargeCore.Open.Open.
+Require Import ChargeCore.Open.Stack.
+
+Require Import Containers.Maps. 
+Require Import Coq.Strings.String.
+Require Import RelationClasses Setoid Morphisms.
+
+Require Import Java.Language.Program. 
+Require Import Containers.MapInterface Containers.MapFacts.
+
+Require Import Java.Language.Lang. 
+
+Require Import ChargeCore.SepAlg.UUSepAlg. 
+Require Import ChargeCore.SepAlg.SepAlgInsts. 
+
+Require Import HeapArr.
 
 Local Existing Instance ILPre_Ops.
 Local Existing Instance ILPre_ILogic.
@@ -39,6 +63,7 @@ Definition heap_ptr := Map [ptr * field, val].
 Definition heap := (heap_ptr * heap_arr)%type.
 
 Definition heap_ptr_unit : heap_ptr := @map_unit _ _ _ val.
+
 Definition heap_unit : heap := (heap_ptr_unit, heap_arr_unit).
 
 Definition heap_add_ptr (h : heap) (p : ptr) (f : field) (v : val) : heap :=

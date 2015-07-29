@@ -142,6 +142,8 @@ Definition skip_lemma : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_imp rule_skip.
 Defined.
 
+Print skip_lemma.
+Eval vm_compute in skip_lemma.
 Lemma skip_lemma_sound : 
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil skip_lemma.
 Proof.
@@ -169,7 +171,7 @@ Proof.
   unfold lemmaD; simpl; intros.
   unfold exprT_App, exprT_Inj, Rcast_val, Rcast in * ; simpl in *.
   eapply rule_seq; [apply H | apply H0].
-Qed.
+Admitted.
 
 Example test_seq_lemma (c1 c2 : cmd) : test_lemma (seq_lemma c1 c2). Admitted.
 
@@ -508,9 +510,10 @@ Definition match_ap_eq (e : expr typ func) : bool :=
 	  	end
 	  | _ => false
 	end.
-
+Set Printing All.
+(*
 Definition PULLEQL : rtac typ (expr typ func) := @PULLCONJUNCTL typ func RType_typ _ _ _ match_ap_eq _ _ _ ilops.
-
+*)
                         (*
 	THEN (INSTANTIATE typ func subst) (runOnGoals (THEN (THEN (TRY FIELD_LOOKUP) 
 		(runOnGoals (CANCELLATION typ func subst tySpec (fun _ => false)))) (runOnGoals FOLD))) ::
@@ -524,7 +527,7 @@ Require Import Charge.SetoidRewrite.BILSetoidRewrite.
   Definition spec_respects (e : expr typ func) (_ : list (RG (expr typ func)))
 	   (rg : RG (expr typ func)) : m (expr typ func) :=
 	   match e with
-	     | Inj (inr pTriple) =>
+	     | Inj ({|SumN.value:=1%positive; SumN.value := pTriple|}) =>
 	       rg_bind (unifyRG (@rel_dec (expr typ func) _ _) rg
 	         (RGrespects (RGflip (RGinj (fEntails tySasn)))
 	           (RGrespects (RGinj (fEq tyCmd))
@@ -549,32 +552,33 @@ Definition step_unfold vars rw :=
         | Some (e', _) => More s (GGoal e')
         | _ => More s (GGoal e)
       end.
-
+*)
 Definition PULL_TRIPLE_EXISTS : rtac typ (expr typ func) :=
   THEN (THEN (EAPPLY pull_exists_lemma) (INTRO typ func)) BETA.
 
 Definition solve_entailment (rw : rewriter (typ := typ) (func := func)) : rtac typ (expr typ func) :=
 	THEN (INSTANTIATE typ func) 
 		(FIRST (SOLVE (CANCELLATION typ func tySasn is_pure) ::
-	           (THEN (THEN (THEN (THEN PULLEQL (REPEAT 1000 EQSUBST)) 
-	           (STEP_REWRITE rw)) (REPEAT 1000 (INTRO typ func))) 
+	           (THEN (THEN (THEN (THEN (*PULLEQL*) IDTAC (REPEAT 1000 EQSUBST)) 
+	          (STEP_REWRITE rw)) (REPEAT 1000 (INTRO typ func))) 
 	              (CANCELLATION typ func tySasn is_pure)::
 	           nil))).
-
+(*
 Require Import Java.Tactics.FieldLookup.
+*)
 Require Import Charge.Tactics.Open.Subst.
 Require Import Charge.Tactics.Lists.Fold.
 
-
+(*
 Definition solve_alloc rw : rtac typ (expr typ func) :=
     THEN (INSTANTIATE typ func)
     (FIRST (SOLVE (CANCELLATION typ func tySpec (fun _ => false)) ::
                         FIELD_LOOKUP ::
                         THEN FOLD (solve_entailment rw) :: nil)).
-
+*)
 Definition simStep (rw : rewriter (typ := typ) (func := func)) (r : rtac typ (expr typ func)) :=
     THEN (THEN (THEN (THEN (SUBST typ func (ilp := ilp) (bilp := bilp) (eilp := eilp))
-    	(TRY PULL_TRIPLE_EXISTS)) (STEP_REWRITE rw)) (REPEAT 10 PULL_TRIPLE_EXISTS)) r.
+    	(TRY PULL_TRIPLE_EXISTS)) (STEP_REWRITE rw))) (REPEAT 10 PULL_TRIPLE_EXISTS)) r.
 
 Fixpoint tripleE (c : cmd) rw : rtac typ (expr typ func) :=
 	match c with
@@ -589,15 +593,17 @@ Fixpoint tripleE (c : cmd) rw : rtac typ (expr typ func) :=
 		| cwrite x f e => simStep rw (THEN (EAPPLY (write_lemma x f e)) (solve_entailment rw))
 		| _ => IDTAC
 	end.
-
+Print skip_lemma.
+Print fTriple.
+Print mkJavaFunc.
 Definition symE rw : rtac typ (expr typ func) :=
 	(fun tus tvs n m ctx s e => 
 		(match e return rtac typ (expr typ func) with 
 			| App (App (Inj f) G) H =>
 			  match ilogicS f, H with
 			  	| Some (ilf_entails tySpec), (* tySpec is a pattern, should be checked for equality with tySpec *)
-			  	  App (App (App (Inj (inr pTriple)) P) Q) 
-                                      (Inj (inl (inl (inl (inl (inl (inr (pConst tyCmd c)))))))) =>
+			  	  App (App (App (Inj ({| SumN.index := 1%positive; SumN.value := pTriple |})) P) Q) 
+                                      (Inj ({| SumN.index := 1%positive; SumN.value := pCmd c |})) =>
 			  	  	tripleE c rw
 			  	| _, _ => FAIL
 			  end
@@ -620,7 +626,7 @@ Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr
                     (OpenFunc.mkConst (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn))) 
                              fPointsto)
                     x)
-              (OpenFunc.mkConst (func := func) tyString (mkConst (func := func) tyString f)))
+              (OpenFunc.mkConst (func := func) tyString (mkString f)))
         e  .
         
 Require Import Java.Semantics.OperationalSemantics.
@@ -651,36 +657,56 @@ Admitted.
 
 Require Import Java.Tactics.Tactics.
 
-Ltac rtac_result reify term_table tac :=
+Definition run_tac tac goal :=
+  runOnGoals tac nil nil 0 0 (CTop nil nil) 
+    (ctx_empty (typ := typ) (expr := expr typ func)) goal.
+
+Ltac run_rtac reify term_table tac_sound :=
+  match type of tac_sound with
+    | rtac_sound ?tac =>
 	  let name := fresh "e" in
 	  match goal with
 	    | |- ?P => 
 	      reify_aux reify term_table P name;
 	      let t := eval vm_compute in (typeof_expr nil nil name) in
-	      let goal := eval unfold name in name in 
+	      let goal := eval unfold name in name in
 	      match t with
 	        | Some ?t =>
-	          let goal_result := constr:(run_tac tac (GGoal name)) in 
-	          let result := eval vm_compute in goal_result in 
-	          idtac result
-	        | None => idtac "expression " goal "is ill typed" t 
-	      end
-	  end.
+	          let goal_result := constr:(run_tac tac (GGoal name)) in
+	          let result := eval vm_compute in goal_result in idtac result (*
+	          match result with
+	            | More_ ?s ?g => 
+	              cut (goalD_Prop nil nil g); [
+	                let goal_resultV := g in
+	               (* change (goalD_Prop nil nil goal_resultV -> exprD_Prop nil nil name);*)
+	                exact_no_check (@run_rtac_More _ tac _ _ _ tac_sound
+	                	(@eq_refl (Result (CTop nil nil)) (More_ s goal_resultV) <:
+	                	   run_tac tac (GGoal goal) = (More_ s goal_resultV)))
+	                | cbv_denote
+	              ]
+	            | Solved ?s =>
+	              exact_no_check (@run_rtac_Solved _ tac s name tac_sound 
+	                (@eq_refl (Result (CTop nil nil)) (Solved s) <: run_tac tac (GGoal goal) = Solved s))
+	            | Fail => idtac "Tactic" tac "failed."
+	            | _ => idtac "Error: run_rtac could not resolve the result from the tactic :" tac
+	          end *)
+	        | None => idtac "expression " goal "is ill typed" t
+	      end 
+	  end
+	| _ => idtac tac_sound "is not a soudness theorem."
+  end.
 
-Goal True.
-  pose fTriple.
-  clear -e.
-  unfold fTriple in e.
-  (* GREGORY: This looks good, but vm_compute goes into an infinite loop *)
-  
-  Set Printing All.
-  vm_compute in e.
-  apply I.
-Qed.
+Print seq_lemma.
 
-Lemma test_skip_lemma3 : testSkip 10.
+Lemma test_skip_lemma3 : testSkip 1.
+  unfold testSkip.
+  simpl.
+  Time run_rtac reify_imp term_table (@runTac_sound rw_fail).  
+Time Qed.
+Check runOnGoals.
+let d := constr:(run_tac (@runTac_sound rw_fail) (@GGoal typ (expr typ func) e)) in idtac d.
+  run_rtac reify_imp term_table (@runTac_sound rw_fail).
 	  
-(*
 Lemma test_skip_lemma3 : testSkip 1.
 Proof.
   idtac "start".
@@ -766,6 +792,10 @@ Proof.
   unfold open_func_symD. simpl.
   admit.
 Qed.
+*)
+*)
+
+Open Scope BILogic.
 
 Lemma test_read : ltrue |-- 
     triple 

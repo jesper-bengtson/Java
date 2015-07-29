@@ -1,25 +1,11 @@
-Require Import Java.Tactics.SymEx.
-Require Import Java.Tactics.Tactics.
-Require Import Java.Logic.SpecLogic.
-Require Import Java.Logic.AssertionLogic.
-Require Import Java.Language.Lang.
-Require Import Java.Semantics.OperationalSemantics.
-Require Import Java.Func.Reify.
-Require Import Java.Func.JavaFunc.
-
-
-Require Import Charge.Logics.ILogic.
-Require Import Charge.SetoidRewrite.Base.
-
-Global Instance EmptyEnv : Environment := {
-  java_env := SymEnv.from_list nil
-}.
-
-
-Lemma test_skip_lemma3 : testSkip 1.
-Proof.
-  unfold testSkip; simpl.
-  run_rtac_print_code reify_imp term_table (@runTac_sound EmptyEnv rw_fail).
-  admit.
-  
-Admitted.
+Require Import Coq.Lists.List.
+Check list_rec.
+Definition list_case {A : Type} (lst : list A) (P : list A -> Type) 
+  (f_nil : nil = lst -> P nil) (f_cons : forall x xs, x :: xs = lst -> P (x :: xs)) : P lst :=
+  match lst as lst' return lst' = lst -> P lst' with
+    | nil => f_nil
+    | x :: xs => f_cons x xs
+  end eq_refl.
+Print list_rect.
+Fixpoint test (xs : list Prop) :=
+  list_rect _ True (fun x xs => x /\ test xs) xs.

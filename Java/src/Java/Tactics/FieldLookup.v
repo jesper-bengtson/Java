@@ -14,9 +14,10 @@ Section FieldLookup.
   Definition FIELD_LOOKUP : rtac typ (expr typ func) :=
 	fun tus tvs n m c s e =>
 		match e with
-		  | App (App (App (Inj (inr pMethodLookup)) (pProg P)) C) f =>
+		  | App (App (App (Inj ({| SumN.index := 1%positive; SumN.value := pFieldLookup |}))
+		  	 (Inj (({| SumN.index := 1%positive; SumN.value := pProg P |})))) C) f =>
 		    match baseS C with
-		      | Some (pConst tyString C') =>
+		      | Some (pString C') =>
 				match class_lookup C' P with
 		    	  | Some Class =>
 		    	    match @exprUnify (ctx_subst c) typ func _ _ _ _ _ 3

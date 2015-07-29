@@ -125,7 +125,7 @@ Ltac cbv_denote :=
           
           SymSum.RSym_sum Rcast Relim Rsym eq_sym symD(* RSym_env*)
           Rcast_val eq_rect_r eq_rect Datatypes.id
-          
+          RSym_Empty RSymOneOf typeof_sym_OneOf symD_OneOf sym_eqb_OneOf
           (* Monad *)
           
           Monad.bind Monad.ret
@@ -246,10 +246,10 @@ Ltac cbv_denote :=
           BaseFunc.BaseFuncSumL BaseFunc.BaseFuncSumR BaseFunc.BaseFuncExpr
           
           BaseFunc.BaseFuncInst
-          BaseFunc.mkNat BaseFunc.mkString BaseFunc.mkBool BaseFunc.mkConst
+          BaseFunc.mkNat BaseFunc.mkString BaseFunc.mkBool BaseFunc.mkNat 
           BaseFunc.mkEq BaseFunc.mkPair
           
-          BaseFunc.fConst
+          BaseFunc.fString BaseFunc.fNat BaseFunc.fBool
           BaseFunc.fEq BaseFunc.fPair
           
           BaseFunc.RSym_BaseFunc
@@ -333,6 +333,8 @@ Ltac cbv_denote :=
           JavaFunc.RSym_ilfunc
           JavaFunc.Expr_expr
           mkPointstoVar
+          JavaFunc.RSym_sub_func
+          JavaFunc.mkJavaFunc
           JavaFunc.RSym_func JavaFunc.java_env
           JavaFunc.mkVal JavaFunc.mkFields
           JavaFunc.mkProg JavaFunc.mkCmd JavaFunc.mkDExpr JavaFunc.mkFields

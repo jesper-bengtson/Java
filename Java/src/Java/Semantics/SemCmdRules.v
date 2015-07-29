@@ -1,8 +1,20 @@
-Require Import SemCmd ILogic BILogic ILInsts BILInsts.
-Require Import OpenILogic Later AssertionLogic SpecLogic ILEmbed.
-Require Import Stack Charge.Open.Subst Lang Util List.
-Require Import FunctionalExtensionality.
-Require Import Model Omega.
+Require Import ChargeCore.Logics.ILogic.
+Require Import ChargeCore.Logics.BILogic.
+Require Import ChargeCore.Logics.ILInsts.
+Require Import ChargeCore.Logics.BILInsts.
+Require Import ChargeCore.Logics.Later.
+Require Import ChargeCore.Logics.ILEmbed.
+Require Import ChargeCore.Open.OpenILogic.
+Require Import ChargeCore.Open.Stack.
+Require Import ChargeCore.Open.Subst.
+Require Import ChargeCore.Tactics.Model.
+
+Require Import Java.Semantics.SemCmd.
+Require Import Java.Logic.SpecLogic.
+Require Import Java.Logic.AssertionLogic.
+Require Import Java.Language.Lang.
+
+Require Import Omega.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -194,18 +206,23 @@ Local Existing Instance ILFun_ILogic.
     (SP -->> {{ P }} c {{ Q }}) -|- {{ SP /\\  P }} c {{ Q }}.
   Proof.
     admit.
-    (*
-  	split.
-  	+ lintros Pr n. intros Hp Pr' m k s h HPP' Hmn Hkm [HSP HP].
+(*
+    split.
+    + lintros Pr n. intros Hp Pr' m k s h HPP' Hmn Hkm [HSP HP].
   	  specialize (Hp Pr' HPP' m Hmn HSP).
   	  apply Hp; reflexivity || assumption.
-  	+ lintros Pr n; intros Hp. intro Pr'. HPP' m Hnm HSP Pr'' k l s h HPP'' Hkm Hkl HP.
-  	  apply Hp.
+  	+ lintros Pr n; intros Hp. 
+          Transparent ILPre_Ops.
+          intros Pr' HPP' m Hnm HSP PR'' k l s h HPP'' Hkm Hkl HP.
+          apply Hp.
   	  * transitivity Pr'; assumption.
   	  * omega.
   	  * omega.
   	  * simpl. split. 
-        assert ((SP Pr'') k). solve_model HSP. intros a b. simpl. intuition.
+          ILFU
+        assert ((SP PR'') k). solve_model HSP. 
+Set Printing All.
+intros a b. simpl. intuition.
         apply H. apply HP.
 	*)
   Admitted.
