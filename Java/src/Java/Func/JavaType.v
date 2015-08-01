@@ -278,6 +278,25 @@ Proof.
     { destruct pf. reflexivity. }
 Qed.
 
+Instance Typ0_bool : Typ0 _ bool :=
+{ typ0 := tyBool
+; typ0_cast := eq_refl
+; typ0_match := fun T t tr =>
+                  match t as t return T (typD t) -> T (typD t) with
+                    | tyBool => fun _ => tr
+                    | _ => fun fa => fa
+                  end
+}.
+
+Instance Typ0Ok_bool : Typ0Ok Typ0_bool.
+Proof.
+    constructor.
+    { reflexivity. }
+    { destruct x; try solve [ right ; reflexivity ].
+      { left. exists eq_refl. reflexivity. } }
+    { destruct pf. reflexivity. }
+Qed.
+
 Instance Typ0_string : Typ0 _ string :=
 { typ0 := tyString
 ; typ0_cast := eq_refl

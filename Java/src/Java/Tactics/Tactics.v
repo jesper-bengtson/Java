@@ -1,26 +1,33 @@
 Require Import MirrorCore.Reify.Reify.
 Require Import MirrorCore.Lambda.Expr.
 Require Import MirrorCore.ExprI.
+Require Import MirrorCore.AbsAppI.
 Require Import MirrorCore.RTac.RTac.
 Require Import MirrorCore.Subst.FMapSubst.
+Require Import MirrorCore.syms.SymOneOf.
+Require Import MirrorCore.Views.FuncView.
 
 Require Import Java.Func.JavaFunc.
 Require Import Java.Func.JavaType.
 
-Require Import Charge.ModularFunc.ILogicFunc.
-Require Import Charge.ModularFunc.BILogicFunc.
-Require Import Charge.ModularFunc.LaterFunc.
-Require Import Charge.ModularFunc.BaseFunc.
-Require Import Charge.ModularFunc.ListFunc.
-Require Import Charge.ModularFunc.OpenFunc.
-Require Import Charge.ModularFunc.EmbedFunc.
+Require Import Charge.Views.ILogicView.
+Require Import Charge.Views.BILogicView.
+Require Import Charge.Views.EmbedView.
+Require Import Charge.Views.SubstView.
+(*Require Import Charge.ModularFunc.LaterFunc.*)
+Require Import MirrorCore.Views.NatView.
+Require Import MirrorCore.Views.StringView.
+Require Import MirrorCore.Views.BoolView.
+Require Import MirrorCore.Views.ListView.
+Require Import MirrorCore.Views.ListOpView.
+Require Import MirrorCore.Views.ProdView.
 
-Require Import Charge.Open.Stack.
-Require Import Charge.Open.Subst.
-Require Import Charge.Open.OpenILogic.
+Require Import ChargeCore.Open.Stack.
+Require Import ChargeCore.Open.Subst.
+Require Import ChargeCore.Open.OpenILogic.
 
-Require Import Charge.Logics.BILogic.
-Require Import Charge.Logics.Later.
+Require Import ChargeCore.Logics.BILogic.
+(*Require Import Charge.Logics.Later.*)
 
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
@@ -101,23 +108,26 @@ Proof.
   simpl in Hsound.
   unfold Ctx.propD, exprD'_typ0 in Hsound.
   unfold exprD_Prop.
-  admit.
-  (*
   simpl in Hsound. unfold exprD. simpl. forward.
   destruct Hsound. 
   SearchAbout pctxD.
   inversion Hwfs; subst. simpl in H8. inv_all; subst.
-*)
+  admit.
 Admitted.
 
 End Tactics.
+
+Definition my_exprD' := @exprD' typ RType_typ (expr typ func).
+
+
+Print Transparent Dependencies my_exprD'.
 
 Ltac cbv_denote :=
           cbv [
           goalD_aux
           
 		  (* ExprD' *)
-          exprD' funcAs  typeof_sym typeof_expr type_cast type_cast_typ
+          exprD' symAs  typeof_sym typeof_expr type_cast type_cast_typ
           exprD'_simul func_simul
           Expr.Expr_expr
           ExprDsimul.ExprDenote.exprD'
@@ -141,6 +151,7 @@ Ltac cbv_denote :=
           TypesI.typD 
           typ2_match typ2 typ2_cast
           typ0_match typ0 typ0_cast
+          castR castD
           (* ExprI *)
           
           MirrorCore.VariablesI.Var ExprVariables.ExprVar_expr
@@ -152,69 +163,41 @@ Ltac cbv_denote :=
           
           exprT_GetVAs exprT_GetUAs
           
-          (* Denotation *)
+          (* ILogicView*)
           
-          Charge.ModularFunc.Denotation.trmD
-          Charge.ModularFunc.Denotation.trmR
-          Charge.ModularFunc.Denotation.funE
+          ILogicView.mkEntails ILogicView.mkTrue ILogicView.mkFalse 
+          ILogicView.mkAnd ILogicView.mkOr ILogicView.mkImpl
+          ILogicView.mkExists ILogicView.mkForall
           
-          Charge.ModularFunc.Denotation.tyArrD
-          Charge.ModularFunc.Denotation.tyArrD2
-          Charge.ModularFunc.Denotation.tyArrD3
-          Charge.ModularFunc.Denotation.tyArrD4
+          ILogicView.fEntails ILogicView.fTrue ILogicView.fFalse ILogicView.fAnd 
+          ILogicView.fOr ILogicView.fImpl ILogicView.fExists ILogicView.fForall
+          ILogicView.RSym_ilfunc 
           
-          Charge.ModularFunc.Denotation.tyArrD'
-          Charge.ModularFunc.Denotation.tyArrD2'
-          Charge.ModularFunc.Denotation.tyArrD3'
-          Charge.ModularFunc.Denotation.tyArrD4'
-          
-          Charge.ModularFunc.Denotation.tyArrR
-          Charge.ModularFunc.Denotation.tyArrR2
-          Charge.ModularFunc.Denotation.tyArrR3
-          Charge.ModularFunc.Denotation.tyArrR4
-
-          Charge.ModularFunc.Denotation.tyArrR'
-          Charge.ModularFunc.Denotation.tyArrR2'
-          Charge.ModularFunc.Denotation.tyArrR3'
-          Charge.ModularFunc.Denotation.tyArrR4'
-
-          
-          (* ILogicFunc*)
-          
-          ILogicFunc.mkEntails ILogicFunc.mkTrue ILogicFunc.mkFalse 
-          ILogicFunc.mkAnd ILogicFunc.mkOr ILogicFunc.mkImpl
-          ILogicFunc.mkExists ILogicFunc.mkForall
-          
-          ILogicFunc.fEntails ILogicFunc.fTrue ILogicFunc.fFalse ILogicFunc.fAnd 
-          ILogicFunc.fOr ILogicFunc.fImpl ILogicFunc.fExists ILogicFunc.fForall
-          ILogicFuncSumL ILogicFuncSumR ILogicFuncExpr
-          ILogicFunc.RSym_ilfunc 
-          Charge.ModularFunc.ILogicFunc.ILogicFuncInst
-          
-          ILogicFunc.funcD ILogicFunc.typ2_cast_quant
-		  Charge.ModularFunc.ILogicFunc.trueD
-		  Charge.ModularFunc.ILogicFunc.falseD
-		  Charge.ModularFunc.ILogicFunc.andD
-		  Charge.ModularFunc.ILogicFunc.orD
-		  Charge.ModularFunc.ILogicFunc.implD
+          ILogicView.funcD
+	  ILogicView.trueR
+	  ILogicView.falseR
+	  ILogicView.andR
+	  ILogicView.orR
+	  ILogicView.existsR
+	  ILogicView.forallR
           
           (* BILogicFunc *)
           
-          BILogicFunc.mkEmp BILogicFunc.mkStar BILogicFunc.mkWand
+          BILogicView.mkEmp BILogicView.mkStar BILogicView.mkWand
           
-          BILogicFunc.fEmp BILogicFunc.fStar BILogicFunc.fWand
+          BILogicView.fEmp BILogicView.fStar BILogicView.fWand
           
-          BILogicFuncSumL BILogicFuncSumR BILogicFuncExpr
-          BILogicFunc.RSym_bilfunc BILogicFunc.BILogicFuncInst
+          BILogicView.RSym_bilfunc
           
-		  Charge.ModularFunc.BILogicFunc.empD
-		  Charge.ModularFunc.BILogicFunc.starD
-		  Charge.ModularFunc.BILogicFunc.wandD
+          BILogicView.funcD
+	  BILogicView.empR
+	  BILogicView.starR
+	  BILogicView.wandR
           
-          BILogicFunc.typeof_bilfunc
+          BILogicView.typeof_bilfunc
           
           (* LaterFunc *)
-          
+          (*
           LaterFunc.mkLater
           
           LaterFunc.fLater
@@ -227,119 +210,154 @@ Ltac cbv_denote :=
           LaterFunc.typeof_later_func
           
           (* EmbedFunc *)
+          *)
+          EmbedView.mkEmbed
           
-          EmbedFunc.mkEmbed
+          EmbedView.fEmbed
           
-          EmbedFunc.fEmbed
+          EmbedView.RSym_embed_func 
           
-          EmbedFunc.EmbedFuncSumL EmbedFunc.EmbedFuncSumR EmbedFuncExpr
-          EmbedFunc.RSym_embed_func EmbedFunc.EmbedFuncInst
+          EmbedView.funcD 
           
-          EmbedFunc.funcD 
-          
-		  Charge.ModularFunc.EmbedFunc.embedD
+	  EmbedView.embedD
 
-          EmbedFunc.typeof_embed_func
+          EmbedView.typeof_embed_func
           
-          (* BaseFunc *)
+          (* StringView *)
           
-          BaseFunc.BaseFuncSumL BaseFunc.BaseFuncSumR BaseFunc.BaseFuncExpr
-          
-          BaseFunc.BaseFuncInst
-          BaseFunc.mkNat BaseFunc.mkString BaseFunc.mkBool BaseFunc.mkNat 
-          BaseFunc.mkEq BaseFunc.mkPair
-          
-          BaseFunc.fString BaseFunc.fNat BaseFunc.fBool
-          BaseFunc.fEq BaseFunc.fPair
-          
-          BaseFunc.RSym_BaseFunc
-          
-          BaseFunc.typeof_base_func BaseFunc.base_func_eq BaseFunc.base_func_symD
-          
-          (* ListFunc *)
-          
-          ListFunc.ListFuncSumL ListFunc.ListFuncSumR ListFunc.ListFuncExpr
-          
-          ListFunc.ListFuncInst
-          ListFunc.mkNil ListFunc.mkCons ListFunc.mkLength 
-          ListFunc.mkZip ListFunc.mkMap ListFunc.mkFold
-          
-          ListFunc.fNil ListFunc.fCons ListFunc.fLength
-          ListFunc.fZip ListFunc.fMap ListFunc.fFold
-          
-          ListFunc.typeof_list_func ListFunc.list_func_eq ListFunc.list_func_symD
-          ListFunc.RelDec_list_func
-          
-          ListFunc.nilD ListFunc.consD ListFunc.mapD ListFunc.zipD ListFunc.NoDupD ListFunc.foldD
-          ListType.listE ListType.listR ListType.listE
-          
-		  (* OpenFunc *)
-		  
-		  OpenFunc.mkConst OpenFunc.mkAp OpenFunc.mkNull OpenFunc.mkStackGet
-		  OpenFunc.mkStackSet OpenFunc.mkApplySubst OpenFunc.mkSingleSubst OpenFunc.mkSubst
-		  OpenFunc.mkTruncSubst
-		    
-		  OpenFunc.fConst OpenFunc.fAp OpenFunc.fNull OpenFunc.fStackGet
-		  OpenFunc.fApplySubst OpenFunc.fSingleSubst OpenFunc.fSubst OpenFunc.fTruncSubst
-		  
-		  OpenFunc.OpenFuncSumL OpenFunc.OpenFuncSumR OpenFunc.OpenFuncExpr
-		  OpenFunc.OpenFuncInst OpenFunc.open_func_symD
-		  
-		  OpenFunc.typeof_open_func OpenFunc.RSym_OpenFunc
-		  OpenFunc.RelDec_open_func
+          StringView.fString
+          StringView.mkString
 
-		  Charge.ModularFunc.OpenFunc.constD
-		  Charge.ModularFunc.OpenFunc.apD
-		  Charge.ModularFunc.OpenFunc.stack_getD
-		  Charge.ModularFunc.OpenFunc.stack_setD
-		  Charge.ModularFunc.OpenFunc.applySubstD
-		  Charge.ModularFunc.OpenFunc.singleSubstD
+          StringView.RSym_StringFunc StringView.string_func_symD
+
+          StringView.stringR
+
+          StringView.typeofStringFunc
+          
+          (* NatView *)
+          
+          NatView.fNat
+          NatView.mkNat
+
+          NatView.RSym_NatFunc NatView.nat_func_symD
+
+          NatView.natR
+
+          NatView.typeofNatFunc
+          
+          (* BoolView *)
+          
+          BoolView.fBool
+          BoolView.mkBool
+
+          BoolView.RSym_BoolFunc BoolView.bool_func_symD
+
+          BoolView.boolR
+
+          BoolView.typeofBoolFunc
+          (* BoolView *)
+          
+          BoolView.fBool
+          BoolView.mkBool
+
+          BoolView.RSym_BoolFunc BoolView.bool_func_symD
+
+          BoolView.boolR
+
+          BoolView.typeofBoolFunc
+          
+          (* ProdView *)
+          
+          ProdView.fPair
+          ProdView.mkPair
+
+          ProdView.RSym_ProdFunc ProdView.prod_func_symD
+
+          ProdView.pairR
+
+          ProdView.typeof_prod_func
+          
+          (* ListView *)
+          
+          ListView.fNil ListView.fCons
+          ListView.mkNil ListView.mkCons
+
+          ListView.RSym_ListFunc ListView.list_func_symD
+
+          ListView.nilR ListView.consR
+
+          ListView.typeof_list_func
+          
+          (* ListOpView *)
+          
+          ListOpView.fLength ListOpView.fNoDup ListOpView.fIn
+          ListOpView.fMap ListOpView.fFold ListOpView.fCombine
+
+          ListOpView.mkLength ListOpView.mkNoDup ListOpView.mkIn
+          ListOpView.mkMap ListOpView.mkFold ListOpView.mkCombine
+
+          ListOpView.RSym_ListOpFunc ListOpView.listOp_func_symD
+
+          ListOpView.lengthR ListOpView.NoDupR ListOpView.InR
+          ListOpView.mapR ListOpView.foldR ListOpView.combineR
 
 
+          ListOpView.typeof_listOp_func
+          
+          (* ApView *)
+          
+          ApplicativeView.fPure ApplicativeView.fAp
+          ApplicativeView.mkPure ApplicativeView.mkAp
+
+          ApplicativeView.RSym_ApFunc ApplicativeView.ap_func_symD
+
+          ApplicativeView.pureR ApplicativeView.apR
+
+          ApplicativeView.typeof_ap_func
+          
+	  (* OpenFunc *)
+	  
+	  SubstView.mkNull SubstView.mkStackGet
+	  SubstView.mkStackSet SubstView.mkApplySubst SubstView.mkSingleSubst SubstView.mkSubst
+	  SubstView.mkTruncSubst
+	  
+	  SubstView.fNull SubstView.fStackGet
+	  SubstView.fApplySubst SubstView.fSingleSubst SubstView.fSubst SubstView.fTruncSubst
+	  
+	  SubstView.open_func_symD
+	  
+	  SubstView.typeof_subst_func SubstView.RSym_SubstFunc
+          
+	  SubstView.stack_getR
+	  SubstView.stack_setR
+	  SubstView.applySubstR
+	  SubstView.singleSubstR
 		  
-          (* BaseType *)
-          
-          BaseType.tyProd BaseType.tyNat BaseType.tyString BaseType.tyBool
-          BaseType.btProd BaseType.btNat BaseType.btBool BaseType.btString
-          
-          BaseType.natD BaseType.boolD BaseType.stringD BaseType.prodD BaseType.prodR BaseType.pairE
-          BaseType.natR BaseType.boolR BaseType.stringR
-          
-          (* ListType *)
-          
-          ListType.tyList ListType.btList ListType.listD ListType.listE ListType.listR
-          
-          (* SubstType *)
-          
-          SubstType.tyVal
           
           (* JavaType *)
          
           Typ2_Fun Typ0_Prop RType_typ typD
           should_not_be_necessary should_also_not_be_necessary
          
-          JavaType.BaseType_typ JavaType.BaseTypeD_typ JavaType.ListType_typ
-          JavaType.ListTypeD_typ JavaType.bilops JavaType.ilops
-          JavaType.eops JavaType.lops
+          JavaType.bilops JavaType.ilops
+          JavaType.eops (*JavaType.lops*)
           
        (*   JavaType.typD *)
 		 (* JavaFunc *)
           
-          ilops is_pure func RSym_JavaFunc typeof_java_func java_func_eq
+
+          JavaFunc.RSym_ilfunc JavaFunc.RSym_bilfunc JavaFunc.RSym_embed_func
+          ilops (*is_pure*) func func_map RSym_JavaFunc typeof_java_func java_func_eq
           java_func_symD RelDec_java_func typeof_ilfunc
-                   
-          RSym_ilfunc RSym_open_func RSym_OpenFunc RSym_ListFunc
-          JavaFunc.RSym_bilfunc JavaFunc.RSym_embed_func JavaFunc.RSym_later_func
-          JavaFunc.RSym_ilfunc
+          list_to_pmap list_to_pmap_aux
           JavaFunc.Expr_expr
           mkPointstoVar
           JavaFunc.RSym_sub_func
-          JavaFunc.mkJavaFunc
           JavaFunc.RSym_func JavaFunc.java_env
-          JavaFunc.mkVal JavaFunc.mkFields
-          JavaFunc.mkProg JavaFunc.mkCmd JavaFunc.mkDExpr JavaFunc.mkFields
+          JavaFunc.fVal JavaFunc.fFields
+          JavaFunc.fProg JavaFunc.fCmd JavaFunc.fDExpr JavaFunc.fFields
           JavaFunc.fMethodSpec JavaFunc.fProgEq JavaFunc.fTriple JavaFunc.fTypeOf
-          JavaFunc.fFieldLookup JavaFunc.fPointsto JavaFunc.mkNull
+          JavaFunc.fFieldLookup JavaFunc.fPointsto JavaFunc.fNull
           JavaFunc.fPlus JavaFunc.fMinus JavaFunc.fTimes JavaFunc.fAnd
           JavaFunc.fOr JavaFunc.fNot JavaFunc.fLt JavaFunc.fValEq
           JavaFunc.mkTriple JavaFunc.mkFieldLookup JavaFunc.mkTypeOf
@@ -347,8 +365,6 @@ Ltac cbv_denote :=
           
 (* OTHER *)
   
-          SubstType_typ
-          
           goalD Ctx.propD propD exprD'_typ0 exprD split_env
           
           amap_substD
@@ -368,6 +384,23 @@ Ltac cbv_denote :=
           Quant._foralls
           Quant._exists
           goalD_Prop
+
+          FuncView.f_insert
+          SumN.pmap_lookup'
+
+          (* FMapPositive *)
+          FMapPositive.pmap_here
+          FMapPositive.pmap_left
+          FMapPositive.pmap_right
+          FMapPositive.pmap_lookup
+          FMapPositive.pmap_insert
+          FMapPositive.branch
+          FMapPositive.pmap_remove
+          FMapPositive.pmap_empty
+          FMapPositive.pmap_union
+
+          Pos.add
+          SymOneOf.internal_eq_rew_dep
           ].
 
 Let elem_ctor : forall x : typ, typD x -> @SymEnv.function _ _ :=

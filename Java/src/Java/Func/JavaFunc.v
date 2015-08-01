@@ -21,14 +21,18 @@ Require Import MirrorCore.SymI.
 Require Import MirrorCore.Lemma.
 Require Import MirrorCore.Lambda.Expr.
 Require Import MirrorCore.Views.FuncView.
+Require Import MirrorCore.Views.ViewSumN.
 Require Import MirrorCore.syms.SymEnv.
 Require Import MirrorCore.syms.SymSum.
 Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.Subst.FMapSubst.
 Require Import MirrorCore.Views.ListView.
+Require Import MirrorCore.Views.ListOpView.
 Require Import MirrorCore.Views.ProdView.
+Require Import MirrorCore.Views.EqView.
 Require Import MirrorCore.Views.ApplicativeView.
 Require Import MirrorCore.Views.NatView.
+Require Import MirrorCore.Views.BoolView.
 Require Import MirrorCore.Views.StringView.
 
 Require Import Java.Logic.AssertionLogic.
@@ -243,12 +247,14 @@ Definition func_map : pmap Type :=
 	list_to_pmap (T := Type) 
 	  (java_func::SymEnv.func::@ilfunc typ::@bilfunc typ::@list_func typ::
 	   @subst_func typ::@embed_func typ::(natFunc:Type)::(stringFunc:Type)::
-           @prod_func typ::@ap_func typ::nil).
+           (boolFunc:Type)::@prod_func typ::@eq_func typ::@ap_func typ::@listOp_func typ::nil).
 
 Definition func := OneOf func_map.
 
+Global Instance JavaView_func : FuncView func java_func :=
+  FuncViewPMap 1 func_map eq_refl.
 Global Instance ILogicView_func : FuncView func (@ilfunc typ) :=
-  FuncViewPMap 3func_map eq_refl.
+  FuncViewPMap 3 func_map eq_refl.
 Global Instance BILogicView_func : FuncView func (@bilfunc typ) :=
   FuncViewPMap 4 func_map eq_refl.
 Global Instance ListView_func : FuncView func (@list_func typ) :=
@@ -261,73 +267,241 @@ Global Instance NatView_func : FuncView func natFunc :=
   FuncViewPMap 8 func_map eq_refl.
 Global Instance StringView_func : FuncView func stringFunc :=
   FuncViewPMap 9 func_map eq_refl.
-Global Instance ProdView_func : FuncView func (@prod_func typ) :=
+Global Instance BoolView_func : FuncView func boolFunc :=
   FuncViewPMap 10 func_map eq_refl.
-Global Instance ApplicativeView_func : FuncView func (@ap_func typ) :=
+Global Instance ProdView_func : FuncView func (@prod_func typ) :=
   FuncViewPMap 11 func_map eq_refl.
+Global Instance Eq_func : FuncView func (@eq_func typ) :=
+  FuncViewPMap 12 func_map eq_refl.
+Global Instance ApplicativeView_func : FuncView func (@ap_func typ) :=
+  FuncViewPMap 13 func_map eq_refl.
+Global Instance ListOp_func : FuncView func (@listOp_func typ) :=
+  FuncViewPMap 14 func_map eq_refl.
 
 Section MakeJavaFunc.
 
-  Definition mkJavaFunc (f : java_func) : expr typ func := 
-    Inj (Into (ts := func_map) f 1 eq_refl).
+  Definition fVal v : func:= f_insert (pVal v).
+  Definition fProg P : func:= f_insert (pProg P).
+  Definition fMethod M : func:= f_insert (pMethod M).
+  Definition fCmd c : func:= f_insert (pCmd c).
+  Definition fDExpr e : func:= f_insert (pExpr e).
+  Definition fFields f : func:= f_insert (pFields f).
+  
+  Definition fMethodSpec : func:= f_insert pMethodSpec.
+  Definition fProgEq : func:= f_insert pProgEq.
+  Definition fTriple : func:= f_insert pTriple.
+  Definition fTypeOf : func:= f_insert pTypeOf.
+  Definition fFieldLookup : func:= f_insert pFieldLookup.
+  Definition fMethodLookup : func:= f_insert pMethodLookup.
+  Definition fPointsto : func:= f_insert pPointsto.
+  Definition fNull : func:= f_insert pNull.
+  
+  Definition fMethodBody : func:= f_insert pMethodBody.
+  Definition fMethodArgs : func:= f_insert pMethodArgs.
+  Definition fMethodRet : func:= f_insert pMethodRet.	
+  
+  Definition fPlus : func:= f_insert pPlus.
+  Definition fMinus : func:= f_insert pMinus.
+  Definition fTimes : func:= f_insert pTimes.
+  Definition fAnd : func:= f_insert pAnd.
+  Definition fOr : func:= f_insert pOr.
+  Definition fNot : func:= f_insert pNot.
+  Definition fLt : func:= f_insert pLt.
+  Definition fValEq : func:= f_insert pValEq.
 
-  Definition mkVal v : expr typ func := mkJavaFunc (pVal v).
-  Definition mkProg P : expr typ func := mkJavaFunc (pProg P).
-  Definition mkMethod M : expr typ func := mkJavaFunc (pMethod M).
-  Definition mkCmd c : expr typ func := mkJavaFunc (pCmd c).
-  Definition mkDExpr e : expr typ func := mkJavaFunc (pExpr e).
-  Definition mkFields f : expr typ func := mkJavaFunc (pFields f).
-  
-  Definition fMethodSpec : expr typ func := mkJavaFunc pMethodSpec.
-  Definition fProgEq : expr typ func := mkJavaFunc pProgEq.
-  Definition fTriple : expr typ func := mkJavaFunc pTriple.
-  Definition fTypeOf : expr typ func := mkJavaFunc pTypeOf.
-  Definition fFieldLookup : expr typ func := mkJavaFunc pFieldLookup.
-  Definition fMethodLookup : expr typ func := mkJavaFunc pMethodLookup.
-  Definition fPointsto : expr typ func := mkJavaFunc pPointsto.
-  Definition mkNull : expr typ func := mkJavaFunc pNull.
-  
-  Definition fMethodBody : expr typ func := mkJavaFunc pMethodBody.
-  Definition fMethodArgs : expr typ func := mkJavaFunc pMethodArgs.
-  Definition fMethodRet : expr typ func := mkJavaFunc pMethodRet.	
-  
-  Definition fPlus : expr typ func := mkJavaFunc pPlus.
-  Definition fMinus : expr typ func := mkJavaFunc pMinus.
-  Definition fTimes : expr typ func := mkJavaFunc pTimes.
-  Definition fAnd : expr typ func := mkJavaFunc pAnd.
-  Definition fOr : expr typ func := mkJavaFunc pOr.
-  Definition fNot : expr typ func := mkJavaFunc pNot.
-  Definition fLt : expr typ func := mkJavaFunc pLt.
-  Definition fValEq : expr typ func := mkJavaFunc pValEq.
+Require Import MirrorCore.Views.Ptrns.
+Require Import MirrorCore.Lambda.Ptrns.
 
-  Definition mkTriple P c Q : expr typ func := App (App (App fTriple P) Q) c.
-  Definition mkFieldLookup P C f : expr typ func := App (App (App fFieldLookup P) C) f.
-  Definition mkTypeOf C x : expr typ func := App (App fTypeOf C) x.
-  Definition mkProgEq P := App fProgEq P.
+  Definition fptrnVal {T : Type} (p : Ptrns.ptrn val T) : ptrn java_func T :=
+    fun f U good bad =>
+      match f with
+        | pVal v => p v U good (fun x => bad f)
+        | _ => bad f
+      end.
+
+  Definition fptrnProg {T : Type} (p : Ptrns.ptrn Program T) : ptrn java_func T :=
+    fun f U good bad =>
+      match f with
+        | pProg P => p P U good (fun x => bad f)
+        | _ => bad f
+      end.
+
+  Definition fptrnMethod {T : Type} (p : Ptrns.ptrn Method T) : ptrn java_func T :=
+    fun f U good bad =>
+      match f with
+        | pMethod M => p M U good (fun x => bad f)
+        | _ => bad f
+      end.
+
+  Definition fptrnCmd {T : Type} (p : Ptrns.ptrn cmd T) : ptrn java_func T :=
+    fun f U good bad =>
+      match f with
+        | pCmd c => p c U good (fun x => bad f)
+        | _ => bad f
+      end.
+
+  Definition fptrnExpr {T : Type} (p : Ptrns.ptrn dexpr T) : ptrn java_func T :=
+    fun f U good bad =>
+      match f with
+        | pExpr e => p e U good (fun x => bad f)
+        | _ => bad f
+      end.
+
+  Definition fptrnFields {T : Type} (p : Ptrns.ptrn (list string) T) : ptrn java_func T :=
+    fun f U good bad =>
+      match f with
+        | pFields fs => p fs U good (fun x => bad f)
+        | _ => bad f
+      end.
+
+  Definition fptrnMethodSpec : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pMethodSpec => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnProgEq : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pProgEq => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnTriple : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pTriple => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnPointsto : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pPointsto => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnNull : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pNull => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnMethodBody : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pMethodBody => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnMethodArgs : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pMethodArgs => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnMethodRet : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pMethodRet => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnPlus : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pPlus => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnMinus : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pMinus => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnTimes : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pTimes => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnAnd : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pAnd => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnOr : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pOr => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnNot : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pNot => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnLt : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pMethodSpec => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnValEq : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pMethodSpec => good tt
+        | _ => bad f
+      end.
+
+  Definition ptrnTriple {A B C : Type}
+             (a : ptrn (expr typ func) A) 
+             (b : ptrn (expr typ func) B) 
+             (c : ptrn (expr typ func) C) : ptrn (expr typ func) (A * B * C) :=
+    pmap (fun a_b_c => let '(_, a, b, c) := a_b_c in (a, b, c))
+         (app (app (app (inj (ptrn_view _ fptrnTriple)) a) b) c).
+
+  Definition mkTriple P c Q : expr typ func := App (App (App (Inj fTriple) P) Q) c.
+  Definition mkFieldLookup P C f : expr typ func := App (App (App (Inj fFieldLookup) P) C) f.
+  Definition mkTypeOf C x : expr typ func := App (App (Inj fTypeOf) C) x.
+  Definition mkProgEq P : expr typ func := App (Inj fProgEq) P.
   
-  Definition mkMethodBody (M : Method) : expr typ func := App fMethodBody (mkMethod M).
-  Definition mkMethodArgs (M : Method) : expr typ func := App fMethodArgs (mkMethod M).
-  Definition mkMethodRet (M : Method) : expr typ func := App fMethodRet (mkMethod M).
+  Definition mkMethodBody (M : Method) : expr typ func := 
+    App (Inj fMethodBody) (Inj (fMethod M)).
+  Definition mkMethodArgs (M : Method) : expr typ func := 
+    App (Inj fMethodArgs) (Inj (fMethod M)).
+  Definition mkMethodRet (M : Method) : expr typ func := 
+    App (Inj fMethodRet) (Inj (fMethod M)).
 
 	
   Definition mkExprList es :=
     (fold_right (fun (e : dexpr) (acc : expr typ func) => 
-		   mkCons tyExpr (mkDExpr e) acc) (mkNil tyExpr) es).
-
-Check @fStackGet.
+		   mkCons tyExpr (Inj (fDExpr e)) acc) (mkNil tyExpr) es).
 
 Fixpoint evalDExpr (e : dexpr) : expr typ func :=
     match e with
-    | E_val v => mkVal v
+    | E_val v => mkPure tyVal (Inj (fVal v))
     | E_var x => App (Inj fStackGet) (mkString x)
-    | E_plus e1 e2 => mkAps fPlus ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_minus e1 e2 => mkAps fMinus ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_times e1 e2 => mkAps fTimes ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_and e1 e2 => mkAps fAnd ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_or e1 e2 => mkAps fOr ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_not e => mkAps fNot ((evalDExpr e, tyVal)::nil) tyVal
-    | E_lt e1 e2 => mkAps fLt ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_eq e1 e2 => mkAps fValEq ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_plus e1 e2 => mkAps (Inj fPlus) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_minus e1 e2 => mkAps (Inj fMinus) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_times e1 e2 => mkAps (Inj fTimes) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_and e1 e2 => mkAps (Inj fAnd) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_or e1 e2 => mkAps (Inj fOr) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_not e => mkAps (Inj fNot) ((evalDExpr e, tyVal)::nil) tyVal
+    | E_lt e1 e2 => mkAps (Inj fLt) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_eq e1 e2 => mkAps (Inj fValEq) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
     end.
 
 End MakeJavaFunc.
@@ -368,8 +542,19 @@ Check RSym.
   Global Existing Instance RSym_sum.
   Global Existing Instance RSymOk_sum.
 
+  Require Import ExtLib.Structures.Applicative.
+  
+  Local Instance Applicative_Fun A : Applicative (Fun A) :=
+    { pure := fun _ x _ => x
+      ; ap := fun _ _ f x y => (f y) (x y)
+    }.
+
+  
   Definition RSym_sub_func (p : positive) :
-    RSym (match pmap_lookup' func_map p with | Some T => T | None => Empty_set end).
+    RSym (match pmap_lookup' func_map p with 
+          | Some T => T 
+          | None => Empty_set 
+          end).
   Proof.
     destruct p; simpl; [| | apply _].
     destruct p; simpl; [| | apply _].
@@ -379,33 +564,40 @@ Check RSym.
     induction p; simpl; intuition; apply RSym_Empty_set.
     induction p; simpl; intuition; apply RSym_Empty_set.
     destruct p; simpl; [| | apply _].
+    destruct p; simpl; [| | apply (RSym_ApFunc (T := (Fun stack)))].
+    induction p; simpl; intuition; apply RSym_Empty_set.
     induction p; simpl; intuition; apply RSym_Empty_set.
     destruct p; simpl; [| | apply _].
     induction p; simpl; intuition; apply RSym_Empty_set.
     induction p; simpl; intuition; apply RSym_Empty_set.
     destruct p; simpl; [| | apply RSym_func; apply fs].
     destruct p; simpl; [| | apply RSym_SubstFunc].
-    induction p; simpl; intuition; apply RSym_Empty_set.
     destruct p; simpl; [| | apply _].
     induction p; simpl; intuition; apply RSym_Empty_set.
     induction p; simpl; intuition; apply RSym_Empty_set.
     destruct p; simpl; [| | apply _].
+    induction p; simpl; intuition; apply RSym_Empty_set.
+    induction p; simpl; intuition; apply RSym_Empty_set.
+    destruct p; simpl; [| | apply _].
+    destruct p; simpl; [| | apply _].
+    induction p; simpl; intuition; apply RSym_Empty_set.
     induction p; simpl; intuition; apply RSym_Empty_set.
     destruct p; simpl; [| | apply _].
     induction p; simpl; intuition; apply RSym_Empty_set.
     induction p; simpl; intuition; apply RSym_Empty_set.
   Defined.
-Print RSymOk.
-Instance RSymOk_Empty_set : RSymOk RSym_Empty_set := {
-  sym_eqbOk a b :=
-    match a return (match sym_eqb a b with 
-                    | Some true => a = b 
-                    | Some false => a <> b
-                    | None => True
-                    end) with
-      end
+
+  Instance RSymOk_Empty_set : RSymOk RSym_Empty_set := 
+    {
+      sym_eqbOk a b :=
+        match a return (match sym_eqb a b with 
+                        | Some true => a = b 
+                        | Some false => a <> b
+                        | None => True
+                        end) with
+        end
     
-}.
+    }.
 
   Lemma RSymOk_sub_func (p : positive) : RSymOk (RSym_sub_func p).
   Proof.
@@ -417,17 +609,23 @@ Instance RSymOk_Empty_set : RSymOk RSym_Empty_set := {
     induction p; simpl; intuition; apply RSymOk_Empty_set.
     induction p; simpl; intuition; apply RSymOk_Empty_set.
     destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
     destruct p; simpl; [| | apply _].
     induction p; simpl; intuition; apply RSymOk_Empty_set.
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply _].
     induction p; simpl; intuition; apply RSymOk_Empty_set.
     destruct p; simpl; [| | apply _].
     induction p; simpl; intuition; apply RSymOk_Empty_set.
     induction p; simpl; intuition; apply RSymOk_Empty_set.
     destruct p; simpl; [| | apply _].
+    destruct p; simpl; [| | apply _].
+    destruct p; simpl; [| | apply _].
+    induction p; simpl; intuition; apply RSymOk_Empty_set.
+    induction p; simpl; intuition; apply RSymOk_Empty_set.
+    destruct p; simpl; [| | apply _].
+    induction p; simpl; intuition; apply RSymOk_Empty_set.
+    induction p; simpl; intuition; apply RSymOk_Empty_set.
+    destruct p; simpl; [| | apply _].
+    destruct p; simpl; [| | apply _].
+    induction p; simpl; intuition; apply RSymOk_Empty_set.
     induction p; simpl; intuition; apply RSymOk_Empty_set.
     destruct p; simpl; [| | apply _].
     induction p; simpl; intuition; apply RSymOk_Empty_set.
@@ -469,17 +667,14 @@ Instance RSymOk_Empty_set : RSymOk RSym_Empty_set := {
     admit.
   Qed.
 *)
-(*
-  Lemma evalDexpr_wt (e : dexpr) : 
+
+  Lemma evalDExpr_wt (e : dexpr) : 
 	  typeof_expr nil nil (evalDExpr e) = Some tyExpr.
   Proof. 
-    (* Not true anymore, need to fix *)
-
     induction e.
-    + simpl. admit.
     + simpl; reflexivity.
-    + simpl. rewrite IHe1.
-simpl; rewrite IHe1, IHe2; reflexivity.
+    + simpl; reflexivity.
+    +simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.
@@ -488,30 +683,25 @@ simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.
   Qed.
-*)
-(*
-  Definition is_pure (e : expr typ func) : bool :=
-	match e with
-	  | App f P => match embedS f with
-				     | Some (eilf_embed tyPure tySasn) => true
-					 | Some (eilf_embed tyProp tySasn) => true
-					 | _ => false
-				   end
-			
- 	  | e =>
- 		match ilogicS e with
- 		  | Some (ilf_true _) => true
- 		  | Some (ilf_false _) => true
- 		  | _ => false
- 		end
-   end.
-*)
+
+  Definition is_pure : expr typ func -> bool :=
+    run_tptrn 
+      (pdefault 
+         (por (pmap (fun _ => true) (por (ptrnTrue ignore) (ptrnFalse ignore)))
+              (pmap (fun x => 
+                       match x with
+                       | (tyPure, tySasn, tt) => true
+                       | _ => false
+                       end)
+                    (ptrnEmbed get ignore)))
+         false).
+
   Definition mkPointstoVar x f e : expr typ func :=
      mkAp tyVal tyAsn 
           (mkAp tyString (tyArr tyVal tyAsn)
                 (mkAp tyVal (tyArr tyString (tyArr tyVal tyAsn))
                       (mkPure (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn))) 
-                               fPointsto)
+                               (Inj fPointsto))
                       (App (Inj fStackGet) (mkString x)))
                 (mkPure tyString (mkString f)))
           e.
