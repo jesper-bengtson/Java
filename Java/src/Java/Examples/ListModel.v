@@ -1,6 +1,15 @@
-Require Import AxiomaticSemantics String AssertionLogic.
-Require Import ILogic ILEmbed.
-Require Import Charge.Logics.BILogic Lang Stack ZArith Coq.Lists.List.
+Require Import Java.Semantics.AxiomaticSemantics.
+Require Import Java.Logic.AssertionLogic.
+Require Import Java.Language.Lang.
+
+Require Import ChargeCore.Open.Stack.
+Require Import ChargeCore.Logics.ILogic.
+Require Import ChargeCore.Logics.ILEmbed.
+Require Import ChargeCore.Logics.BILogic.
+Require Import ChargeCore.Logics.BILogic.
+
+Require Import Coq.Strings.String.
+Require Import ZArith Coq.Lists.List.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

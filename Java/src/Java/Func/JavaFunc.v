@@ -674,7 +674,7 @@ Check RSym.
     induction e.
     + simpl; reflexivity.
     + simpl; reflexivity.
-    +simpl; rewrite IHe1, IHe2; reflexivity.
+    + simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.

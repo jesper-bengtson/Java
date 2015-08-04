@@ -1,3 +1,4 @@
+(*
 Require Import MirrorCore.syms.SymEnv.
 Require Import MirrorCore.Reify.Reify.
 Require Import MirrorCore.Lambda.Expr.
@@ -270,3 +271,5 @@ Time Eval vm_compute in
 		       )
 		| _ => None
 	end.
+	
+	*)

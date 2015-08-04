@@ -5,7 +5,7 @@ Require Import MirrorCore.Lambda.ExprUnify_simul.
 Require Import Java.Func.JavaFunc.
 Require Import Java.Func.JavaType.
 Require Import Java.Language.Program.
-
+(*
 Require Import Charge.ModularFunc.BaseFunc.
 
 Section MethodLookup.
@@ -32,3 +32,5 @@ Section MethodLookup.
       end.
 
 End MethodLookup.
+
+*)

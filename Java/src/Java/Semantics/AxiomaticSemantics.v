@@ -1,5 +1,5 @@
 Require Import Morphisms Setoid.
-
+(*
 Require Import Charge.Rel.
 Require Import Charge.Logics.ILogic.
 Require Import Charge.Logics.ILInsts.
@@ -846,4 +846,6 @@ Admitted.
     sl_exists (vs x); reflexivity.
   Qed.
   Implicit Arguments rule_alloc_fwd [[x] [C] [fields] [P] [G]].
+*)
+
 *)

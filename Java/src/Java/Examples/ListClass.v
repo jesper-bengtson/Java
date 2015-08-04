@@ -1,3 +1,4 @@
+(*
 Require Import AxiomaticSemantics String AssertionLogic ILogic ILEmbed BILogic Lang Stack ZArith Coq.Lists.List ListModel.
 Require Import Program SpecLogic OperationalSemantics.
 
@@ -43,7 +44,7 @@ Lemma method_specL C m args r P Q G M Pr
          (Subst.zip (r :: args) (eval (m_ret M) :: map Open.var_expr (m_params M))))]} ) :
   G |-- method_spec C m args r P Q.
 Proof.
-  Require Import Charge.Logics.ILInsts.
+  Require Import ChargeCore.Logics.ILInsts.
   Local Transparent ILPre_Ops.
   intros Pr' n HG.
   split; [apply Hargs|].
@@ -63,7 +64,7 @@ Lemma ListCorrect : prog_eq ListProg |-- add_spec.
 Proof.
   admit.
 Qed.
-(*
+
   unfold add_spec.
   apply lforallR; intros xs.
   unfold add_spec.
