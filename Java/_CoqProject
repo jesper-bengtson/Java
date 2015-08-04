@@ -15,3 +15,29 @@ KOPITIAM_4 = "ProjectLoadPath Charge!"
 KOPITIAM_5 = "ExternalLoadPath /Users/jebe/git/mirror-core/theories MirrorCore"
 KOPITIAM_6 = "ExternalLoadPath /Users/jebe/git/mirror-core/src"
 KOPITIAM_7 = "ProjectLoadPath ChargeCore"
+
+src/Java/Examples/List2.v
+src/Java/Examples/ListClass.v
+src/Java/Examples/ListModel.v
+src/Java/Func/JavaFunc.v
+src/Java/Func/JavaType.v
+src/Java/Func/JavaReify.v
+src/Java/Language/Lang.v
+src/Java/Language/Program.v
+src/Java/Logic/AssertionLogic.v
+src/Java/Logic/HeapArr.v
+src/Java/Logic/SpecLogic.v
+src/Java/Semantics/AxiomaticSemantics.v
+src/Java/Semantics/OperationalSemantics.v
+src/Java/Semantics/SemCmd.v
+src/Java/Semantics/SemCmdRules.v
+src/Java/Tactics/FieldLookup.v
+src/Java/Tactics/MethodLookup.v
+src/Java/Tactics/Semantics.v
+src/Java/Tactics/SymEx.v
+src/Java/Tactics/Tactics.v
+src/Java/Util.v
+
+
+
+
