@@ -196,9 +196,9 @@ Defined.
 
 Print read_lemma.
 
-Lemma read_lemma_sound x y f : 
-	lemmaD (exprD'_typ0 (T:=Prop)) nil nil (read_lemma x y f).
+Lemma read_lemma_sound x y f : ReifiedLemma (read_lemma x y f).
 Proof.
+  split.
   unfold lemmaD; simpl; intros.
   repeat (unfold AbsAppI.exprT_App; simpl in *).
   eapply rule_read_fwd; [eapply H | eapply H0].
@@ -577,10 +577,11 @@ Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 		| cif e c1 c2 => simStep rw (THEN (EAPPLY (if_lemma e c1 c2)) (solve_entailment rw))
 		| cwrite x f e => simStep rw (THEN (EAPPLY (write_lemma x f e)) (solve_entailment rw))*)
                 | cskip => THEN (EAPPLY skip_lemma) solve_entailment
+		| cread x y f => THEN (EAPPLY (read_lemma x y f)) (TRY solve_entailment)
 (*		| cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
                                       (ON_EACH (tripleE c1::TRY (tripleE c2)::nil))*)
                 | cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
-                                      (ON_EACH (THEN (EAPPLY skip_lemma) solve_entailment::IDTAC::nil))
+                                      (ON_EACH (tripleE c1::tripleE c2::nil))
 		| _ => IDTAC
 	end.
 
@@ -712,199 +713,50 @@ Proof.
   run_rtac reify_imp term_table myTac_sound.
 Qed.
 
-Lemma test_skip_lemma3 : testSkip 1.
+Lemma test_skip_lemma3 : testSkip 200.
 Proof.
   unfold testSkip; simpl.
   Time run_rtac reify_imp term_table runTac_sound.
-(* Here the constraint says x1 = ltrue, but it sholud be x1 = x2. I *)
-  unfold e in r.
-  simpl in r.
-  vm_compute in r.
-pose
-    (  run_tac (CANCELLATION typ func tySpec (fun _ => false)) 
-              (GAll tySpec (GExs (tySpec :: nil) (FMapPositive.PositiveMap.Node (FMapPositive.PositiveMap.Leaf (expr typ func)) None (FMapPositive.PositiveMap.Leaf (expr typ func)))
-                                 (GGoal (mkEntails tySpec (UVar 0) (Var 0)))))).
-Opaque func.
-simpl in r0.
-unfold run_tac in r0. simpl in r0.
-Print run_tac.
-Print runOnGoals.
-repeat (unfold Mbind, Mrebuild, Mmap in r0; simpl in r0).
-unfold ptrn_view in r0; simpl in r0.
-unfold get in r0; simpl in r0.
-Transparent the_canceller.
-remember (the_canceller tySpec (tySpec :: nil) (tySpec :: nil) (ExprCore.UVar 0) (ExprCore.Var 0)
-                (remembers (AllSubst (TopSubst (expr typ func) nil nil)) (tySpec :: nil)
-                   (FMapPositive.PositiveMap.Node (FMapPositive.PositiveMap.Leaf (expr typ func)) None
-                      (FMapPositive.PositiveMap.Leaf (expr typ func))))).
-compute in Heqs.
-subst.
-simpl in r0.
-remember (@the_canceller typ func tySpec ILogicView_func BILogicView_func RType_typ Typ2_Fun (@RSym_func fs)
-                (fun _ : expr typ func => false) (@cons typ tySpec (@nil typ)) (@cons typ tySpec (@nil typ)) (@ExprCore.UVar typ func O)
-                (@ExprCore.Var typ func O)
-                (@CExs typ (expr typ func) (@CAll typ (expr typ func) (@CTop typ (expr typ func) (@nil typ) (@nil typ)) tySpec)
-                   (@cons typ tySpec (@nil typ)))
-                (@remembers typ (expr typ func) RType_typ (@Expr_expr fs)
-                   (@CAll typ (expr typ func) (@CTop typ (expr typ func) (@nil typ) (@nil typ)) tySpec)
-                   (@AllSubst typ (expr typ func) tySpec (@CTop typ (expr typ func) (@nil typ) (@nil typ))
-                      (@TopSubst typ (expr typ func) (@nil typ) (@nil typ))) (@cons typ tySpec (@nil typ))
-                   (@FMapPositive.PositiveMap.Node (expr typ func) (FMapPositive.PositiveMap.Leaf (expr typ func)) 
-                      (@None (expr typ func)) (FMapPositive.PositiveMap.Leaf (expr typ func))))).
-vm_compute in Heqs.
-Print AllSubst. clear r.
-clear Heqs.
-remember (SumN.OneOf
-                          (FMapPositive.Branch (Some java_func)
-                             (FMapPositive.Branch (Some positive)
-                                (FMapPositive.Branch (Some (bilfunc typ))
-                                   (FMapPositive.Branch (Some NatView.natFunc) FMapPositive.Empty FMapPositive.Empty)
-                                   (FMapPositive.Branch (Some (EqView.eq_func typ)) FMapPositive.Empty FMapPositive.Empty))
-                                (FMapPositive.Branch (Some (subst_func typ))
-                                   (FMapPositive.Branch (Some BoolView.boolFunc) FMapPositive.Empty FMapPositive.Empty)
-                                   (FMapPositive.Branch (Some (ListOpView.listOp_func typ)) FMapPositive.Empty FMapPositive.Empty)))
-                             (FMapPositive.Branch (Some (ilfunc typ))
-                                (FMapPositive.Branch (Some (ListView.list_func typ))
-                                   (FMapPositive.Branch (Some stringFunc) FMapPositive.Empty FMapPositive.Empty)
-                                   (FMapPositive.Branch (Some (ap_func typ)) FMapPositive.Empty FMapPositive.Empty))
-                                (FMapPositive.Branch (Some (EmbedView.embed_func typ))
-                                   (FMapPositive.Branch (Some (ProdView.prod_func typ)) FMapPositive.Empty FMapPositive.Empty)
-                                   FMapPositive.Empty)))).
-compute in HeqT.
-subst.
-Opaque fromAll fromExs.
-compute in r0.
-Check fromExs.
-Opaque fromAll.
-simpl in r0.
-Transparent fromAll.
-simpl in r0.
-Print fromAll.
-vm_compute in r0.
-simpl in r0.
-vm_compute in r0.
-rewrite Heqs in r0.
-Check AllSubst.
-pose
-    (the_canceller (uis_pure := fun _ => false) tySpec (tySpec :: nil) (tySpec :: nil) (ExprCore.UVar 0) (ExprCore.Var 0)
-                   (remembers (AllSubst (TopSubst (expr typ func) nil nil)) (tySpec :: nil)
-                   (FMapPositive.PositiveMap.Node (FMapPositive.PositiveMap.Leaf (expr typ func)) None
-                      (FMapPositive.PositiveMap.Leaf (expr typ func))))).
-repeat (unfold Mbind, Mrebuild in r0, Mmap; simpl in r0).
-  unfold runTac in r.
-  unfold THEN in r; simpl in r.
-  vm_compute in r.
-  simpl in r.
-  unfold entailsR, castR. simpl.
-  intros.
-  exists x0.
-
-  intros.
-  exists ltrue.
-  
 Time Qed.
-
 Print test_skip_lemma3.
-	  
-Lemma test_skip_lemma3 : testSkip 1.
+
+Require Import ChargeCore.Logics.BILogic.
+Open Scope string.
+
+Print read_lemma.
+Print EAPPLY.
+Definition test a b c := EApply.EAPPLY typ func (read_lemma a b c).
+
+Lemma test_sound a b c : rtac_sound (test a b c).
 Proof.
-  idtac "start".
-  unfold testSkip; simpl.
-  run_rtac_print_code reify_imp term_table (@runTac_sound rw_fail).
-  run_rtac_test reify_imp term_table (@runTac_sound rw_fail).
-  let t := eval vm_compute in (typeof_expr nil nil e) in idtac t.
-  let t := type of (@runTac_sound rw_fail) in idtac t.
-
-  
-  let goal_result := constr:(run_tac (runTac rw_fail) (GGoal e)) in 
-  
-  
-  
-  let result := eval simpl in goal_result in pose result.
-
-
-   (*
-  Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
-unfold e in r.
-
-unfold run_tac, runTac, runOnGoals  in r.
-pose (fEntails tySpec : expr typ func).
-pose (fTriple : expr typ func).
-clear -e0 e1.
-assert True.
-unfold fEntails in e0.
-simpl in e0.
-Set Printing All.
-vm_compute in e0.
-cbv in e0.
-simpl in e0.
-vm_compute in e1.
-unfold RType_typ in e0.
-Check type_cast_typ.
-vm_compute in i.
-simpl in e0.
-cuunfold fTriple in e0.
-clear -e0.
-Set Printing All.
-unfold SymEnv.func in e0.
-unfold SubstType_typ in e0.
-vm_compute in e0.
-unfold bilfunc in e0.
-native_compute in e0.
-unfold java_func in e0.
-unfold embed_func in e0.
-vm_compute in e0.
-pose (
-         (App (fForall tySpec tyProp)
-            (Abs tySpec
-               (App (fForall tySasn tyProp)
-                  (Abs tySasn
-                     (App (App (fEntails tySpec) (ExprCore.Var 1))
-                        (App (App (App (Inj (inr pTriple)) (ExprCore.Var 0)) (ExprCore.Var 0)) 
-(Inj (inl (inl (inl (inl (inl (inr (pConst tyCmd cskip))))))))))))))).
-
-Print mkCmd.
-
-vm_compute in e0.
-
-vm_compute in r.
-unfold run_tac in r.
-simpl in r.
-unfold runTac in r.
-native_compute in r.
-unfold THEN, REPEAT, INTRO, INSTANTIATE in r.
-simpl in r.
-vm_compute in r.
-Time Qed.
-Qed.
-
-Definition test_alloc : expr typ func :=
-	mkEntails tySpec (mkProgEq (mkProg ListProg))
-		(mkTriple (mkTrue tySasn) (mkCmd (cseq (calloc "x" "NodeC") cskip)) (mkFalse tySasn)).
-
-Require Import Charge.Logics.BILogic.
-  
-  Lemma test_alloc_correct : 
-  prog_eq ListProg |-- triple empSP lfalse ((calloc "x" "NodeC");;Skip).
-Proof.
-  Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
-  unfold open_func_symD. simpl.
+  unfold test.
+  apply EAPPLY_sound; try apply _.
+  intros.
   admit.
-Qed.
-*)
-*)
+  apply read_lemma_sound.
+Admitted.
 
-Open Scope BILogic.
+Require Import MirrorCore.syms.SymOneOf.
+Require Import MirrorCore.AbsAppI.
 
 Lemma test_read : ltrue |-- 
     triple 
-      (ap_pointsto [("o": var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)] ** 
-       ap_pointsto [("o": var), ("g" : field), pure (T := Fun (Lang.stack)) (vint 4)]) 
-      (ap_pointsto [("o": var), ("f": field), pure (T := Fun (Lang.stack)) (vint 3)] ** 
-      (ap_pointsto [("o": var), ("g": field), pure (T := Fun (Lang.stack)) (vint 4)]))
-      (cseq (cread "x" "o" "f") (cseq (cread "y" "o" "g") cskip)).                    
+      (ap_pointsto [("o" : Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)]) lfalse
+      (cread "x" "o" "f").
+(*
+      (ap_pointsto [("o" : Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)] ** 
+       ap_pointsto [("o" : Lang.var), ("g" : field), pure (T := Fun (Lang.stack)) (vint 4)]) 
+      (ap_pointsto [("o" : Lang.var), ("f": field), pure (T := Fun (Lang.stack)) (vint 3)] ** 
+      (ap_pointsto [("o" : Lang.var), ("g": field), pure (T := Fun (Lang.stack)) (vint 4)]))
+      (cseq (cread "x" "o" "f") (cseq (cread "y" "o" "g") cskip)).                     *)
 Proof.
-  Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
+  run_rtac reify_imp term_table (test_sound "x" "o" "f").
+
+Print read_lemma.
+Check EAPPLY_sound.
+Eval vm_compute in (fEntails tySasn).
+  Time run_rtac reify_imp term_table myTac_sound.
+
 Qed.
 
 Lemma test_write :

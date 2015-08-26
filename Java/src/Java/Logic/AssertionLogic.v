@@ -15,7 +15,6 @@ Require Import ChargeCore.Logics.Pure.
 Require Import ChargeCore.Logics.ILEmbed.
 Require Import ChargeCore.Logics.PureInsts.
 Require Import ChargeCore.Open.OpenILogic.
-Require Import ChargeCore.Rel.
 
 Require Import ChargeCore.SepAlg.SepAlg. 
 Require Import Charge.SepAlg.SepAlgMap. 
@@ -51,8 +50,6 @@ Local Existing Instance IBILFunLogic.
 
 Local Existing Instance MapSepAlgOps.
 Local Existing Instance MapSepAlg.
-Local Existing Instance MapEquiv.
-Local Existing Instance EquivPreorder.
 Local Existing Instance UUMapSepAlg.
 Local Existing Instance SepAlgOps_prod.
 Local Existing Instance SepAlg_prod.
@@ -71,12 +68,9 @@ Definition heap_add_ptr (h : heap) (p : ptr) (f : field) (v : val) : heap :=
 Definition heap_add_arr (h : heap) (n m : nat) (v : val) : heap :=
   (fst h, add (n, m) v (snd h)).
 
-
-Instance RelHeapPtr : Rel heap_ptr := _.
-Instance PreorderHeapPtr : PreOrder (@rel heap_ptr RelHeapPtr) := _.
 Instance HeapPtrSepAlgOps : SepAlgOps heap_ptr := _.
 Instance SepAlgHeapPtr : SepAlg heap_ptr := _.
-Instance UUSepAlgHeapPtr : UUSepAlg heap_ptr := _.
+Instance UUSepAlgHeapPtr : UUSepAlg (rel := MapEquiv _) heap_ptr := _.
 
 (*
 Instance SepAlgArrPtr : SepAlg heap_arr := _.
@@ -92,7 +86,7 @@ Instance UUSepAlgHeap : UUSepAlg heap := _.
 Instance HeapSepAlgOps : SepAlgOps heap := _.
 Instance UUSepAlgHeap : UUSepAlg heap := _.
 
-Definition asn := ILPreFrm Prog_sub (ILPreFrm ge (ILPreFrm (@rel heap subheap) Prop)).
+Definition asn := ILPreFrm Prog_sub (ILPreFrm ge (ILPreFrm subheap Prop)).
 
 Instance ILogicOpsAsn : ILogicOps asn := _.
 Instance BILogicOpsAsn : BILOperators asn. Admitted.

@@ -1,18 +1,14 @@
 Require Import RelationClasses Setoid Morphisms Program.
 Require Import MapInterface MapFacts.
-Require Import SepAlg SepAlgMap UUSepAlg SepAlgInsts Stack Lang Rel.
+Require Import SepAlg SepAlgMap UUSepAlg SepAlgInsts Stack Lang.
 
 Local Existing Instance MapSepAlgOps.
 Local Existing Instance MapSepAlg.
-Local Existing Instance MapEquiv.
-Local Existing Instance EquivPreorder.
 Local Existing Instance UUMapSepAlg.
 
 Definition heap_arr := Map [arrptr * nat, val].
 Definition heap_arr_unit : heap_arr := @map_unit _ _ _ val.
 
-Instance RelHeapArr : Rel heap_arr := _.
-Instance PreorderHeapArr : PreOrder (@rel heap_arr RelHeapArr) := _.
 Instance HeapArrSepAlgOps : SepAlgOps heap_arr := _.
 Instance SepAlgHeapArr : UUSepAlg heap_arr := _.
 

@@ -380,14 +380,14 @@ Defined.
   Definition ilops : @logic_ops _ RType_typ :=
   fun t =>
     match t
-          return option (ILogic.ILogicOps (TypesI.typD t))
+          return _option (ILogic.ILogicOps (TypesI.typD t))
     with
-      | tyProp => Some _
-      | tyAsn => Some _
-      | tySasn => Some (@ILFun_Ops stack asn _)
-      | tySpec => Some should_not_be_necessary
-      | tyPure => Some ( @ILFun_Ops stack Prop _)
-      | _ => None
+      | tyProp => _Some _
+      | tyAsn => _Some _
+      | tySasn => _Some (@ILFun_Ops stack asn _)
+      | tySpec => _Some should_not_be_necessary
+      | tyPure => _Some (@ILFun_Ops stack Prop _)
+      | _ => _None _
     end.
 
   Definition bilops : @bilogic_ops _ RType_typ :=
