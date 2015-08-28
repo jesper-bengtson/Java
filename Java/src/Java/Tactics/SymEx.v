@@ -130,14 +130,22 @@ Definition method_specI : stac typ (expr typ func) subst :=
       	| _ => @Fail _ _ _
     end.
 *)
+Require Import ChargeCore.Logics.ILogic.
+Lemma andA_temp {A : Type} `{IL : ILogic A} (P Q R S : A) (H : lentails (land P (land Q R)) S) : lentails (land (land P Q) R) S.
+Proof.
+  admit.
+Admitted.
 
+
+Definition andA_temp_lemma : lemma typ (expr typ func) (expr typ func).
+reify_lemma reify_imp andA_temp.
+Defined.
+Print andA_temp_lemma.
 (** Skip **)
 Definition skip_lemma : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_imp rule_skip.
 Defined.
 
-Print skip_lemma.
-Check rule_skip.
 Lemma skip_lemma_sound : 
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil skip_lemma.
 Proof.
@@ -467,7 +475,7 @@ Definition THEN (r1 r2 : rtac typ (expr typ func)) :=
 Definition substTac (_ : list (option (expr typ func))) (e : expr typ func) (args : list (expr typ func)) := red_subst (apps e args).
 Definition SUBST := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all substTac).
 Print SUBST.
-Definition EQSUBST := THEN (EAPPLY eq_to_subst_lemma) SUBST.
+Definition EQSUBST := THEN (THEN (TRY (EAPPLY andA_temp_lemma)) (EAPPLY eq_to_subst_lemma)) SUBST.
 
 (*
 Notation "'ap_eq' '[' x ',' y ']'" :=
@@ -532,9 +540,11 @@ Definition step_unfold vars rw :=
 Definition PULL_TRIPLE_EXISTS : rtac typ (expr typ func) :=
   THEN (THEN (EAPPLY pull_exists_lemma) (INTRO typ func)) BETA.
 Check @CANCELLATION.
+
 Definition solve_entailment : rtac typ (expr typ func) :=
-  THEN (INSTANTIATE typ func) 
-       (FIRST (SOLVE (CANCELLATION typ func tySasn is_pure) :: nil)).
+  THEN' (THEN (INSTANTIATE typ func) 
+              (FIRST (SOLVE (CANCELLATION typ func tySasn is_pure) :: 
+                     THEN (REPEAT 1000 EQSUBST) (CANCELLATION typ func tySasn is_pure) :: nil))) (MINIFY typ func).
 
 (*
 Definition solve_entailment (rw : rewriter (typ := typ) (func := func)) : rtac typ (expr typ func) :=
@@ -565,6 +575,9 @@ Definition simStep (rw : rewriter (typ := typ) (func := func)) (r : rtac typ (ex
     	(TRY PULL_TRIPLE_EXISTS)) (STEP_REWRITE rw))) (REPEAT 10 PULL_TRIPLE_EXISTS)) r.
 *)
 
+Definition simStep (r : rtac typ (expr typ func)) :=
+  THEN (THEN (TRY PULL_TRIPLE_EXISTS) SUBST) r.
+Print write_lemma.
 Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 	match c with
 (*	    | cskip => simStep rw (THEN (EAPPLY skip_lemma) (solve_entailment rw))
@@ -577,11 +590,12 @@ Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 		| cif e c1 c2 => simStep rw (THEN (EAPPLY (if_lemma e c1 c2)) (solve_entailment rw))
 		| cwrite x f e => simStep rw (THEN (EAPPLY (write_lemma x f e)) (solve_entailment rw))*)
                 | cskip => THEN (EAPPLY skip_lemma) solve_entailment
-		| cread x y f => THEN (EAPPLY (read_lemma x y f)) (TRY solve_entailment)
+		| cread x y f => THEN (EAPPLY (read_lemma x y f)) solve_entailment
+                | cwrite x f e => THEN (EAPPLY (write_lemma x f e)) solve_entailment 
 (*		| cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
                                       (ON_EACH (tripleE c1::TRY (tripleE c2)::nil))*)
                 | cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
-                                      (ON_EACH (tripleE c1::tripleE c2::nil))
+                                               (ON_EACH (tripleE c1::simStep (TRY (tripleE c2))::nil))
 		| _ => IDTAC
 	end.
 
@@ -607,8 +621,8 @@ Definition symE : rtac typ (expr typ func) :=
          FAIL) e tus tvs n m ctx s e.
 
 Definition runTac := 
-   (THEN (THEN (REPEAT 1000 (INTRO typ func)) symE)
-	(INSTANTIATE typ func)).
+   (THEN' (THEN (THEN (REPEAT 1000 (INTRO typ func)) symE)
+	(INSTANTIATE typ func)) (MINIFY typ func)).
 	
 Lemma runTac_sound : rtac_sound runTac.
 Proof.
@@ -675,7 +689,7 @@ Ltac run_rtac reify term_table tac_sound :=
 	          let goal_result := constr:(run_tac tac (GGoal name)) in
 	          let result := eval vm_compute in goal_result in 
 	           lazymatch result with
-	            | More_ ?s ?g => idtac g; 
+	            | More_ ?s ?g => 
 	              cut (goalD_Prop nil nil g); [ 
 	                  change (goalD_Prop nil nil g -> exprD_Prop nil nil name);
                         let H := constr:(@eq_refl (Result (CTop nil nil)) (More_ s g)) in
@@ -725,15 +739,11 @@ Open Scope string.
 
 Print read_lemma.
 Print EAPPLY.
-Definition test a b c := EApply.EAPPLY typ func (read_lemma a b c).
+Definition test a b c := EAPPLY (read_lemma a b c).
 
 Lemma test_sound a b c : rtac_sound (test a b c).
 Proof.
-  unfold test.
-  apply EAPPLY_sound; try apply _.
-  intros.
   admit.
-  apply read_lemma_sound.
 Admitted.
 
 Require Import MirrorCore.syms.SymOneOf.
@@ -741,33 +751,24 @@ Require Import MirrorCore.AbsAppI.
 
 Lemma test_read : ltrue |-- 
     triple 
-      (ap_pointsto [("o" : Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)]) lfalse
-      (cread "x" "o" "f").
-(*
       (ap_pointsto [("o" : Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)] ** 
        ap_pointsto [("o" : Lang.var), ("g" : field), pure (T := Fun (Lang.stack)) (vint 4)]) 
       (ap_pointsto [("o" : Lang.var), ("f": field), pure (T := Fun (Lang.stack)) (vint 3)] ** 
       (ap_pointsto [("o" : Lang.var), ("g": field), pure (T := Fun (Lang.stack)) (vint 4)]))
-      (cseq (cread "x" "o" "f") (cseq (cread "y" "o" "g") cskip)).                     *)
+      (cseq (cread "x" "o" "f") (cseq (cread "y" "o" "g") cskip)).                     
 Proof.
-  run_rtac reify_imp term_table (test_sound "x" "o" "f").
-
-Print read_lemma.
-Check EAPPLY_sound.
-Eval vm_compute in (fEntails tySasn).
-  Time run_rtac reify_imp term_table myTac_sound.
-
-Qed.
+  Time run_rtac reify_imp term_table runTac_sound.
+Time Qed.
 
 Lemma test_write :
 	ltrue |--
 	triple
-      (ap_pointsto [("o": var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)]) 
-      (ap_pointsto [("o": var), ("f": field), pure (T := Fun (Lang.stack)) (vint 4)])
+      (ap_pointsto [("o": Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)]) 
+      (ap_pointsto [("o": Lang.var), ("f": field), pure (T := Fun (Lang.stack)) (vint 4)])
       (cseq (cwrite "o" "f" (E_val (vint 4))) cskip).                    
 Proof.
-  Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
-Qed.
+  Time run_rtac reify_imp term_table runTac_sound.
+Time Qed.
 
 Require Import BinInt.
 
@@ -815,6 +816,7 @@ Set Printing Depth 100.
 
   Opaque ap.
 
+(*
 Lemma test_swap : 
 |--
 ( {[ap_pointsto  ["o", ("f")%string, eval (E_val (vint 5))] **
@@ -828,37 +830,61 @@ Lemma test_swap :
 Proof.
   Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
 Qed.
+*)
+	
+Definition mkSwap2 n :=
+	ltrue |-- triple ltrue (mkSwapPost n) (mkSwapProg n cskip).
 
+Ltac run_rtac2 reify term_table tac_sound :=
+  lazymatch type of tac_sound with
+    | rtac_sound ?tac => 
+	  let name := fresh "e" in
+	  lazymatch goal with
+	    | |- ?P =>
+	      reify_aux reify_imp term_table P name; idtac (*
+	      let t := eval vm_compute in (typeof_expr nil nil name) in 
+	      let goal := eval unfold name in name in 
+	      match t with
+	        | Some ?t =>
+	          let goal_result := constr:(run_tac tac (GGoal name)) in
+	          let result := eval vm_compute in goal_result in 
+	           lazymatch result with
+	            | More_ ?s ?g => 
+	              cut (goalD_Prop nil nil g); [ 
+	                  change (goalD_Prop nil nil g -> exprD_Prop nil nil name);
+                        let H := constr:(@eq_refl (Result (CTop nil nil)) (More_ s g)) in
+                        refine(@run_rtac_More  _ tac s _ _ tac_sound _); 
+                          vm_cast_no_check H
+	                | cbv_denote
+	              ]  
+	            | Solved ?s =>
+                      let H := constr:(@eq_refl (Result (CTop nil nil)) (Solved s)) in
+                      refine (@run_rtac_Solved _ tac s name tac_sound _);
+                        vm_cast_no_check H
+	            | Fail => idtac "Tactic" tac "failed."
+	            | ?x => idtac "Error: run_rtac could not resolve the result from the tactic :" tac; idtac x
+	          end
+	        | None => idtac "expression " goal "is ill typed" t
+	      end  *)
+	  end
+	| _ => idtac tac_sound "is not a soudness theorem."
+  end.
 
-
-
-Lemma test_skip_lemma4 : testSkip 10.
-Proof.
-  unfold testSkip; simpl.
-  
-  Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
-Time Qed.
-
-
-
-
-
-
-Print rtac_sound.
-Print rtac_spec.
-
-Lemma test_swap2 : mkSwap 20.
+Lemma test_swap2 : mkSwap 30.
 Proof.
   unfold mkSwap, mkSwapPre, mkSwapPost, mkSwapProg, mkSwapPostAux, mkRead, mkWrite, mkWriteAux.
+  Opaque pure. 
+  simpl.
   
-  Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
+  Time run_rtac reify_imp term_table runTac_sound.
+
 Time Qed.
 
 
+Ltac charge := run_rtac reify_imp term_table runTac_sound; intros.
 
 
-
-
+(*
 
 
 

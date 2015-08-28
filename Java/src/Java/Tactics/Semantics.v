@@ -3,6 +3,7 @@ Require Import ChargeCore.Logics.BILogic.
 Require Import ChargeCore.Logics.ILEmbed.
 Require Import ChargeCore.Open.OpenILogic.
 Require Import ChargeCore.Open.Subst.
+Require Import ChargeCore.Open.Stack.
 
 Require Import Java.Language.Lang.
 Require Import Java.Language.Program.

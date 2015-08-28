@@ -74,8 +74,6 @@ Reify Declare Syntax reify_imp :=
     	                 (@Patterns.CTypedTable _ _ _ term_table Ext) :: nil))
   }.
 
-Definition stack_get (x : Lang.var) (s : Lang.stack) := s x.
-
 Notation "'ap_eq' '[' x ',' y ']'" :=
 	 (ap (T := Fun Lang.stack) (ap (T := Fun Lang.stack) (pure (T := Fun Lang.stack) (@eq val)) x) y).
 Notation "'ap_pointsto' '[' x ',' f ',' e ']'" := 
@@ -190,10 +188,11 @@ Reify Pattern patterns_java += (RImpl (?0) (?1)) => (fun (x y : function reify_i
 (** Separation Logic Operators **)
 Reify Pattern patterns_java += (!! @BILogic.sepSP @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fStar (func := func) x)).
 Reify Pattern patterns_java += (!! @BILogic.wandSP @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fWand (func := func) x)).
-Reify Pattern patterns_java += (!! @BILogic.empSP @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (mkEmp (func := func) x)).
+Reify Pattern patterns_java += (!! @BILogic.empSP @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fEmp (func := func) x)).
 (*
 Reify Pattern patterns_java += (!! @Later.illater @ ?0 @ #) => (fun (x : function reify_imp_typ) => (fLater (func := func) x)).
 *)
+
 Reify Pattern patterns_java += (!! method_spec) => (fMethodSpec).
 
 (** Program Logic **)
@@ -207,7 +206,8 @@ Reify Pattern patterns_java += (!!m_body) => (Inj (typ := typ) fMethodBody).
 Reify Pattern patterns_java += (!!m_params) => (Inj (typ := typ) fMethodArgs).
 
 Reify Pattern patterns_java += (!! eval @ (RHasType dexpr (?0))) => (fun e : id dexpr => evalDExpr e).
-Reify Pattern patterns_java += (!! stack_get) => (Inj (typ := typ) (fStackGet (typ := typ) (func := func))).
+Reify Pattern patterns_java += (!! @stack_get @?0 @ ?1) => (fun _ _ : function reify_imp_typ =>
+                                                              Inj (typ := typ) (fStackGet (typ := typ) (func := func))).
 Reify Pattern patterns_java += (!! stack_add (val := val)) => (Inj (typ := typ) (fStackSet (typ := typ) (func := func))).
 
 Reify Pattern patterns_java += (!! pointsto) => (Inj (typ := typ) fPointsto).
@@ -295,10 +295,11 @@ Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
   generalize (String.EmptyString : String.string).
   intro x.
 
-  reify_imp stack_get.
-
-  reify_imp (stack_get x).
-
+  reify_imp (stack_get (A := Lang.var) (val := val)).
+  reify_imp (@stack_get Lang.var val x).
+(* GREGORY: The next commented out command hrows an exception 
+  reify_imp (stack_get (val := val) x).
+*)
   reify_imp (x = x).
 
   reify_imp (@ltrue sasn _).
