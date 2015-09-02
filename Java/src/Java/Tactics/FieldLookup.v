@@ -1,37 +1,39 @@
 Require Import MirrorCore.RTac.Core.
 Require Import MirrorCore.Lambda.Expr.
 Require Import MirrorCore.Lambda.ExprUnify_simul.
+Require Import MirrorCore.Lambda.Ptrns.
+Require Import MirrorCore.Views.Ptrns.
+Require Import MirrorCore.Views.FuncView.
+Require Import MirrorCore.Views.StringView.
 
 Require Import Java.Func.JavaFunc.
 Require Import Java.Func.JavaType.
 Require Import Java.Language.Program.
-(*
-Require Import Charge.ModularFunc.BaseFunc.
 
 Section FieldLookup.
   Context {fs : Environment}.
 
   Definition FIELD_LOOKUP : rtac typ (expr typ func) :=
-	fun tus tvs n m c s e =>
-		match e with
-		  | App (App (App (Inj ({| SumN.index := 1%positive; SumN.value := pFieldLookup |}))
-		  	 (Inj (({| SumN.index := 1%positive; SumN.value := pProg P |})))) C) f =>
-		    match baseS C with
-		      | Some (pString C') =>
-				match class_lookup C' P with
-		    	  | Some Class =>
-		    	    match @exprUnify (ctx_subst c) typ func _ _ _ _ _ 3
-		                             tus tvs 0 f (mkFields (c_fields Class)) tyVarList s with
-		              | Some s => Solved s
-		              | None   => Fail
-		            end
-				  | _ => Fail
-				end
-			  | _ => Fail
-			end
-		  | _ => Fail
-		end.
+    fun tus tvs n m c s =>
+      run_default 
+        (pmap (fun P_C_f => 
+                 let '(_, P, C, f) := P_C_f in
+                 match class_lookup C P with
+                 | Some C' =>
+		   match @exprUnify (ctx_subst c) typ func _ _ _ _ _ 3
+		                    tus tvs 0 f (Inj (fFields (c_fields C'))) tyVarList s with
+		   | Some s => Solved s
+		   | None   => Fail
+		   end
+                     
+                 | None => Fail
+                 end)
+              (app (app (app (inj (ptrn_view _ fptrnFieldLookup)) 
+                             (inj (ptrn_view _ (fptrnProg get))))
+                        (ptrnString get))
+                   get)) Fail.
 
+(*
 Lemma FIELD_LOOKUP_sound : rtac_sound FIELD_LOOKUP.
 Proof.
   unfold rtac_sound, rtac_spec; intros.
@@ -113,6 +115,7 @@ Proof.
   apply _.
 Qed.
 
-End FieldLookup.
 
 *)
+
+End FieldLookup.

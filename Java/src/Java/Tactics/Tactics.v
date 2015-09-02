@@ -364,8 +364,8 @@ Ltac cbv_denote :=
         JavaFunc.fProg JavaFunc.fCmd JavaFunc.fDExpr JavaFunc.fFields
         JavaFunc.fMethodSpec JavaFunc.fProgEq JavaFunc.fTriple JavaFunc.fTypeOf
         JavaFunc.fFieldLookup JavaFunc.fPointsto JavaFunc.fNull
-        JavaFunc.fPlus JavaFunc.fMinus JavaFunc.fTimes JavaFunc.fAnd
-        JavaFunc.fOr JavaFunc.fNot JavaFunc.fLt JavaFunc.fValEq
+        JavaFunc.fPlusE JavaFunc.fMinusE JavaFunc.fTimesE JavaFunc.fAndE
+        JavaFunc.fOrE JavaFunc.fNotE JavaFunc.fLtE JavaFunc.fValEq
         JavaFunc.mkTriple JavaFunc.mkFieldLookup JavaFunc.mkTypeOf
         JavaFunc.mkProgEq JavaFunc.mkExprList JavaFunc.evalDExpr
         

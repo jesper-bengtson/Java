@@ -90,6 +90,7 @@ Fixpoint search_NoDup
       | None => None
       end
   end.
+
 (*
 
 
@@ -578,6 +579,16 @@ Definition simStep (rw : rewriter (typ := typ) (func := func)) (r : rtac typ (ex
 Definition simStep (r : rtac typ (expr typ func)) :=
   THEN (THEN (TRY PULL_TRIPLE_EXISTS) SUBST) r.
 Print write_lemma.
+
+Set Printing Universes.
+(*
+Require Import MirrorCore.Views.ListOpView.
+Print Universes.
+Check @red_fold_ptrn typ func.
+
+Require Import 
+*)
+
 Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 	match c with
 (*	    | cskip => simStep rw (THEN (EAPPLY skip_lemma) (solve_entailment rw))
@@ -592,6 +603,9 @@ Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
                 | cskip => THEN (EAPPLY skip_lemma) solve_entailment
 		| cread x y f => THEN (EAPPLY (read_lemma x y f)) solve_entailment
                 | cwrite x f e => THEN (EAPPLY (write_lemma x f e)) solve_entailment 
+(*                | calloc x C => THEN' (EAPPLY (alloc_lemma x C))
+                                      (ON_EACH (solve_entailment::FIELD_LOOKUP::
+                                                                THEN FOLD solve_entailment))*)
 (*		| cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
                                       (ON_EACH (tripleE c1::TRY (tripleE c2)::nil))*)
                 | cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))

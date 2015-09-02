@@ -235,19 +235,34 @@ Proof.
   consider (f ?[ eq ] f0); intros; subst; intuition congruence.
 Qed.	
 
-Fixpoint list_to_pmap_aux {T : Type} (lst : list T) (p : positive) : pmap T :=
+Inductive list' (A : Type) :=
+  | nil' : list' A
+  | cons' : A -> list' A -> list' A.
+
+Fixpoint list_to_pmap_aux {T : Type} (lst : list' T) (p : positive) : pmap T :=
   match lst with
-    | nil => Empty
-    | x :: xs => pmap_insert p x (list_to_pmap_aux xs (p + 1))
+    | nil' => Empty
+    | cons' x xs => pmap_insert p x (list_to_pmap_aux xs (p + 1))
   end.
   
-Definition list_to_pmap {T : Type} (lst : list Type) := list_to_pmap_aux lst 1.
+Definition list_to_pmap {T : Type} (lst : list' Type) := list_to_pmap_aux lst 1.
 
 Definition func_map : pmap Type :=
 	list_to_pmap (T := Type) 
-	  (java_func::SymEnv.func::@ilfunc typ::@bilfunc typ::@list_func typ::
-	   @subst_func typ::@embed_func typ::(natFunc:Type)::(stringFunc:Type)::
-           (boolFunc:Type)::@prod_func typ::@eq_func typ::@ap_func typ::@listOp_func typ::nil).
+	  (cons' java_func
+          (cons' SymEnv.func
+          (cons' (@ilfunc typ)
+          (cons' (@bilfunc typ)
+          (cons' (@list_func typ)
+	  (cons' (@subst_func typ)
+          (cons' (@embed_func typ)
+          (cons' (natFunc:Type)
+          (cons' (stringFunc:Type)
+          (cons' (boolFunc:Type)
+          (cons' (@prod_func typ)
+          (cons' (@eq_func typ)
+          (cons' (@ap_func typ)
+          (cons' (@listOp_func typ) (nil' Type))))))))))))))).
 
 Definition func := OneOf func_map.
 
@@ -300,13 +315,13 @@ Section MakeJavaFunc.
   Definition fMethodArgs : func:= f_insert pMethodArgs.
   Definition fMethodRet : func:= f_insert pMethodRet.	
   
-  Definition fPlus : func:= f_insert pPlus.
-  Definition fMinus : func:= f_insert pMinus.
-  Definition fTimes : func:= f_insert pTimes.
-  Definition fAnd : func:= f_insert pAnd.
-  Definition fOr : func:= f_insert pOr.
-  Definition fNot : func:= f_insert pNot.
-  Definition fLt : func:= f_insert pLt.
+  Definition fPlusE : func:= f_insert pPlus.
+  Definition fMinusE : func:= f_insert pMinus.
+  Definition fTimesE : func:= f_insert pTimes.
+  Definition fAndE : func:= f_insert pAnd.
+  Definition fOrE : func:= f_insert pOr.
+  Definition fNotE : func:= f_insert pNot.
+  Definition fLtE : func:= f_insert pLt.
   Definition fValEq : func:= f_insert pValEq.
 
 Require Import MirrorCore.Views.Ptrns.
@@ -431,38 +446,45 @@ Require Import MirrorCore.Lambda.Ptrns.
         | _ => bad f
       end.
 
-  Definition fptrnAnd : ptrn java_func unit :=
+  Definition fptrnAndE : ptrn java_func unit :=
     fun f U good bad =>
       match f with
         | pAnd => good tt
         | _ => bad f
       end.
 
-  Definition fptrnOr : ptrn java_func unit :=
+  Definition fptrnOrE : ptrn java_func unit :=
     fun f U good bad =>
       match f with
         | pOr => good tt
         | _ => bad f
       end.
 
-  Definition fptrnNot : ptrn java_func unit :=
+  Definition fptrnNotE : ptrn java_func unit :=
     fun f U good bad =>
       match f with
         | pNot => good tt
         | _ => bad f
       end.
 
-  Definition fptrnLt : ptrn java_func unit :=
+  Definition fptrnLtE : ptrn java_func unit :=
     fun f U good bad =>
       match f with
         | pMethodSpec => good tt
         | _ => bad f
       end.
 
-  Definition fptrnValEq : ptrn java_func unit :=
+  Definition fptrnValEqE : ptrn java_func unit :=
     fun f U good bad =>
       match f with
         | pMethodSpec => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrnFieldLookup : ptrn java_func unit :=
+    fun f U good bad =>
+      match f with
+        | pFieldLookup => good tt
         | _ => bad f
       end.
 
@@ -494,13 +516,13 @@ Fixpoint evalDExpr (e : dexpr) : expr typ func :=
     match e with
     | E_val v => mkPure tyVal (Inj (fVal v))
     | E_var x => App (Inj fStackGet) (mkString x)
-    | E_plus e1 e2 => mkAps (Inj fPlus) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_minus e1 e2 => mkAps (Inj fMinus) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_times e1 e2 => mkAps (Inj fTimes) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_and e1 e2 => mkAps (Inj fAnd) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_or e1 e2 => mkAps (Inj fOr) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
-    | E_not e => mkAps (Inj fNot) ((evalDExpr e, tyVal)::nil) tyVal
-    | E_lt e1 e2 => mkAps (Inj fLt) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_plus e1 e2 => mkAps (Inj fPlusE) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_minus e1 e2 => mkAps (Inj fMinusE) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_times e1 e2 => mkAps (Inj fTimesE) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_and e1 e2 => mkAps (Inj fAndE) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_or e1 e2 => mkAps (Inj fOrE) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
+    | E_not e => mkAps (Inj fNotE) ((evalDExpr e, tyVal)::nil) tyVal
+    | E_lt e1 e2 => mkAps (Inj fLtE) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
     | E_eq e1 e2 => mkAps (Inj fValEq) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
     end.
 

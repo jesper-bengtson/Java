@@ -1,3 +1,49 @@
+Require Import ChargeCore.Logics.ILogic.
+Require Import ChargeCore.Logics.BILogic.
+Require Import ChargeCore.Logics.ILEmbed.
+Require Import ChargeCore.Open.Stack.
+
+Require Import Java.Language.Lang.
+Require Import Java.Language.Program.
+Require Import Java.Semantics.AxiomaticSemantics.
+Require Import Java.Logic.AssertionLogic.
+Require Import Java.Examples.ListModel.
+
+Require Import Coq.Lists.List.
+Require Import Coq.Strings.String.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+
+Open Scope string_scope.
+Open Scope cmd_scope.
+Open Scope list_scope.
+
+Definition add_body :=
+  (cseq (calloc "tn" "NodeC")
+        (cseq (cwrite "tn" "val" (E_var "n")) 
+              (cseq (cread "lst" "this" "head")
+                    (cseq (cwrite "tn" "next" (E_var "lst"))
+                          (cwrite "this" "head" (E_var "tn")))))).
+
+  Definition AddM : Method :=
+    Build_Method ("this"::"n"::nil) add_body (E_val (vint 0)).
+
+  Definition NodeC :=
+    Build_Class ("val"::"next"::nil) nil.
+  
+  Definition ListC := Build_Class ("head"::nil) (("add", AddM)::nil).
+
+  Definition ListProg := Build_Program
+    (("List", ListC)::("NodeC", NodeC)::nil).  
+
+  Definition add_spec : spec :=
+    Forall xs : list val, method_spec "List" "add" ("this"::"n"::nil) "" 
+                                    (fun s => List (s "this") xs) 
+                                    (fun s => List (s "this") ((s "n")::xs)).
+
+
+
 (*
 Require Import AxiomaticSemantics String AssertionLogic ILogic ILEmbed BILogic Lang Stack ZArith Coq.Lists.List ListModel.
 Require Import Program SpecLogic OperationalSemantics.
