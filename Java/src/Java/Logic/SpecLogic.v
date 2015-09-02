@@ -1,4 +1,9 @@
-Require Import Later Program ILogic ILEmbed ILInsts Omega.
+Require Import Coq.omega.Omega.
+Require Import ChargeCore.Logics.Later.
+Require Import ChargeCore.Logics.ILogic.
+Require Import ChargeCore.Logics.ILEmbed.
+Require Import ChargeCore.Logics.ILInsts.
+Require Import Java.Language.Program.
 
 (*
 Local Existing Instance ILLaterNat.

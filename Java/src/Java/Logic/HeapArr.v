@@ -1,6 +1,12 @@
-Require Import RelationClasses Setoid Morphisms Program.
-Require Import MapInterface MapFacts.
-Require Import SepAlg SepAlgMap UUSepAlg SepAlgInsts Stack Lang.
+Require Import RelationClasses Setoid Morphisms.
+From Containers Require Import MapInterface MapFacts.
+Require Import ChargeCore.SepAlg.SepAlg.
+Require Import Charge.SepAlg.SepAlgMap.
+Require Import ChargeCore.SepAlg.UUSepAlg.
+Require Import ChargeCore.SepAlg.SepAlgInsts.
+Require Import ChargeCore.Open.Stack.
+Require Import ChargeCore.Rel.
+Require Import Java.Language.Lang.
 
 Local Existing Instance MapSepAlgOps.
 Local Existing Instance MapSepAlg.

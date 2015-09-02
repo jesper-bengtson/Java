@@ -26,6 +26,7 @@ Require Import Charge.Views.SubstView.
 Require Import ChargeCore.Open.Stack.
 Require Import ChargeCore.Open.Subst.
 Require Import ChargeCore.Open.OpenILogic.
+Require Import ChargeCore.Logics.ILogic.
 Require Import ChargeCore.Logics.BILogic.
 Require Import ChargeCore.Logics.Later.
 
@@ -54,7 +55,7 @@ Reify Declare Syntax t_cmd :=
 
 
 Reify Declare Syntax reify_imp_typ :=
-  { 
+  {
   	(@Patterns.CPatterns typ patterns_java_typ)
   }.
 
@@ -76,14 +77,14 @@ Reify Declare Syntax reify_imp :=
 
 Notation "'ap_eq' '[' x ',' y ']'" :=
 	 (ap (T := Fun Lang.stack) (ap (T := Fun Lang.stack) (pure (T := Fun Lang.stack) (@eq val)) x) y).
-Notation "'ap_pointsto' '[' x ',' f ',' e ']'" := 
-	(ap (T := Fun Lang.stack) (ap (T := Fun Lang.stack) (ap (T := Fun Lang.stack) 
-		(pure (T := Fun Lang.stack) pointsto) (stack_get x)) 
+Notation "'ap_pointsto' '[' x ',' f ',' e ']'" :=
+	(ap (T := Fun Lang.stack) (ap (T := Fun Lang.stack) (ap (T := Fun Lang.stack)
+		(pure (T := Fun Lang.stack) pointsto) (stack_get x))
 			(pure (T := Fun Lang.stack) f)) e).
 Notation "'ap_typeof' '[' e ',' C ']'" :=
-	(ap (T := Fun Lang.stack) 
-	    (ap (T := Fun Lang.stack) 
-	        (pure (T := Fun Lang.stack) typeof) 
+	(ap (T := Fun Lang.stack)
+	    (ap (T := Fun Lang.stack)
+	        (pure (T := Fun Lang.stack) typeof)
 	        (pure (T := Fun Lang.stack) C))
 	    e).
 (*
@@ -182,7 +183,7 @@ Reify Pattern patterns_java += (!! ex @ ?0) => (fun (x : function reify_imp_typ)
 Reify Pattern patterns_java += (RPi (?0) (?1)) => (fun (x : function reify_imp_typ) (y : function reify_imp) =>
                                                    ExprCore.App (Inj (fForall (func := func) x tyProp)) (ExprCore.Abs x y)).
 
-Reify Pattern patterns_java += (RImpl (?0) (?1)) => (fun (x y : function reify_imp) => 
+Reify Pattern patterns_java += (RImpl (?0) (?1)) => (fun (x y : function reify_imp) =>
 	ExprCore.App (ExprCore.App (Inj (fImpl (func := func) tyProp)) x) y).
 
 (** Separation Logic Operators **)
@@ -241,8 +242,6 @@ Ltac reify_imp e :=
              [ (fun (y : @mk_dvar_map _ _ _ _ term_table elem_ctor) => True) ]
              [ e ].
 
-Require Import ILogic.
-
 Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
   intros Pr C v fields.
 
@@ -261,7 +260,7 @@ Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
   reify_imp (fun a b c => pointsto a b c).
 
   reify_imp e2.
-  
+
   reify_imp e3.
 
   reify_imp (ap (T := Fun Lang.stack) (ap (T := Fun Lang.stack) (pure (@eq val)) e2) e2).
@@ -285,7 +284,7 @@ Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
   reify_imp (@map nat nat).
   reify_imp (@subst1 Lang.var val _).
   reify_imp (cseq cskip cskip).
-  
+
   reify_imp (ILogic.lentails True True).
 
   reify_imp ((True -> False) -> True).
@@ -297,7 +296,7 @@ Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
 
   reify_imp (stack_get (A := Lang.var) (val := val)).
   reify_imp (@stack_get Lang.var val x).
-(* GREGORY: The next commented out command hrows an exception 
+(* GREGORY: The next commented out command hrows an exception
   reify_imp (stack_get (val := val) x).
 *)
   reify_imp (x = x).

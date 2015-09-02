@@ -4,7 +4,7 @@ Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Data.String.
 Require Import ExtLib.Data.Nat.
 Require Import ExtLib.Data.HList.
-Require Import MirrorCore.Lemma. 
+Require Import MirrorCore.Lemma.
 Require Import MirrorCore.TypesI.
 Require Import MirrorCore.Lambda.Expr.
 Require Import MirrorCore.RTac.RTac.
@@ -16,7 +16,7 @@ Require Import MirrorCore.Lambda.ExprLift.
 Require Import MirrorCore.Lambda.ExprSubst.
 Require Import MirrorCore.Lambda.ExprUnify_simul.
 Require Import MirrorCore.Lambda.Red.
-Require Import MirrorCore.Lambda.AppN. 
+Require Import MirrorCore.Lambda.AppN.
 Require Import MirrorCore.Lambda.RedAll.
 Require Import MirrorCore.Lambda.ExprVariables.
 Require Import Charge.Views.ILogicView.
@@ -45,7 +45,7 @@ Require Import Charge.Tactics.Open.Subst.
 
 Require Import Java.Language.Lang.
 Require Import Java.Language.Program.
- 
+
 Require Import Charge.Tactics.Rtac.Apply.
 Require Import Charge.Tactics.Rtac.Cancellation.
 Require Import Charge.Tactics.Rtac.Intro.
@@ -54,12 +54,12 @@ Require Import Charge.Tactics.Rtac.Instantiate.
 
 Require Import Coq.Arith.Peano_dec.
 
-Fixpoint mkStars n P Q : expr typ func := 
+Fixpoint mkStars n P Q : expr typ func :=
 	match n with
 		| 0 => mkStar tySasn P Q
 		| S n => mkStar tySasn (mkStars n P Q) (mkStars n P Q)
 	end.
-	
+
 Definition cancelTest n :=
       mkForall tySasn tyProp
       (mkForall tySasn tyProp
@@ -81,10 +81,10 @@ Fixpoint search_NoDup
       | Some nodup =>
           match In_dec A_dec a l' with
           | left isin => None
-          | right notin => 
+          | right notin =>
  			match search_NoDup A_dec l' with
  				| Some pf => Some (NoDup_cons _ notin pf)
- 				| None => None         
+ 				| None => None
             end
           end
       | None => None
@@ -100,26 +100,26 @@ Definition list_notin_set lst s :=
 Definition method_specI : stac typ (expr typ func) subst :=
   fun tus tvs s lst e =>
     match e with
-    	| mkEntails [l, mkProgEq [mkProg [P]], mkMethodSpec [C, m, mkVarList [args], mkString [r], p, q]] => 
+    	| mkEntails [l, mkProgEq [mkProg [P]], mkMethodSpec [C, m, mkVarList [args], mkString [r], p, q]] =>
     	      match C, m with
-    	        | Inj (inl (inr (pString Cname))), Inj (inl (inr (pString Mname))) => 
+    	        | Inj (inl (inr (pString Cname))), Inj (inl (inr (pString Mname))) =>
     	          match SM.find Cname (p_classes P) with
-    	          	| Some Class => 
+    	          	| Some Class =>
     	          	  match SM.find Mname (c_methods Class) with
-    	          	    | Some Method => 
+    	          	    | Some Method =>
 						  match search_NoDup Coq.Strings.String.string_dec args with
-						  	| Some pf => 
+						  	| Some pf =>
 						  	  match eq_nat_dec (length args) (length (m_params Method)) with
-						  	    | left pf' => 
+						  	    | left pf' =>
 						  	      if list_notin_set args (modifies (m_body Method)) then
-						  	        More tus tvs s lst 
-						  	        mkEntails [l, mkProgEq [mkProg [P]], 
-						  	                      mkTriple [mkApplyTruncSubst [tyAsn, p, mkSubstList [mkVarList [args], mkExprList [map E_var (m_params Method)]] ], mkCmd [m_body Method], 
+						  	        More tus tvs s lst
+						  	        mkEntails [l, mkProgEq [mkProg [P]],
+						  	                      mkTriple [mkApplyTruncSubst [tyAsn, p, mkSubstList [mkVarList [args], mkExprList [map E_var (m_params Method)]] ], mkCmd [m_body Method],
 						  	                               mkApplyTruncSubst [tyAsn, q, mkSubstList [mkVarList [r::args], mkConsExprList [App fEval (mkExpr [m_ret Method]), mkExprList[map E_var (m_params Method)]]] ]]]
 						  	      else
 						  	        @Fail _ _ _
 						  	    | right _ => @Fail _ _ _
-						  	  end 
+						  	  end
 						  	| None => @Fail _ _ _
 						  end
     	          	    | None => @Fail _ _ _
@@ -147,7 +147,7 @@ Definition skip_lemma : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_imp rule_skip.
 Defined.
 
-Lemma skip_lemma_sound : 
+Lemma skip_lemma_sound :
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil skip_lemma.
 Proof.
   unfold lemmaD; simpl; intros.
@@ -170,7 +170,7 @@ Proof.
   reify_lemma reify_imp (@rule_seq c1 c2).
 Defined.
 
-Lemma seq_lemma_sound c1 c2 : 
+Lemma seq_lemma_sound c1 c2 :
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil (seq_lemma c1 c2).
 Proof.
   unfold lemmaD; simpl; intros.
@@ -187,19 +187,19 @@ Defined.
 
 Require Import ExtLib.Tactics.
 
-Lemma if_lemma_sound e c1 c2 : 
+Lemma if_lemma_sound e c1 c2 :
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil (if_lemma e c1 c2).
 Proof.
   unfold lemmaD; simpl; intros.
   unfold lemmaD'; simpl.
   repeat (unfold AbsAppI.exprT_App; simpl in *).
-  admit.                                    
+  admit.
 Admitted.
 (*
 Example test_if_lemma e (c1 c2 : cmd) : test_lemma (if_lemma e c1 c2). Admitted.
 *)
 Definition read_lemma (x y : var) (f : field) : lemma typ (expr typ func) (expr typ func).
-Proof.  
+Proof.
   reify_lemma reify_imp (@rule_read_fwd x y f).
 Defined.
 
@@ -223,7 +223,7 @@ Proof.
   reify_lemma reify_imp (@rule_write_fwd x f e).
 Defined.
 
-Lemma write_lemma_sound x f e : 
+Lemma write_lemma_sound x f e :
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil (write_lemma x f e).
 Proof.
   admit.
@@ -290,7 +290,7 @@ Eval vm_compute in eq_to_subst_lemma.
 Example test_eq_lemma : test_lemma (eq_to_subst_lemma). Admitted.
 *)
 (*
-Definition scall_lemma (x : Lang.var) (C : class) (m : string) (es : list dexpr) 
+Definition scall_lemma (x : Lang.var) (C : class) (m : string) (es : list dexpr)
   : lemma typ (expr typ func) (expr typ func).
 Proof.
   reify_lemma reify_imp rule_static_complete.
@@ -317,7 +317,7 @@ Require Import MirrorCore.Lambda.ExprTac.
     destruct es; try (exists val; tauto).
     destruct e2; try (exists val; tauto).
     destruct f; try (exists val; tauto).
-    
+
     destruct j; try (exists val; tauto).
     destruct es; try (exists val; tauto).
     destruct e; simpl in Heqo; try congruence.
@@ -332,7 +332,7 @@ Require Import MirrorCore.Lambda.ExprTac.
     autorewrite with exprD_rw in H; simpl in H; forward; inv_all; subst; [|apply _].
     autorewrite with exprD_rw in H0; simpl in H0; forward; inv_all; subst; [|apply _].
     autorewrite with exprD_rw in H2; simpl in H2; forward; inv_all; subst; [|apply _].
-    unfold funcAs in H2. 
+    unfold funcAs in H2.
     Opaque type_cast.
     simpl in H2. forward; inv_all; subst. red in r. inv_all.
     inversion r; subst.
@@ -369,21 +369,21 @@ Require Import MirrorCore.Lambda.ExprTac.
     apply functional_extensionality; intros.
     apply H2.
   Qed.
-  
-  
+
+
       do 2 (apply exprD'_remove_beta).
       unfold exprD'. simpl.
-      
+
       red_exprD; [|apply _].
       pose proof (exprD_typeof_Some).
       specialize (H5  _ _ _ _ _ _ _ _ _ _ _ _ _ H2). rewrite H5; clear H5.
       red_exprD; [|apply _].
       forward; inv_all; subst.
       unfold mkString. forward.
-      red_exprD; [|apply _]. 
+      red_exprD; [|apply _].
       Transparent type_cast.
       unfold funcAs. simpl.
-	  f_equal. unfold exprT_App; simpl. 
+	  f_equal. unfold exprT_App; simpl.
 	  unfold eq_rect_r. simpl.
 	  apply functional_extensionality; intros.
 	  apply functional_extensionality; intros.
@@ -436,7 +436,7 @@ Proof.
   apply beta_all_sound.
   Check beta_all_sound.
   (* beta_all_sound is missing *)
-  
+
   *)
 Qed.
 *)
@@ -456,7 +456,7 @@ Proof.
     intros e vars tus tvs tus' tvs' P Hvars es t targs Hexpr.
   }
   unfold full_reducer_ok.
-  
+
   Print full_reducer.
   pose proof (beta_all_sound).
   SearchAbout beta_all.
@@ -471,7 +471,7 @@ Let EAPPLY lem := THEN' (EAPPLY typ func lem) (MINIFY typ func).
 
 Require Import Charge.Views.SubstView.
 
-Definition THEN (r1 r2 : rtac typ (expr typ func)) := 
+Definition THEN (r1 r2 : rtac typ (expr typ func)) :=
   THEN (THEN (THEN (INSTANTIATE typ func) (runOnGoals r1)) (runOnGoals (INSTANTIATE typ func))) (runOnGoals r2).
 Definition substTac (_ : list (option (expr typ func))) (e : expr typ func) (args : list (expr typ func)) := red_subst (apps e args).
 Definition SUBST := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all substTac).
@@ -485,7 +485,7 @@ Notation "'ap_eq' '[' x ',' y ']'" :=
 
 (*
 Definition match_ap_eq (e : expr typ func) : bool :=
-	match e with 
+	match e with
 	  | App emb (App (App f (App (App g (App h e)) x)) y) =>
 	  	match embedS emb, open_funcS f, open_funcS g, open_funcS h, baseS e with
 	  		| Some (eilf_embed _ _), Some (of_ap _ _), Some (of_ap _ _), Some (of_const _), Some (pEq _) => true
@@ -498,7 +498,7 @@ Definition match_ap_eq (e : expr typ func) : bool :=
 Definition PULLEQL : rtac typ (expr typ func) := @PULLCONJUNCTL typ func RType_typ _ _ _ match_ap_eq _ _ _ ilops.
 *)
                         (*
-	THEN (INSTANTIATE typ func subst) (runOnGoals (THEN (THEN (TRY FIELD_LOOKUP) 
+	THEN (INSTANTIATE typ func subst) (runOnGoals (THEN (THEN (TRY FIELD_LOOKUP)
 		(runOnGoals (CANCELLATION typ func subst tySpec (fun _ => false)))) (runOnGoals FOLD))) ::
 		solve_entailment :: nil).
 	           *)
@@ -527,10 +527,10 @@ Definition step_unfold vars rw :=
     (sr_combine il_respects
                (sr_combine (@il_respects_reflexive typ func _ _ _ ilops _ _)
                                         (sr_combine bil_respects
-                                                    (sr_combine eq_respects 
+                                                    (sr_combine eq_respects
                                                     (sr_combine spec_respects refl)))))
     (fun _ => rw_fail).
-    
+
   Definition STEP_REWRITE rw : rtac typ (expr typ func) :=
     fun tus tvs lus lvs c s e =>
       match step_unfold (getVars c) rw tyProp e with
@@ -543,16 +543,16 @@ Definition PULL_TRIPLE_EXISTS : rtac typ (expr typ func) :=
 Check @CANCELLATION.
 
 Definition solve_entailment : rtac typ (expr typ func) :=
-  THEN' (THEN (INSTANTIATE typ func) 
-              (FIRST (SOLVE (CANCELLATION typ func tySasn is_pure) :: 
+  THEN' (THEN (INSTANTIATE typ func)
+              (FIRST (SOLVE (CANCELLATION typ func tySasn is_pure) ::
                      THEN (REPEAT 1000 EQSUBST) (CANCELLATION typ func tySasn is_pure) :: nil))) (MINIFY typ func).
 
 (*
 Definition solve_entailment (rw : rewriter (typ := typ) (func := func)) : rtac typ (expr typ func) :=
-	THEN (INSTANTIATE typ func) 
+	THEN (INSTANTIATE typ func)
 		(FIRST (SOLVE (CANCELLATION typ func tySasn is_pure) ::
-	           (THEN (THEN (THEN (THEN (*PULLEQL*) IDTAC (REPEAT 1000 EQSUBST)) 
-	          (STEP_REWRITE rw)) (REPEAT 1000 (INTRO typ func))) 
+	           (THEN (THEN (THEN (THEN (*PULLEQL*) IDTAC (REPEAT 1000 EQSUBST))
+	          (STEP_REWRITE rw)) (REPEAT 1000 (INTRO typ func)))
 	              (CANCELLATION typ func tySasn is_pure)::
 	           nil))).
 *)
@@ -592,7 +592,7 @@ Require Import
 Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 	match c with
 (*	    | cskip => simStep rw (THEN (EAPPLY skip_lemma) (solve_entailment rw))
-	(*    | calloc x C => simStep rw (THEN (EAPPLY (alloc_lemma x C)) 
+	(*    | calloc x C => simStep rw (THEN (EAPPLY (alloc_lemma x C))
 	        (FIRST (solve_alloc rw::solve_entailment rw::nil)))*)
 		| cseq c1 c2 => simStep rw (THEN' (EAPPLY (seq_lemma c1 c2))
 		    (THENK (runOnGoals (TRY (tripleE c1 rw))) (THENK (MINIFY typ func) (runOnGoals (tripleE c2 rw)))))
@@ -602,10 +602,10 @@ Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 		| cwrite x f e => simStep rw (THEN (EAPPLY (write_lemma x f e)) (solve_entailment rw))*)
                 | cskip => THEN (EAPPLY skip_lemma) solve_entailment
 		| cread x y f => THEN (EAPPLY (read_lemma x y f)) solve_entailment
-                | cwrite x f e => THEN (EAPPLY (write_lemma x f e)) solve_entailment 
 (*                | calloc x C => THEN' (EAPPLY (alloc_lemma x C))
                                       (ON_EACH (solve_entailment::FIELD_LOOKUP::
                                                                 THEN FOLD solve_entailment))*)
+                | cwrite x f e => THEN (EAPPLY (write_lemma x f e)) solve_entailment
 (*		| cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
                                       (ON_EACH (tripleE c1::TRY (tripleE c2)::nil))*)
                 | cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
@@ -634,10 +634,10 @@ Definition symE : rtac typ (expr typ func) :=
                              (ptrnEntails get get (ptrnTriple get get (ptrnCmd get))))
          FAIL) e tus tvs n m ctx s e.
 
-Definition runTac := 
+Definition runTac :=
    (THEN' (THEN (THEN (REPEAT 1000 (INTRO typ func)) symE)
 	(INSTANTIATE typ func)) (MINIFY typ func)).
-	
+
 Lemma runTac_sound : rtac_sound runTac.
 Proof.
   admit.
@@ -647,22 +647,22 @@ Require Import MirrorCore.Views.ApplicativeView.
 Require Import MirrorCore.Views.StringView.
 
 Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr typ func :=
-   mkAp (func := func) tyVal tyAsn 
+   mkAp (func := func) tyVal tyAsn
         (mkAp tyString (tyArr tyVal tyAsn)
               (mkAp tyVal (tyArr tyString (tyArr tyVal tyAsn))
-                    (mkPure (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn))) 
+                    (mkPure (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn)))
                              (Inj fPointsto))
                     x)
               (mkPure (func := func) tyString (mkString f)))
         e  .
-        
+
 Require Import Java.Semantics.OperationalSemantics.
 Require Import Java.Logic.SpecLogic.
 Require Import Java.Logic.AssertionLogic.
 
 Require Import ChargeCore.Logics.ILogic.
 
-Fixpoint seq_skip n := 
+Fixpoint seq_skip n :=
 	match n with
 	  | 0 => cskip
 	  | S n => cseq cskip (seq_skip n)
@@ -685,32 +685,32 @@ Admitted.
 Require Import Java.Tactics.Tactics.
 *)
 Definition run_tac tac goal :=
-  runOnGoals tac nil nil 0 0 (CTop nil nil) 
+  runOnGoals tac nil nil 0 0 (CTop nil nil)
     (ctx_empty (typ := typ) (expr := expr typ func)) goal.
 
 Require Import Java.Tactics.Tactics.
 Ltac run_rtac reify term_table tac_sound :=
   lazymatch type of tac_sound with
-    | rtac_sound ?tac => 
+    | rtac_sound ?tac =>
 	  let name := fresh "e" in
 	  lazymatch goal with
 	    | |- ?P =>
-	      reify_aux reify_imp term_table P name; 
+	      reify_aux reify_imp term_table P name;
 	      let t := eval vm_compute in (typeof_expr nil nil name) in
-	      let goal := eval unfold name in name in 
+	      let goal := eval unfold name in name in
 	      match t with
 	        | Some ?t =>
 	          let goal_result := constr:(run_tac tac (GGoal name)) in
-	          let result := eval vm_compute in goal_result in 
+	          let result := eval vm_compute in goal_result in
 	           lazymatch result with
-	            | More_ ?s ?g => 
-	              cut (goalD_Prop nil nil g); [ 
+	            | More_ ?s ?g =>
+	              cut (goalD_Prop nil nil g); [
 	                  change (goalD_Prop nil nil g -> exprD_Prop nil nil name);
                         let H := constr:(@eq_refl (Result (CTop nil nil)) (More_ s g)) in
-                        refine(@run_rtac_More  _ tac s _ _ tac_sound _); 
+                        refine(@run_rtac_More  _ tac s _ _ tac_sound _);
                           vm_cast_no_check H
-	                | cbv_denote
-	              ]  
+	                | pose (run_tac tac (GGoal name)) ; cbv_denote
+	              ]
 	            | Solved ?s =>
                       let H := constr:(@eq_refl (Result (CTop nil nil)) (Solved s)) in
                       refine (@run_rtac_Solved _ tac s name tac_sound _);
@@ -719,7 +719,7 @@ Ltac run_rtac reify term_table tac_sound :=
 	            | ?x => idtac "Error: run_rtac could not resolve the result from the tactic :" tac; idtac x
 	          end
 	        | None => idtac "expression " goal "is ill typed" t
-	      end  
+	      end
 	  end
 	| _ => idtac tac_sound "is not a soudness theorem."
   end.
@@ -763,13 +763,13 @@ Admitted.
 Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.AbsAppI.
 
-Lemma test_read : ltrue |-- 
-    triple 
-      (ap_pointsto [("o" : Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)] ** 
-       ap_pointsto [("o" : Lang.var), ("g" : field), pure (T := Fun (Lang.stack)) (vint 4)]) 
-      (ap_pointsto [("o" : Lang.var), ("f": field), pure (T := Fun (Lang.stack)) (vint 3)] ** 
+Lemma test_read : ltrue |--
+    triple
+      (ap_pointsto [("o" : Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)] **
+       ap_pointsto [("o" : Lang.var), ("g" : field), pure (T := Fun (Lang.stack)) (vint 4)])
+      (ap_pointsto [("o" : Lang.var), ("f": field), pure (T := Fun (Lang.stack)) (vint 3)] **
       (ap_pointsto [("o" : Lang.var), ("g": field), pure (T := Fun (Lang.stack)) (vint 4)]))
-      (cseq (cread "x" "o" "f") (cseq (cread "y" "o" "g") cskip)).                     
+      (cseq (cread "x" "o" "f") (cseq (cread "y" "o" "g") cskip)).
 Proof.
   Time run_rtac reify_imp term_table runTac_sound.
 Time Qed.
@@ -777,9 +777,9 @@ Time Qed.
 Lemma test_write :
 	ltrue |--
 	triple
-      (ap_pointsto [("o": Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)]) 
+      (ap_pointsto [("o": Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)])
       (ap_pointsto [("o": Lang.var), ("f": field), pure (T := Fun (Lang.stack)) (vint 4)])
-      (cseq (cwrite "o" "f" (E_val (vint 4))) cskip).                    
+      (cseq (cwrite "o" "f" (E_val (vint 4))) cskip).
 Proof.
   Time run_rtac reify_imp term_table runTac_sound.
 Time Qed.
@@ -789,20 +789,20 @@ Require Import BinInt.
 Fixpoint mkSwapPre n : sasn :=
 	match n with
 	  | 0   => empSP
-	  | S n => ap_pointsto [("o": Lang.var), (append "f" (nat2string10 n) : field), 
+	  | S n => ap_pointsto [("o": Lang.var), (append "f" (nat2string10 n) : field),
 	  	                     (eval (E_val (vint (Z.of_nat n))))] **
 	           mkSwapPre n
-	end.  
+	end.
 
-	
+
 Fixpoint mkSwapPostAux n m :=
   match n with
     | 0 => empSP
-	| S n => ap_pointsto [("o": Lang.var), (append "f" (nat2string10 n) : field), 
+	| S n => ap_pointsto [("o": Lang.var), (append "f" (nat2string10 n) : field),
 	  	                     (eval (E_val (vint (Z.of_nat (m - (S n))))))] **
 	         mkSwapPostAux n m
-  end.           
-  
+  end.
+
 Definition mkSwapPost n := mkSwapPostAux n n.
 
 Fixpoint mkRead n c :=
@@ -811,7 +811,7 @@ Fixpoint mkRead n c :=
 	  | S n => cseq (cread ((append "x" (nat2string10 n):Lang.var)) ("o":Lang.var) ((append "f" (nat2string10 n)):field))
 	                (mkRead n c)
     end.
-						
+
 Fixpoint mkWriteAux n m c :=
 	match n with
 	  | 0 => c
@@ -822,7 +822,7 @@ Fixpoint mkWriteAux n m c :=
 Definition mkWrite n c := mkWriteAux n n c.
 
 Definition mkSwapProg (n : nat) (c : cmd) := mkRead n (mkWrite n c).
-	
+
 Definition mkSwap n :=
 	ltrue |-- triple (mkSwapPre n) (mkSwapPost n) (mkSwapProg n cskip).
 
@@ -831,7 +831,7 @@ Set Printing Depth 100.
   Opaque ap.
 
 (*
-Lemma test_swap : 
+Lemma test_swap :
 |--
 ( {[ap_pointsto  ["o", ("f")%string, eval (E_val (vint 5))] **
     ap_pointsto  ["o", ("g")%string, eval (E_val (vint 6))] ** empSP]}
@@ -845,32 +845,32 @@ Proof.
   Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
 Qed.
 *)
-	
+
 Definition mkSwap2 n :=
 	ltrue |-- triple ltrue (mkSwapPost n) (mkSwapProg n cskip).
 
 Ltac run_rtac2 reify term_table tac_sound :=
   lazymatch type of tac_sound with
-    | rtac_sound ?tac => 
+    | rtac_sound ?tac =>
 	  let name := fresh "e" in
 	  lazymatch goal with
 	    | |- ?P =>
 	      reify_aux reify_imp term_table P name; idtac (*
-	      let t := eval vm_compute in (typeof_expr nil nil name) in 
-	      let goal := eval unfold name in name in 
+	      let t := eval vm_compute in (typeof_expr nil nil name) in
+	      let goal := eval unfold name in name in
 	      match t with
 	        | Some ?t =>
 	          let goal_result := constr:(run_tac tac (GGoal name)) in
-	          let result := eval vm_compute in goal_result in 
+	          let result := eval vm_compute in goal_result in
 	           lazymatch result with
-	            | More_ ?s ?g => 
-	              cut (goalD_Prop nil nil g); [ 
+	            | More_ ?s ?g =>
+	              cut (goalD_Prop nil nil g); [
 	                  change (goalD_Prop nil nil g -> exprD_Prop nil nil name);
                         let H := constr:(@eq_refl (Result (CTop nil nil)) (More_ s g)) in
-                        refine(@run_rtac_More  _ tac s _ _ tac_sound _); 
+                        refine(@run_rtac_More  _ tac s _ _ tac_sound _);
                           vm_cast_no_check H
 	                | cbv_denote
-	              ]  
+	              ]
 	            | Solved ?s =>
                       let H := constr:(@eq_refl (Result (CTop nil nil)) (Solved s)) in
                       refine (@run_rtac_Solved _ tac s name tac_sound _);
@@ -887,9 +887,9 @@ Ltac run_rtac2 reify term_table tac_sound :=
 Lemma test_swap2 : mkSwap 30.
 Proof.
   unfold mkSwap, mkSwapPre, mkSwapPost, mkSwapProg, mkSwapPostAux, mkRead, mkWrite, mkWriteAux.
-  Opaque pure. 
+  Opaque pure.
   simpl.
-  
+
   Time run_rtac reify_imp term_table runTac_sound.
 
 Time Qed.
@@ -986,7 +986,7 @@ with rtacK_derive_soundness :=
         | eapply runOnGoals_sound ; rtac_derive_soundness
         ]
 with Forall_rtac_derive_soundness :=
-  repeat first [ 
+  repeat first [
                  eapply Forall_nil
                | eapply Forall_cons ;
                  [ try rtac_derive_soundness
@@ -1027,12 +1027,12 @@ reify_lemma reify_imp LTrue.
 Defined.
 Print true_lemma.
 (*
-true_lemma = 
-{| vars := nil; premises := nil; 
+true_lemma =
+{| vars := nil; premises := nil;
   concl := Inj (inl (inl (inl (inl (inl (inl (inl (inr (ilf_true tyProp))))))))) |}
      : lemma typ (expr typ func) (expr typ func)
 *)
-Lemma true_lemma_sound : 
+Lemma true_lemma_sound :
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil true_lemma.
 Proof.
   compute.
@@ -1050,7 +1050,7 @@ Lemma test_true : True.
 Proof.
   run_rtac reify_imp term_table AUTO_sound.
 Qed.
-  
+
 Print test_true.
 
 
@@ -1058,7 +1058,7 @@ Print test_true.
 
 (*
 
-test_true = 
+test_true =
 let tbl := FMapPositive.PositiveMap.Leaf (SymEnv.function RType_typ) in
 let e := mkTrue tyProp in
 run_rtac_Solved AUTO (TopSubst (expr typ func) nil nil) e AUTO_sound
@@ -1087,17 +1087,17 @@ Proof.
   reify_lemma reify_imp andI.
 Defined.
 Print andI_lemma.
-Lemma andI_lemma_sound : 
+Lemma andI_lemma_sound :
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil andI_lemma.
 Proof.
   compute. intros. apply andI. assumption. assumption.
 Qed.
 
-Definition AUTO' := 
-  THEN (REPEAT 10 (INTRO typ func)) 
+Definition AUTO' :=
+  THEN (REPEAT 10 (INTRO typ func))
     (FIRST (THEN (APPLY typ func andI_lemma) ASSUMPTION ::
       (APPLY typ func true_lemma) :: ASSUMPTION :: nil)).
-    
+
 Lemma AUTO'_sound : rtac_sound AUTO'.
 Proof.
   unfold AUTO'.
@@ -1156,28 +1156,28 @@ Proof.
   reify_lemma reify_imp orI2.
 Defined.
 
-Lemma orI1_lemma_sound : 
+Lemma orI1_lemma_sound :
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil orI1_lemma.
 Proof.
   compute. intros. apply orI1. assumption.
 Qed.
 
-Lemma orI2_lemma_sound : 
+Lemma orI2_lemma_sound :
 	lemmaD (exprD'_typ0 (T:=Prop)) nil nil orI1_lemma.
 Proof.
   compute. intros. apply orI1. assumption.
 Qed.
 
-Definition AUTO'' := 
+Definition AUTO'' :=
   REC 20
-    (fun rec => THEN (REPEAT 10 (INTRO typ func)) 
-      (FIRST 
+    (fun rec => THEN (REPEAT 10 (INTRO typ func))
+      (FIRST
         (THEN (APPLY typ func andI_lemma) rec ::
         (THEN (APPLY typ func orI1_lemma) rec) ::
         (THEN (APPLY typ func orI2_lemma) rec) ::
         (APPLY typ func true_lemma) :: ASSUMPTION :: nil)))
     FAIL.
-    
+
 Lemma AUTO''_sound : rtac_sound AUTO''.
 Proof.
   unfold AUTO''.
@@ -1197,16 +1197,16 @@ Ltac run_rtac reify term_table tac_sound :=
     | rtac_sound ?tac =>
 	  let name := fresh "e" in
 	  match goal with
-	    | |- ?P => 
+	    | |- ?P =>
 	      reify_aux reify term_table P name;
 	      let t := eval vm_compute in (typeof_expr nil nil name) in
 	      let goal := eval unfold name in name in
 	      match t with
 	        | Some ?t =>
-	          let goal_result := constr:(run_tac tac (GGoal name)) in 
+	          let goal_result := constr:(run_tac tac (GGoal name)) in
 	          let result := eval vm_compute in goal_result in
 	          match result with
-	            | More_ ?s ?g => 
+	            | More_ ?s ?g =>
 	              cut (goalD_Prop nil nil g); [
 	                let goal_resultV := g in
 	               (* change (goalD_Prop nil nil goal_resultV -> exprD_Prop nil nil name);*)
@@ -1216,7 +1216,7 @@ Ltac run_rtac reify term_table tac_sound :=
 	                | cbv_denote
 	              ]
 	            | Solved ?s =>
-	              exact_no_check (@run_rtac_Solved _ tac s name tac_sound 
+	              exact_no_check (@run_rtac_Solved _ tac s name tac_sound
 	                (@eq_refl (Result (CTop nil nil)) (Solved s) <: run_tac tac (GGoal goal) = Solved s))
 	            | Fail => idtac "Tactic" tac "failed."
 	            | _ => idtac "Error: run_rtac could not resolve the result from the tactic :" tac
@@ -1228,7 +1228,7 @@ Ltac run_rtac reify term_table tac_sound :=
   end.
   *)
 Require Import Charge.Tactics.Rtac.PullQuant.
-  
+
 Lemma PULL_EXISTSL_sound : rtac_sound (THEN (REPEAT 10 (INTRO typ func)) (PULL_EXISTSL typ func ilops)).
 Proof.
   admit.
@@ -1238,7 +1238,7 @@ Lemma test_pull_quant_left  (P : sasn) (Q : nat -> sasn) :
   P //\\ (Exists x : nat, Q x) |-- P.
 Proof.
   run_rtac reify_imp term_table PULL_EXISTSL_sound.
-  
+
   Print func.
 *)
 

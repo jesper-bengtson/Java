@@ -542,7 +542,6 @@ Definition fs : @SymEnv.functions typ _ :=
   	 @SymEnv.F typ _ (tyArr tyVal (tyArr (tyList tyVal) tyAsn)) NodeList::nil). 
 
 *)
-Check RSym.
 
   Global Instance RSym_ilfunc : RSym (@ilfunc typ) := 
 	  RSym_ilfunc ilops.
