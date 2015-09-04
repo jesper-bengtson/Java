@@ -175,7 +175,7 @@ Global Instance RType_typ : RType typ :=
 ; type_cast := type_cast_typ
 }.
 
-Global Instance Typ2_Fun : Typ2 _ Fun :=
+Global Instance Typ2_Fun : Typ2 _ RFun :=
 { typ2 := tyArr
 ; typ2_cast := fun _ _ => eq_refl
 ; typ2_match := fun T t tr =>
