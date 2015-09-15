@@ -394,7 +394,6 @@ Ltac cbv_denote :=
           
         FuncView.f_insert
         SumN.pmap_lookup'
-        
         (* FMapPositive *)
         FMapPositive.pmap_here
         FMapPositive.pmap_left
@@ -407,8 +406,23 @@ Ltac cbv_denote :=
         FMapPositive.pmap_union
         
         Pos.add
+        (* SymOneOf *)
+
         SymOneOf.internal_eq_rew_dep
-        
+
+        SymOneOf.OneOfType.pmap_lookup'
+        SymOneOf.OneOfType.pmap_insert
+        SymOneOf.OneOfType.pmap_here
+        SymOneOf.OneOfType.pmap_left
+        SymOneOf.OneOfType.pmap_right
+        SymOneOf.OneOfType.Into
+        SymOneOf.OneOfType.asNth'
+        SymOneOf.OneOfType.asNth
+        SymOneOf.OneOfType.OutOf
+        SymOneOf.OneOfType.Injective_OneOf
+        SymOneOf.OneOfType.asNth''
+        SymOneOf.typeof_sym_OneOf
+
     ].
 
 Let elem_ctor : forall x : typ, typD x -> @SymEnv.function _ _ :=

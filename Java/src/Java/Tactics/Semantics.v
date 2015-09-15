@@ -42,9 +42,16 @@ Proof.
   admit.
 Admitted.
 
-Lemma ent_left_exists {A} (P : sasn) (Q : A -> sasn)
+Lemma ent_right_exists {A} (P : sasn) (Q : A -> sasn)
 	(H : exists x, P |-- Q x) :
 	P |-- lexists Q.
+Proof.
+  admit.
+Admitted.
+
+Lemma ent_left_exists {A} (P : A -> sasn) (Q : sasn)
+	(H : forall x : A, P x |-- Q) :
+	lexists P |-- Q.
 Proof.
   admit.
 Admitted.

@@ -1,5 +1,6 @@
 Require Import MirrorCore.Reify.Reify.
 Require Import MirrorCore.Lambda.Expr.
+Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.Views.ListView.
 Require Import MirrorCore.Views.ApplicativeView.
 Require Import MirrorCore.Views.ProdView.
@@ -63,7 +64,7 @@ Reify Declare Typed Table term_table : BinNums.positive => reify_imp_typ.
 
 Require Import MirrorCore.ExprI.
 Require Import ExtLib.Data.SumN.
-
+Import OneOfType.
 Let Ext (x : SymEnv.func) := @ExprCore.Inj typ func (Into (ts := func_map) 2 eq_refl x).
 
 Reify Declare Syntax reify_imp :=

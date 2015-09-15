@@ -1,10 +1,18 @@
-Set Printing Universes.
 Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Data.Fun.
 Require Import ExtLib.Data.String.
 Require Import ExtLib.Data.Sum.
 Require Import ExtLib.Data.Positive.
 Require Import ExtLib.Tactics.Consider.
+
+Require Import ChargeCore.Open.Subst.
+Require Import ChargeCore.Open.Open.
+Require Import ChargeCore.Open.Stack.
+Require Import ChargeCore.Logics.BILogic.
+Require Import Charge.Views.ILogicView.
+Require Import Charge.Views.BILogicView.
+Require Import Charge.Views.SubstView.
+Require Import Charge.Views.EmbedView.
 
 Require Import MirrorCore.TypesI.
 Require Import MirrorCore.SymI.
@@ -24,16 +32,6 @@ Require Import MirrorCore.Views.ApplicativeView.
 Require Import MirrorCore.Views.NatView.
 Require Import MirrorCore.Views.BoolView.
 Require Import MirrorCore.Views.StringView.
-
-Require Import ChargeCore.Open.Subst.
-Require Import ChargeCore.Open.Open.
-Require Import ChargeCore.Open.Stack.
-Require Import ChargeCore.Logics.BILogic.
-Require Import Charge.Views.ILogicView.
-Require Import Charge.Views.BILogicView.
-Require Import Charge.Views.SubstView.
-Require Import Charge.Views.EmbedView.
-
 
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
@@ -574,11 +572,12 @@ Definition fs : @SymEnv.functions typ _ :=
       ; ap := fun _ _ f x y => (f y) (x y)
     }.
 
+  Import OneOfType.
 
   Definition RSym_sub_func (p : positive) :
     RSym (match pmap_lookup' func_map p with
-          | Some T => T
-          | None => Empty_set
+          | _Some T => T
+          | _None => Empty_set
           end).
   Proof.
     destruct p; simpl; [| | apply _].
@@ -708,12 +707,12 @@ Definition fs : @SymEnv.functions typ _ :=
     + simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.
   Qed.
-
+Locate pmap.
   Definition is_pure : expr typ func -> bool :=
     run_tptrn
       (pdefault
-         (por (pmap (fun _ => true) (por (ptrnTrue ignore) (ptrnFalse ignore)))
-              (pmap (fun x =>
+         (por (Ptrns.pmap (fun _ => true) (por (ptrnTrue ignore) (ptrnFalse ignore)))
+              (Ptrns.pmap (fun x =>
                        match x with
                        | (tyPure, tySasn, tt) => true
                        | _ => false

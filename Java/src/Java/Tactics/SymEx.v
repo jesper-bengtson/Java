@@ -272,6 +272,11 @@ Eval vm_compute in pull_exists_lemma.
 
 Definition ent_exists_right_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
+  reify_lemma reify_imp (@ent_right_exists val).
+Defined.
+
+Definition ent_exists_left_lemma : lemma typ (expr typ func) (expr typ func).
+Proof.
   reify_lemma reify_imp (@ent_left_exists val).
 Defined.
 (*
@@ -538,6 +543,11 @@ Definition step_unfold vars rw :=
         | _ => More s (GGoal e)
       end.
 *)
+
+
+Definition PULL_EXISTS : rtac typ (expr typ func) :=
+  THEN (THEN (EAPPLY ent_exists_left_lemma) (INTRO typ func)) BETA.
+
 Definition PULL_TRIPLE_EXISTS : rtac typ (expr typ func) :=
   THEN (THEN (EAPPLY pull_exists_lemma) (INTRO typ func)) BETA.
 Check @CANCELLATION.
@@ -557,12 +567,18 @@ Definition solve_entailment (rw : rewriter (typ := typ) (func := func)) : rtac t
 	           nil))).
 *)
 
-(*
-Require Import Java.Tactics.FieldLookup.
 
+Require Import Java.Tactics.FieldLookup.
+(*
 Require Import Charge.Tactics.Open.Subst.
 Require Import Charge.Tactics.Lists.Fold.
 *)
+
+Require Import MirrorCore.Views.ListOpView.
+
+
+Definition FOLD := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all (fun x e args => red_fold (apps e args))).
+
 (*
 Definition solve_alloc rw : rtac typ (expr typ func) :=
     THEN (INSTANTIATE typ func)
@@ -589,6 +605,34 @@ Check @red_fold_ptrn typ func.
 Require Import 
 *)
 
+Require Import MirrorCore.Views.Ptrns.
+Require Import MirrorCore.Views.FuncView.
+Require Import MirrorCore.Views.StringView.
+Require Import MirrorCore.Lambda.Ptrns.
+Check fptrnFieldLookup.
+Check fptrnProg.
+Print fptrnProg.
+Check @ptrn_view.
+  Definition FIELD_LOOKUP : rtac typ (expr typ func) :=
+    fun tus tvs n m c s =>
+      run_default 
+        (pmap (fun P_C_f => 
+                 let '(_, P, C, f) := P_C_f in
+                 match class_lookup C P with
+                 | Some C' =>
+		   match @exprUnify (ctx_subst c) typ func _ _ _ _ _ 3
+		                    tus tvs 0 f (Inj (fFields (c_fields C'))) tyVarList s with
+		   | Some s => Solved s
+		   | None   => Fail
+		   end
+                     
+                 | None => Fail
+                 end)
+              (app (app (app (inj (ptrn_view _ fptrnFieldLookup)) 
+                             (inj (ptrn_view _ (fptrnProg get))))
+                        (ptrnString get))
+                   get)) Fail.
+
 Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 	match c with
 (*	    | cskip => simStep rw (THEN (EAPPLY skip_lemma) (solve_entailment rw))
@@ -602,9 +646,14 @@ Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 		| cwrite x f e => simStep rw (THEN (EAPPLY (write_lemma x f e)) (solve_entailment rw))*)
                 | cskip => THEN (EAPPLY skip_lemma) solve_entailment
 		| cread x y f => THEN (EAPPLY (read_lemma x y f)) solve_entailment
-(*                | calloc x C => THEN' (EAPPLY (alloc_lemma x C))
-                                      (ON_EACH (solve_entailment::FIELD_LOOKUP::
-                                                                THEN FOLD solve_entailment))*)
+                | calloc x C => (*THEN' (EAPPLY (alloc_lemma x C))
+                                      (ON_EACH (solve_entailment ::
+                                                FIELD_LOOKUP ::
+                                                THEN FOLD solve_entailment :: nil))*)
+                  THEN' (EAPPLY (alloc_lemma x C)) 
+                        (ON_EACH (CANCELLATION typ func tySpec (fun _ => false)
+                                 ::THEN (INSTANTIATE typ func) FIELD_LOOKUP::IDTAC::nil))
+                  (*      (ON_EACH (solve_entailment :: IDTAC :: IDTAC :: nil))*)
                 | cwrite x f e => THEN (EAPPLY (write_lemma x f e)) solve_entailment
 (*		| cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
                                       (ON_EACH (tripleE c1::TRY (tripleE c2)::nil))*)
@@ -704,12 +753,12 @@ Ltac run_rtac reify term_table tac_sound :=
 	          let result := eval vm_compute in goal_result in
 	           lazymatch result with
 	            | More_ ?s ?g =>
-	              cut (goalD_Prop nil nil g); [
+	              cut (goalD_Prop nil nil g) ; [
 	                  change (goalD_Prop nil nil g -> exprD_Prop nil nil name);
                         let H := constr:(@eq_refl (Result (CTop nil nil)) (More_ s g)) in
                         refine(@run_rtac_More  _ tac s _ _ tac_sound _);
                           vm_cast_no_check H
-	                | pose (run_tac tac (GGoal name)) ; cbv_denote
+	                | pose (run_tac tac (GGoal name)); cbv_denote
 	              ]
 	            | Solved ?s =>
                       let H := constr:(@eq_refl (Result (CTop nil nil)) (Solved s)) in
@@ -724,10 +773,60 @@ Ltac run_rtac reify term_table tac_sound :=
 	| _ => idtac tac_sound "is not a soudness theorem."
   end.
 
+          Ltac reify_goal :=
+	    lazymatch goal with
+	  | |- ?P =>
+            let name := fresh "e" in
+	    reify_aux reify_imp term_table P name
+          end.
+
+
 Print seq_lemma.
 
 Definition myTac :=
   THEN (REPEAT 2 (INTRO typ func)) solve_entailment.
+
+
+Require Import Java.Examples.ListClass.
+
+Ltac charge := run_rtac reify_imp term_table runTac_sound; intros.
+
+Require Import MirrorCore.syms.SymOneOf.
+
+Lemma test_alloc : prog_eq ListProg |-- triple ltrue lfalse (calloc "x" "NodeC").
+Proof.
+  charge.
+Print alloc_lemma.
+Check @ent_left_exists.
+eapply (@ent_right_exists val).
+Print ent_exists_left_lemma.
+reify_goal.
+Check @pull_exists.
+apply @pull_exists.
+Print FOLD.
+Print mkString.
+Print ptrnString.
+eexists.
+eexists.
+assert (exists x, prog_eq ListProg |-- prog_eq x).
+
+Definition myTac2 : rtac typ (expr typ func) := THEN (INTRO typ func) 
+                                                     (CANCELLATION typ func tySpec (fun _ => true)).
+                                                                   
+                                                                      
+Lemma myTac2_sound : rtac_sound myTac2.
+Proof.
+  admit.
+Admitted
+
+
+run_rtac reify_imp term_table myTac2_sound.
+
+reflexivity.
+  cbv_denote.
+  unfold ListProg. simpl.
+  unfold NodeC.
+  charge.
 
 
 Lemma myTac_sound : rtac_sound myTac.
@@ -760,7 +859,6 @@ Proof.
   admit.
 Admitted.
 
-Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.AbsAppI.
 
 Lemma test_read : ltrue |--
@@ -890,12 +988,11 @@ Proof.
   Opaque pure.
   simpl.
 
-  Time run_rtac reify_imp term_table runTac_sound.
+  Time charge.
 
 Time Qed.
 
 
-Ltac charge := run_rtac reify_imp term_table runTac_sound; intros.
 
 
 (*

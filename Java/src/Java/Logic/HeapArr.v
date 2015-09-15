@@ -5,7 +5,6 @@ Require Import Charge.SepAlg.SepAlgMap.
 Require Import ChargeCore.SepAlg.UUSepAlg.
 Require Import ChargeCore.SepAlg.SepAlgInsts.
 Require Import ChargeCore.Open.Stack.
-Require Import ChargeCore.Rel.
 Require Import Java.Language.Lang.
 
 Local Existing Instance MapSepAlgOps.

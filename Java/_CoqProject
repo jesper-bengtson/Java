@@ -1,10 +1,10 @@
 -R src ""
 -R bin ""
--Q ../coq-ext-lib/theories ExtLib
--Q ../mirror-core/theories MirrorCore
--I ../mirror-core/src
--Q ../charge-core/bin/ChargeCore ChargeCore
--Q ../charge/src/Charge Charge
+-Q ../../coq-ext-lib/theories ExtLib
+-Q ../../mirror-core/theories MirrorCore
+-I ../../mirror-core/src
+-Q ../../ChargeCore/ChargeCore/bin/ChargeCore ChargeCore
+-Q ../../Charge/Charge!/bin/Charge Charge
 -arg -type-in-type
 KOPITIAM_0 = "SourceLoadPath src"
 KOPITIAM_1 = "DefaultOutput bin"

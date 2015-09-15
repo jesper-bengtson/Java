@@ -7,6 +7,7 @@ Require Import Java.Language.Lang.
 Require Import Java.Language.Program.
 Require Import Java.Semantics.AxiomaticSemantics.
 Require Import Java.Logic.AssertionLogic.
+Require Import Java.Logic.SpecLogic.
 Require Import Java.Examples.ListModel.
 
 Require Import Coq.Lists.List.
@@ -36,13 +37,13 @@ Definition add_body :=
 
   Definition ListProg := Build_Program
     (("List", ListC)::("NodeC", NodeC)::nil).  
-
+(*
   Definition add_spec : spec :=
     Forall xs : list val, method_spec "List" "add" ("this"::"n"::nil) "" 
                                     (fun s => List (s "this") xs) 
                                     (fun s => List (s "this") ((s "n")::xs)).
 
-
+*)
 
 (*
 Require Import AxiomaticSemantics String AssertionLogic ILogic ILEmbed BILogic Lang Stack ZArith Coq.Lists.List ListModel.
