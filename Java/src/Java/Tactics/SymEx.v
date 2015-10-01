@@ -633,6 +633,15 @@ Check @ptrn_view.
                         (ptrnString get))
                    get)) Fail.
 
+Require Import MirrorCore.Views.ListView.
+Definition fields_to_list (e : expr typ func) : expr typ func :=
+  run_default (inj (pmap 
+                      (fun lst => 
+                      fold_right (fun x xs => mkCons tyString (mkString x) xs) (mkNil tyString) lst)
+                      (ptrn_view _ (fptrnFields get)))) e e.
+Definition FIELDS_TO_LIST := 
+  SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all (fun x e args => fields_to_list (apps e args))).
+
 Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 	match c with
 (*	    | cskip => simStep rw (THEN (EAPPLY skip_lemma) (solve_entailment rw))
@@ -652,7 +661,8 @@ Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
                                                 THEN FOLD solve_entailment :: nil))*)
                   THEN' (EAPPLY (alloc_lemma x C)) 
                         (ON_EACH (CANCELLATION typ func tySpec (fun _ => false)
-                                 ::THEN (INSTANTIATE typ func) FIELD_LOOKUP::IDTAC::nil))
+                                 ::THEN (INSTANTIATE typ func) FIELD_LOOKUP::
+                                 THEN (THEN FIELDS_TO_LIST FOLD) SUBST::nil))
                   (*      (ON_EACH (solve_entailment :: IDTAC :: IDTAC :: nil))*)
                 | cwrite x f e => THEN (EAPPLY (write_lemma x f e)) solve_entailment
 (*		| cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
@@ -793,12 +803,23 @@ Ltac charge := run_rtac reify_imp term_table runTac_sound; intros.
 
 Require Import MirrorCore.syms.SymOneOf.
 
+Lemma FOLD_sound : rtac_sound FOLD.
+Proof.
+  admit.
+Admitted.
+
+Check mkCons.
+
 Lemma test_alloc : prog_eq ListProg |-- triple ltrue lfalse (calloc "x" "NodeC").
 Proof.
   charge.
+  
+run_rtac reify_imp term_table FOLD_sound.
+Check 
+Print FOLD.
 Print alloc_lemma.
 Check @ent_left_exists.
-eapply (@ent_right_exists val).
+
 Print ent_exists_left_lemma.
 reify_goal.
 Check @pull_exists.
@@ -809,11 +830,11 @@ Print ptrnString.
 eexists.
 eexists.
 assert (exists x, prog_eq ListProg |-- prog_eq x).
-
+*)
 Definition myTac2 : rtac typ (expr typ func) := THEN (INTRO typ func) 
                                                      (CANCELLATION typ func tySpec (fun _ => true)).
                                                                    
-                                                                      
+                                                                      (*
 Lemma myTac2_sound : rtac_sound myTac2.
 Proof.
   admit.
@@ -839,7 +860,7 @@ Lemma solve_entailment_test : forall x, exists y : sasn, x |-- y.
 Proof.
   run_rtac reify_imp term_table myTac_sound.
 Qed.
-
+*)
 Lemma test_skip_lemma3 : testSkip 200.
 Proof.
   unfold testSkip; simpl.
@@ -1340,4 +1361,4 @@ Proof.
 *)
 
 
-End blurb.
+End blurb 

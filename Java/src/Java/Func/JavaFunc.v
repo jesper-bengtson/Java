@@ -692,6 +692,99 @@ Definition fs : @SymEnv.functions typ _ :=
   Qed.
 *)
 
+Check ptrnAp.
+Check @ptrnEq.
+Print ptrnEq.
+Check get.
+Check ptrnAp.
+Check ptrnPure.
+Check Ptrns.pmap.
+Print Ptrns.pmap.
+Print ptrn.
+Check app.
+Print app.
+
+Definition ptrnPair {A B T U : Type} (t : ptrn A T) (u : ptrn B U) : 
+  ptrn (A * B) (T * U) :=
+  fun e C good bad =>
+    Mbind (Mrebuild (fun x : A => (x, snd e)) (t (fst e)))
+          (fun x : T => Mmap (fun y : U => (x, y)) (Mrebuild (pair (fst e)) (u (snd e)))) good bad.
+
+Definition ptrn_tyArr (T U : Type) (t : ptrn typ T) (u : ptrn typ U) : ptrn typ (T * U) :=
+  fun e A good bad =>
+    match e with
+    | tyArr a b => 
+      Mbind (Mrebuild (fun x : typ => tyArr x b) (t a))
+            (fun x : T => Mmap (fun y : U => (x, y)) (Mrebuild (tyArr a) (u b))) good bad
+    | _ => bad e
+    end.
+      
+Definition ptrn_tyProp : ptrn typ unit :=
+  fun t T good bad =>
+    match t with
+      | tyProp => good tt
+      | _ => bad t
+    end.
+
+Definition ptrn_tyAsn : ptrn typ unit :=
+  fun t T good bad =>
+    match t with
+      | tyAsn => good tt
+      | _ => bad t
+    end.
+
+Definition ptrn_tyVal : ptrn typ unit :=
+  fun t T good bad =>
+    match t with
+      | tyVal => good tt
+      | _ => bad t
+    end.
+
+Definition ptrn_tyString : ptrn typ unit :=
+  fun t T good bad =>
+    match t with
+      | tyString => good tt
+      | _ => bad t
+    end.
+
+Definition ptrn_tyStack : ptrn typ unit := 
+  fun t T good bad =>
+    match t with
+      | tyStack => good tt
+      | _ => bad t
+    end.
+
+Definition ptrn_tyPure : ptrn typ unit := 
+  fun t T good bad =>
+    match t with
+      | tyPure => good tt
+      | _ => bad t
+    end.
+
+Definition ptrn_tySasn : ptrn typ unit := 
+  fun t T good bad =>
+    match t with
+      | tySasn => good tt
+      | _ => bad t
+    end.
+
+Definition ptrnApEq {T A B : Type} (t : ptrn typ T) 
+      (a : ptrn (expr typ func) A) (b : ptrn (expr typ func) B) : ptrn (expr typ func) (T * A * B) :=
+  Ptrns.pmap (fun x => (fst (fst (fst x)), snd (snd (fst x)), snd x))
+             (ptrnAp (ptrnPair t ptrn_tyProp)
+                     (ptrnAp (ptrnPair t (ptrn_tyArr t ptrn_tyProp))
+                             (ptrnPure (ptrn_tyArr t (ptrn_tyArr t ptrn_tyProp)) (inj (ptrn_view _ (fptrnEq t))))
+                             a) b).
+
+Definition isEq : expr typ func -> bool :=
+  run_tptrn
+    (pdefault
+       (Ptrns.pmap (fun _ => true) 
+                   (ptrnEmbed (ptrnPair ptrn_tyPure ptrn_tySasn) 
+                              (ptrnApEq ptrn_tyVal ignore ignore)))
+       false).
+
+
   Lemma evalDExpr_wt (e : dexpr) :
 	  typeof_expr nil nil (evalDExpr e) = Some tyExpr.
   Proof.
@@ -707,7 +800,7 @@ Definition fs : @SymEnv.functions typ _ :=
     + simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.
   Qed.
-Locate pmap.
+
   Definition is_pure : expr typ func -> bool :=
     run_tptrn
       (pdefault
@@ -718,6 +811,12 @@ Locate pmap.
                        | _ => false
                        end)
                     (ptrnEmbed get ignore)))
+         false).
+
+  Definition is_equality : expr typ func -> bool :=
+    run_tptrn 
+      (pdefault 
+         (ptrnEmbed get get
          false).
 
   Definition mkPointstoVar x f e : expr typ func :=
