@@ -240,8 +240,8 @@ Ltac reify_imp e :=
   let k fs e :=
       pose e in
   reify_expr reify_imp k
-             [ (fun (y : @mk_dvar_map _ _ _ _ term_table elem_ctor) => True) ]
-             [ e ].
+             [[ (fun (y : @mk_dvar_map _ _ _ _ term_table elem_ctor) => True) ]]
+             [[ e ]].
 
 Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
   intros Pr C v fields.
@@ -297,7 +297,7 @@ Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
 
   reify_imp (stack_get (A := Lang.var) (val := val)).
   reify_imp (@stack_get Lang.var val x).
-(* GREGORY: The next commented out command hrows an exception
+(* GREGORY: The next commented out command throws an exception
   reify_imp (stack_get (val := val) x).
 *)
   reify_imp (x = x).
@@ -312,5 +312,5 @@ Ltac reify_aux e n :=
   let k fs e :=
       pose e as n in
   reify_expr reify_imp k
-             [ (fun (y : @mk_dvar_map _ _ _ _ term_table elem_ctor) => True) ]
-             [ e ].
+             [[ (fun (y : @mk_dvar_map _ _ _ _ term_table elem_ctor) => True) ]]
+             [[ e ]].
