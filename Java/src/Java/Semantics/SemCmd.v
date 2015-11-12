@@ -9,14 +9,16 @@ Require Import ChargeCore.Open.Subst.
 Require Import ChargeCore.Open.Stack.
 Require Import ChargeCore.Open.OpenILogic.
 
-Require Import Charge.SepAlg.SepAlgMap.
+Require Import ChargeCore.SepAlg.SepAlgPfun.
 
 Require Import Java.Language.Lang.
 Require Import Java.Language.Program.
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
 
-Require Import Containers.MapInterface Containers.MapFacts Omega.
+Require Import Omega.
+Require Import Setoid Morphisms.
+
 
 Import SepAlgNotations.
 

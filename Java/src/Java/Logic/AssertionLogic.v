@@ -17,17 +17,15 @@ Require Import ChargeCore.Logics.PureInsts.
 Require Import ChargeCore.Open.OpenILogic.
 
 Require Import ChargeCore.SepAlg.SepAlg. 
-Require Import Charge.SepAlg.SepAlgMap. 
+Require Import ChargeCore.SepAlg.SepAlgPfun. 
 
 Require Import ChargeCore.Open.Open.
 Require Import ChargeCore.Open.Stack.
 
-Require Import Containers.Maps. 
 Require Import Coq.Strings.String.
 Require Import RelationClasses Setoid Morphisms.
 
 Require Import Java.Language.Program. 
-Require Import Containers.MapInterface Containers.MapFacts.
 
 Require Import Java.Language.Lang. 
 
@@ -48,29 +46,29 @@ Local Existing Instance IBILPreLogic.
 Local Existing Instance BILFun_Ops.
 Local Existing Instance IBILFunLogic.
 
-Local Existing Instance MapSepAlgOps.
-Local Existing Instance MapSepAlg.
-Local Existing Instance UUMapSepAlg.
+Local Existing Instance PFunSepAlgOps.
+Local Existing Instance PFunSepAlg.
+Local Existing Instance UUPFunSepAlg.
 Local Existing Instance SepAlgOps_prod.
 Local Existing Instance SepAlg_prod.
 Local Existing Instance UUSepAlg_prod.
 
-Definition heap_ptr := Map [ptr * field, val].
+Definition heap_ptr := @pfun (ptr * field) val.
 
 Definition heap := (heap_ptr * heap_arr)%type.
 
-Definition heap_ptr_unit : heap_ptr := @map_unit _ _ _ val.
+Definition heap_ptr_unit : heap_ptr := emptyFun.
 
 Definition heap_unit : heap := (heap_ptr_unit, heap_arr_unit).
 
 Definition heap_add_ptr (h : heap) (p : ptr) (f : field) (v : val) : heap :=
-  (add (p, f) v (fst h), snd h).
+  (pfun_update (fst h) (p, f) v, snd h).
 Definition heap_add_arr (h : heap) (n m : nat) (v : val) : heap :=
-  (fst h, add (n, m) v (snd h)).
+  (fst h, pfun_update (snd h) (n, m) v).
 
 Instance HeapPtrSepAlgOps : SepAlgOps heap_ptr := _.
 Instance SepAlgHeapPtr : SepAlg heap_ptr := _.
-Instance UUSepAlgHeapPtr : UUSepAlg (rel := MapEquiv _) heap_ptr := _.
+Instance UUSepAlgHeapPtr : UUSepAlg (rel := pfun_eq) heap_ptr := _.
 
 (*
 Instance SepAlgArrPtr : SepAlg heap_arr := _.
@@ -89,8 +87,8 @@ Instance UUSepAlgHeap : UUSepAlg heap := _.
 Definition asn := ILPreFrm Prog_sub (ILPreFrm ge (ILPreFrm subheap Prop)).
 
 Instance ILogicOpsAsn : ILogicOps asn := _.
-Instance BILogicOpsAsn : BILOperators asn. Admitted.
-Instance BILogicAsn : IBILogic asn. Admitted.
+Instance BILogicOpsAsn : BILOperators asn := _.
+Instance BILogicAsn : IBILogic asn := _.
 
 Local Existing Instance EmbedILPreDropOp.
 Local Existing Instance EmbedILPreDrop.
@@ -180,7 +178,7 @@ Proof.
 Defined.
 
 Program Definition pointsto_aux (x : ptr) (f : field) (v : val) : asn :=
-  mk_asn (fun P k h => subheap (add (x, f) v (empty val)) (fst h)) _ _ _.
+  mk_asn (fun P k h => subheap (pfun_update emptyFun (x, f) v) (fst h)) _ _ _.
 Next Obligation.
   destruct h, h'; simpl in *.
   apply subheap_prod in H as [H _].

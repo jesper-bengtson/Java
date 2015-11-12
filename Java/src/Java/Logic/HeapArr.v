@@ -1,21 +1,21 @@
+
 Require Import RelationClasses Setoid Morphisms.
-From Containers Require Import MapInterface MapFacts.
 Require Import ChargeCore.SepAlg.SepAlg.
-Require Import Charge.SepAlg.SepAlgMap.
+Require Import ChargeCore.SepAlg.SepAlgPfun.
 Require Import ChargeCore.SepAlg.UUSepAlg.
 Require Import ChargeCore.SepAlg.SepAlgInsts.
 Require Import ChargeCore.Open.Stack.
 Require Import Java.Language.Lang.
 
-Local Existing Instance MapSepAlgOps.
-Local Existing Instance MapSepAlg.
-Local Existing Instance UUMapSepAlg.
+Require Import ExtLib.Core.RelDec.
+Require Import ExtLib.Data.Nat.
+Require Import ExtLib.Data.Pair.
 
-Definition heap_arr := Map [arrptr * nat, val].
-Definition heap_arr_unit : heap_arr := @map_unit _ _ _ val.
+Definition heap_arr := @pfun ((arrptr * nat)%type) val.
+Definition heap_arr_unit : heap_arr := emptyFun.
 
 Instance HeapArrSepAlgOps : SepAlgOps heap_arr := _.
-Instance SepAlgHeapArr : UUSepAlg heap_arr := _.
+Instance SepAlgHeapArr : UUSepAlg (rel := pfun_eq) heap_arr := UUPFunSepAlg.
 
 Lemma dec_double_neg (P : Prop) (H : {P} + {~P}) : 
   P <-> ~~P.
@@ -29,8 +29,8 @@ Qed.
 Fixpoint find_heap_arr (x : nat) (path : list nat) (h : heap_arr) : option val :=
   match path with 
     | nil    => None
-    | y::nil => find (x, y) h
-    | y::ys  => match find (x, y) h with
+    | y::nil => h (x, y)
+    | y::ys  => match h (x, y) with
                   | Some (varr y) => find_heap_arr y ys h
                   | _             => None
                 end
@@ -39,8 +39,8 @@ Fixpoint find_heap_arr (x : nat) (path : list nat) (h : heap_arr) : option val :
 Fixpoint add_heap_arr (x : nat) (path : list nat) (h : heap_arr) (v : val) : option heap_arr :=
   match path with 
     | nil    => None
-    | y::nil => Some (add (x, y) v h)
-    | y::ys  => match find (x, y) h with
+    | y::nil => Some (pfun_update h (x, y) v)
+    | y::ys  => match h (x, y) with
                   | Some (varr y) => add_heap_arr y ys h v
                   | _             => None
                 end
@@ -49,7 +49,7 @@ Fixpoint add_heap_arr (x : nat) (path : list nat) (h : heap_arr) (v : val) : opt
 Fixpoint eq_heap_arr (x : nat) (path : list nat) (h1 h2 : heap_arr) : Prop :=
   match path with
     | nil   => True
-    | y::ys => match find (x, y) h1, find (x, y) h2 with
+    | y::ys => match h1 (x, y), h2 (x, y) with
                  | Some (varr v1), Some (varr v2) => v1 = v2 /\ eq_heap_arr v1 ys h1 h2
                  | _, _ => False
                end
@@ -60,8 +60,8 @@ Definition in_heap_arr (x : nat) (path : list nat) (h : heap_arr) : Prop :=
 
 Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
   match dim with 
-    | 0     => add (i, 0) null h
-    | S dim => add (i, dim) null (alloc_heap_arr i dim h)
+    | 0     => pfun_update h (i, 0) null
+    | S dim => pfun_update (alloc_heap_arr i dim h) (i, dim) null
   end.
 
   Lemma find_heap_arr_dec (x : nat) (path : list nat) (h : heap_arr):
@@ -70,11 +70,11 @@ Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
     generalize dependent x; induction path; simpl in *; intros.
     + right. intros [v H]. congruence.
     + destruct path; simpl in *.
-      * remember (find (x, a) h) as o; simpl in *.
+      * remember (h (x, a)) as o; simpl in *.
       	destruct o; subst.
         - left. exists v. reflexivity.
         - right. intros [v H]. congruence.
-      * remember (find (x, a) h) as o; simpl in *. 
+      * remember (h (x, a)) as o; simpl in *. 
         destruct o; subst; [|right; intros [v H]; congruence].
         destruct v; try (right; intros [v H]; congruence).
         apply IHpath.
@@ -86,6 +86,7 @@ Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
     apply find_heap_arr_dec.
   Qed.
 
+(*
   Lemma find_heap_arr_frame arr path h h' v frame (H : find_heap_arr arr path h = Some v) 
         (HFrame : sa_mul h' frame h) (HValid : in_heap_arr arr path h') : 
     find_heap_arr arr path h' = Some v.
@@ -93,13 +94,11 @@ Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
     generalize dependent arr; induction path; simpl in *; intros.
     + inversion H.
     + destruct path.
-      * clear IHpath; simpl in *; rewrite <- find_mapsto_iff in H.
+      * clear IHpath; simpl in *.
         unfold in_heap_arr in HValid. simpl in *.
         destruct HValid as [y HValid].
-        destruct (sa_mul_mapstoR HFrame H) as [[H1 H2] | [H1 H2]].
-        rewrite <- find_mapsto_iff. assumption.
-        contradiction H2. rewrite in_find_iff.
-        unfold arrptr in *; simpl in *; rewrite HValid. congruence.
+        specialize (HFrame (arr, a)). rewrite H in HFrame.
+        destruct HFrame as [[H1 H2] | [H1 H2]]; subst; [assumption|congruence].
       * simpl in *.
         unfold in_heap_arr in HValid; simpl in *.
         destruct HValid as [y HValid].
@@ -120,7 +119,6 @@ Fixpoint alloc_heap_arr (i dim : nat) (h : heap_arr) : heap_arr :=
         apply HValid.
   Qed.
 
-Opaque MapSepAlgOps.
 
   Lemma find_heap_arr_subheap x path h h' v 
         (H : find_heap_arr x path h = Some v)
@@ -170,7 +168,9 @@ Opaque MapSepAlgOps.
         apply IHpath. apply H.
         exists y. apply HIn.
   Qed.
-(*
+
+
+
   Lemma add_hear_arr_eq x path h h' v n (H : add_heap_arr x path h v = Some h') 
         (Hn : n < length path) :
     eq_heap_arr x (firstn n path) h h'.

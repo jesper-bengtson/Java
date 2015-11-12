@@ -1,4 +1,4 @@
-Require Import Containers.MapInterface Containers.MapFacts Omega.
+Require Import Omega.
 
 Require Import ChargeCore.Logics.ILInsts.
 Require Import ChargeCore.Logics.ILogic.
@@ -12,7 +12,7 @@ Require Import ChargeCore.Open.OpenILogic.
 Require Import ChargeCore.SepAlg.SepAlgInsts.
 Require Import ChargeCore.SepAlg.SepAlg.
 
-Require Import Charge.SepAlg.SepAlgMap.
+Require Import ChargeCore.SepAlg.SepAlgPfun.
 
 Require Import Java.Language.Lang.
 Require Import Java.Language.Program.
@@ -45,7 +45,7 @@ Section Commands.
   Inductive read_sem (x y : Lang.var) (f : field) : semCmdType :=
   | read_ok : forall ref v P (s : stack) (h : heap)
       (Rref  : s y = vptr ref)
-      (Rmaps : MapsTo (ref,f) v (fst h)),
+      (Rmaps : (fst h) (ref,f) = Some v),
       read_sem x y f P 1 s h (Some (stack_add x v s, h))
   | read_fail : forall ref P s (h : heap_ptr) (h' : heap_arr)
       (Sref   : s y = vptr ref)

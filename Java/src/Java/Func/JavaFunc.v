@@ -813,6 +813,11 @@ Definition isEq : expr typ func -> bool :=
                     (ptrnEmbed get ignore)))
          false).
 
+Require Import Charge.Tactics.BILNormalize.
+
+Check normalize_and.
+Print conjunctives.
+
   Definition is_equality : expr typ func -> bool :=
     run_tptrn 
       (pdefault 
