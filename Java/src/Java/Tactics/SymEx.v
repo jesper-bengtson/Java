@@ -848,14 +848,13 @@ reflexivity.
   unfold ListProg. simpl.
   unfold NodeC.
   charge.
-
+*)
 
 Lemma myTac_sound : rtac_sound myTac.
 Proof.
   admit.
 Admitted.
-(* Gregory *)
-(* This proof works *)
+
 Lemma solve_entailment_test : forall x, exists y : sasn, x |-- y.
 Proof.
   run_rtac reify_imp term_table myTac_sound.
@@ -974,41 +973,20 @@ Ltac run_rtac2 reify term_table tac_sound :=
 	  let name := fresh "e" in
 	  lazymatch goal with
 	    | |- ?P =>
-	      reify_aux reify_imp term_table P name; idtac (*
-	      let t := eval vm_compute in (typeof_expr nil nil name) in
-	      let goal := eval unfold name in name in
-	      match t with
-	        | Some ?t =>
-	          let goal_result := constr:(run_tac tac (GGoal name)) in
-	          let result := eval vm_compute in goal_result in
-	           lazymatch result with
-	            | More_ ?s ?g =>
-	              cut (goalD_Prop nil nil g); [
-	                  change (goalD_Prop nil nil g -> exprD_Prop nil nil name);
-                        let H := constr:(@eq_refl (Result (CTop nil nil)) (More_ s g)) in
-                        refine(@run_rtac_More  _ tac s _ _ tac_sound _);
-                          vm_cast_no_check H
-	                | cbv_denote
-	              ]
-	            | Solved ?s =>
-                      let H := constr:(@eq_refl (Result (CTop nil nil)) (Solved s)) in
-                      refine (@run_rtac_Solved _ tac s name tac_sound _);
-                        vm_cast_no_check H
-	            | Fail => idtac "Tactic" tac "failed."
-	            | ?x => idtac "Error: run_rtac could not resolve the result from the tactic :" tac; idtac x
-	          end
-	        | None => idtac "expression " goal "is ill typed" t
-	      end  *)
+	      reify_aux reify_imp term_table P name; clear name
 	  end
 	| _ => idtac tac_sound "is not a soudness theorem."
   end.
 
-Lemma test_swap2 : mkSwap 30.
+Ltac charge2 := run_rtac2 reify_imp term_table runTac_sound; intros.
+
+Lemma test_swap2 : mkSwap 10.
 Proof.
   unfold mkSwap, mkSwapPre, mkSwapPost, mkSwapProg, mkSwapPostAux, mkRead, mkWrite, mkWriteAux.
   Opaque pure.
   simpl.
 
+(* GREGORY : charge runs the complete tactic, charge2 runs only reification *)
   Time charge.
 
 Time Qed.

@@ -49,7 +49,7 @@ Section Commands.
       read_sem x y f P 1 s h (Some (stack_add x v s, h))
   | read_fail : forall ref P s (h : heap_ptr) (h' : heap_arr)
       (Sref   : s y = vptr ref)
-      (Snotin : ~ In (ref,f) h),
+      (Snotin : ~ (pfun_in h (ref,f))),
       read_sem x y f P 1 s (h, h') None.
   Program Definition read_cmd x y f := Build_semCmd (read_sem x y f) _ _.
   Next Obligation.
@@ -62,8 +62,12 @@ Section Commands.
     destruct h, big, frame; simpl in *; subst.
     apply sa_mul_split in HFrame.
     destruct HFrame as [HFrame _].
-    destruct (sa_mul_mapstoR HFrame Rmaps) as [[H1 H2] | [H1 H2]]; [assumption|].
-    contradiction HSafe; apply read_fail with ref; assumption.
+    destruct (pfun_mapsto_sa_mulR HFrame Rmaps); [assumption|].
+    contradiction HSafe; apply read_fail with ref; [assumption|].
+    intros H3. simpl in HFrame.
+    specialize (HFrame (ref, f)). rewrite Rmaps in HFrame.
+    destruct HFrame as [[H1 H2] | [H1 H2]]; [congruence|].
+    destruct H3 as [u H3]. congruence.
   Qed.
 
 Require Import Compare_dec.
@@ -90,8 +94,10 @@ Require Import Compare_dec.
   Qed.
 
   Lemma heap_arr_exists_fresh (h : heap_arr) :
-    exists k, forall i, ~ In (k, i) h.
+    exists k, forall i, ~ pfun_in h (k, i).
   Proof.
+    admit.
+    (*
     assert (forall lst, exists k, forall i, ~ In (k, i) h /\ ~List.In k lst).
     generalize dependent h.
     apply (@map_induction (arrptr * nat) _ _ _ val 
@@ -130,7 +136,8 @@ Require Import Compare_dec.
     + destruct (H nil) as [k H1]; clear H.
       exists k; intros. destruct (H1 i) as [H _].
       apply H.
-  Qed.
+*)
+  Admitted.
 
 
 (*
@@ -168,8 +175,9 @@ Require Import Compare_dec.
     apply dec_double_neg; [apply in_heap_arr_dec | intro H].
     apply HSafe.
     eapply read_arr_fail; try eassumption; try reflexivity.
-    eapply find_heap_arr_frame; eauto.
-  Qed.    
+   (*eapply find_heap_arr_frame; eauto.*)
+   admit.
+  Admitted.    
 
   Inductive write_arr_sem (x : Lang.var) (path : list dexpr) (e : dexpr) : semCmdType :=
   | write_arr_ok P arr s hp ha ha' vpath
@@ -198,18 +206,20 @@ Require Import Compare_dec.
       apply dec_double_neg; [apply in_heap_arr_dec | intro H].
       apply HSafe; eapply write_arr_fail; try eassumption; reflexivity.
     }
-
+    admit.
+    (*
     destruct (add_heap_arr_frame _ _ _ _ _ _ _ Hha Sha H) as [ha'' [H1 H2]].
     exists (h, ha'').
     split.
     split; simpl. apply Hhp. apply H1.
     eapply write_arr_ok; try eassumption; reflexivity.
-  Qed.
+*)
+  Admitted.
 
   Inductive alloc_arr_sem (x : Lang.var) (e : dexpr) : semCmdType :=
   | alloc_arr_ok (P : Program) (s s' : stack) (hp : heap_ptr) (ha ha' : heap_arr) (n : nat)
-                 (Sfresh_ha : forall i, ~ In (n, i) ha) 
-                 (Sha : alloc_heap_arr n (val_to_nat (eval e s)) ha === ha') 
+                 (Sfresh_ha : forall i, ~ pfun_in ha (n, i)) 
+                 (Sha : pfun_eq (alloc_heap_arr n (val_to_nat (eval e s)) ha) ha') 
                  (Ss : s' = stack_add x (varr n) s) :
       alloc_arr_sem x e P 1 s (hp, ha) (Some (s', (hp, ha'))).
   Program Definition alloc_arr_cmd x e := Build_semCmd (alloc_arr_sem x e) _ _.
@@ -263,10 +273,10 @@ Require Import Compare_dec.
   Inductive alloc_sem (x : Lang.var) (C : class) : semCmdType :=
   | alloc_ok : forall (P : Program) (s s0 : stack) (h h0 : heap_ptr) (h' : heap_arr) n fields
       (Snotnull : (n, C) <> pnull)
-      (Sfresh_h : forall f, ~ In ((n, C), f) h)
+      (Sfresh_h : forall f, ~ pfun_in h ((n, C), f))
       (Sfields  : field_lookup P C fields)
       (Sh0      : sa_mul h
-        (fold_right (fun f h' => add ((n, C), f) (pnull : val) h') heap_ptr_unit fields) h0)
+        (fold_right (fun f h' => pfun_update h' ((n, C), f) (pnull : val)) heap_ptr_unit fields) h0)
       (Ss0      : s0 = stack_add x (vptr (n, C)) s),
       alloc_sem x C P 1 s (h, h') (Some (s0, (h0, h'))).
   Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _ _.
@@ -285,27 +295,32 @@ Require Import Compare_dec.
     eapply alloc_ok; [eassumption | | eassumption | apply sa_mulC; assumption | reflexivity].
     intros f H6; apply (Sfresh_h f).
     apply sa_mulC in H2.
+    admit.
+    (*
     destruct (sa_mul_inL H2 H6) as [H8 H9].    
     destruct (sa_mul_inR Sh0 H9) as [[H10 H11] | [H10 H11]]; [assumption|].
     apply sa_mulC in H1; destruct (sa_mul_inL H1 H10); intuition.
-  Qed.
+*)
+  Admitted.
 
   Inductive write_sem (x:Lang.var) (f:field) (e:dexpr) : semCmdType := 
   | write_ok : forall P (s: stack) (h h' : heap_ptr) (h'' : heap_arr) ref v
       (Sref: s x = vptr ref)
-      (Sin:  In (ref,f) h )
+      (Sin:  pfun_in h (ref,f) )
       (Heval : eval e s = v)
-      (Sadd: h' = add (ref,f) v h ),
+      (Sadd: h' = pfun_update h (ref,f) v ),
       write_sem x f e P 1 s (h, h'') (Some (s, (h', h'')))
   | write_fail : forall P (s: stack) h h'' ref
       (Sref:   s x = vptr ref)
-      (Sin : ~ In (ref, f) h),
+      (Sin : ~ pfun_in h (ref, f)),
       write_sem x f e P 1 s (h, h'') None.
   Program Definition write_cmd x f e := Build_semCmd (write_sem x f e) _ _.
   Next Obligation.
     intros H; inversion H.
   Qed.
   Next Obligation.
+    admit.
+    (*
     unfold frame_property; intros.
     inversion HSem. subst; clear HSem.
     destruct h, frame; simpl in *.
@@ -320,7 +335,8 @@ Require Import Compare_dec.
     apply sa_mul_add; assumption. simpl. assumption.
     eapply write_ok; try eassumption; try reflexivity.
     destruct (sa_mul_inR HFrame Sin); intuition.
-  Qed.
+*)
+  Admitted.
 
   Fixpoint create_stack (ps : list Lang.var) (vs : list val) : stack :=
     match ps, vs with
@@ -485,6 +501,8 @@ End Commands.
 
   Notation " '{[' P ']}' c '{[' Q ']}' " := (triple P Q c) (at level 89,
     format " {[ P ]} '/' c '/' {[ Q ]} ").
+
+Require Import RelationClasses Setoid.
 
   Add Parametric Morphism : triple with signature
     lentails --> lentails ++> eq ==> lentails

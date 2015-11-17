@@ -64,7 +64,7 @@ Definition goalD_aux tus tvs goal (us : HList.hlist typD tus) (vs : HList.hlist 
   end.
   
 Definition run_tac tac goal :=
-  runOnGoals tac nil nil 0 0 (CTop nil nil) 
+  runOnGoals tac nil nil 0 0 (ctx:=CTop nil nil) 
     (ctx_empty (typ := typ) (expr := expr typ func)) goal.
 
 Lemma run_rtac_More tac s goal e
@@ -81,7 +81,7 @@ Proof.
   assert (WellFormed_Goal nil nil (GGoal (typ := typ) e)) as H1 by constructor.
   assert (WellFormed_ctx_subst (TopSubst (expr typ func) nil (@nil typ))) as H2 by constructor.
   specialize (Hsound H1 H2).
-  destruct Hsound as [Hwfs [Hwfg Hsound]].
+  destruct Hsound as [ Hwfs [ Hwfg Hsound ] ].
   unfold Ctx.propD, exprD'_typ0 in Hsound.
   simpl in Hsound. unfold exprD_Prop, exprD; simpl.
   forward; inv_all; subst.
@@ -432,8 +432,8 @@ Ltac reify_aux reify term_table e n :=
   let k fs e :=
       pose e as n in
   reify_expr reify k
-             [ (fun (y : @mk_dvar_map _ _ _ _ term_table elem_ctor) => True) ]
-             [ e ].
+             [[ (fun (y : @mk_dvar_map _ _ _ _ term_table elem_ctor) => True) ]]
+             [[ e ]].
 
 Ltac run_rtac reify term_table tac_sound :=
   match type of tac_sound with
