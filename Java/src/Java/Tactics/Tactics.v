@@ -19,7 +19,7 @@ Require Import MirrorCore.Views.NatView.
 Require Import MirrorCore.Views.StringView.
 Require Import MirrorCore.Views.BoolView.
 Require Import MirrorCore.Views.ListView.
-Require Import MirrorCore.Views.ListOpView.
+Require Import Java.Func.ListOpView.
 Require Import MirrorCore.Views.ProdView.
 
 Require Import ChargeCore.Open.Stack.

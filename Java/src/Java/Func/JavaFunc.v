@@ -13,6 +13,7 @@ Require Import Charge.Views.ILogicView.
 Require Import Charge.Views.BILogicView.
 Require Import Charge.Views.SubstView.
 Require Import Charge.Views.EmbedView.
+Require Import Java.Func.ListOpView.
 
 Require Import MirrorCore.TypesI.
 Require Import MirrorCore.SymI.
@@ -25,7 +26,6 @@ Require Import MirrorCore.syms.SymSum.
 Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.Subst.FMapSubst.
 Require Import MirrorCore.Views.ListView.
-Require Import MirrorCore.Views.ListOpView.
 Require Import MirrorCore.Views.ProdView.
 Require Import MirrorCore.Views.EqView.
 Require Import MirrorCore.Views.ApplicativeView.
@@ -614,14 +614,11 @@ Definition fs : @SymEnv.functions typ _ :=
   Instance RSymOk_Empty_set : RSymOk RSym_Empty_set :=
     {
       sym_eqbOk a b :=
-        match a return (match sym_eqb a b with
-                        | Some true => a = b
-                        | Some false => a <> b
-                        | None => True
-                        end) with
+        match a with
         end
 
     }.
+  
 
   Lemma RSymOk_sub_func (p : positive) : RSymOk (RSym_sub_func p).
   Proof.
@@ -678,9 +675,10 @@ Definition fs : @SymEnv.functions typ _ :=
     @FMapSubst.SUBST.Subst_subst _.
   Global Instance SU : SubstI.SubstUpdate subst (expr typ func) :=
     @FMapSubst.SUBST.SubstUpdate_subst _ _ _ _.
-  Global Instance SO : SubstI.SubstOk SS :=
+Check SubstI.SubstOk.
+  Global Instance SO : @SubstI.SubstOk _ _ _ _ _ SS :=
     @FMapSubst.SUBST.SubstOk_subst typ RType_typ (expr typ func) _.
-  Global Instance SUO :SubstI.SubstUpdateOk SU SO :=  @FMapSubst.SUBST.SubstUpdateOk_subst typ RType_typ (expr typ func) _ _.
+  Global Instance SUO : @SubstI.SubstUpdateOk _ _ _ _ _ _ SU SO :=  @FMapSubst.SUBST.SubstUpdateOk_subst typ RType_typ (expr typ func) _ _.
 (*
   Global Instance MA : MentionsAny (expr typ func) := {
     mentionsAny := ExprCore.mentionsAny
@@ -691,18 +689,6 @@ Definition fs : @SymEnv.functions typ _ :=
     admit.
   Qed.
 *)
-
-Check ptrnAp.
-Check @ptrnEq.
-Print ptrnEq.
-Check get.
-Check ptrnAp.
-Check ptrnPure.
-Check Ptrns.pmap.
-Print Ptrns.pmap.
-Print ptrn.
-Check app.
-Print app.
 
 Definition ptrnPair {A B T U : Type} (t : ptrn A T) (u : ptrn B U) : 
   ptrn (A * B) (T * U) :=
@@ -815,23 +801,22 @@ Definition isEq : expr typ func -> bool :=
 
 Require Import Charge.Tactics.BILNormalize.
 
-Check normalize_and.
-Print conjunctives.
-
+(*
   Definition is_equality : expr typ func -> bool :=
     run_tptrn 
       (pdefault 
          (ptrnEmbed get get
-         false).
+         false)).
+*)
 
   Definition mkPointstoVar x f e : expr typ func :=
      mkAp tyVal tyAsn
           (mkAp tyString (tyArr tyVal tyAsn)
                 (mkAp tyVal (tyArr tyString (tyArr tyVal tyAsn))
-                      (mkPure (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn)))
+                      (ApplicativeView.mkPure (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn)))
                                (Inj fPointsto))
                       (App (Inj fStackGet) (mkString x)))
-                (mkPure tyString (mkString f)))
+                (ApplicativeView.mkPure tyString (mkString f)))
           e.
 (*
   Definition test_lemma :=

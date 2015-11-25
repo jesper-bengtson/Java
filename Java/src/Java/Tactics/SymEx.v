@@ -574,8 +574,7 @@ Require Import Charge.Tactics.Open.Subst.
 Require Import Charge.Tactics.Lists.Fold.
 *)
 
-Require Import MirrorCore.Views.ListOpView.
-
+Require Import Java.Func.ListOpView.
 
 Definition FOLD := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all (fun x e args => red_fold (apps e args))).
 
@@ -744,7 +743,7 @@ Admitted.
 Require Import Java.Tactics.Tactics.
 *)
 Definition run_tac tac goal :=
-  runOnGoals tac nil nil 0 0 (CTop nil nil)
+  runOnGoals tac nil nil 0 0 (ctx := (CTop nil nil))
     (ctx_empty (typ := typ) (expr := expr typ func)) goal.
 
 Require Import Java.Tactics.Tactics.
@@ -809,7 +808,7 @@ Proof.
 Admitted.
 
 Check mkCons.
-
+(*
 Lemma test_alloc : prog_eq ListProg |-- triple ltrue lfalse (calloc "x" "NodeC").
 Proof.
   charge.
@@ -859,7 +858,7 @@ Lemma solve_entailment_test : forall x, exists y : sasn, x |-- y.
 Proof.
   run_rtac reify_imp term_table myTac_sound.
 Qed.
-*)
+
 Lemma test_skip_lemma3 : testSkip 200.
 Proof.
   unfold testSkip; simpl.

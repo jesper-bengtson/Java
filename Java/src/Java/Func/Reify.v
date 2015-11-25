@@ -9,7 +9,7 @@ Require Import MirrorCore.Views.NatView.
 Require Import MirrorCore.Views.BoolView.
 Require Import MirrorCore.Views.StringView.
 Require Import MirrorCore.Views.ProdView.
-Require Import MirrorCore.Views.ListOpView.
+Require Import Java.Func.ListOpView.
 
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
@@ -51,14 +51,11 @@ Reify Declare Patterns t_pat := t.
 
 
 
-Reify Declare Syntax t_cmd :=
-{ (@Patterns.CPatterns t t_pat) }.
+Reify Declare Syntax t_cmd := (@Patterns.CPatterns t t_pat).
 
 
 Reify Declare Syntax reify_imp_typ :=
-  {
-  	(@Patterns.CPatterns typ patterns_java_typ)
-  }.
+  	(@Patterns.CPatterns typ patterns_java_typ).
 
 Reify Declare Typed Table term_table : BinNums.positive => reify_imp_typ.
 
@@ -68,13 +65,12 @@ Import OneOfType.
 Let Ext (x : SymEnv.func) := @ExprCore.Inj typ func (Into (ts := func_map) 2 eq_refl x).
 
 Reify Declare Syntax reify_imp :=
-  { (@Patterns.CFirst _
+   (@Patterns.CFirst _
   		      ((@Patterns.CVar _ (@ExprCore.Var typ func)) ::
                          (@Patterns.CPatterns _ patterns_java) ::
                          (@Patterns.CApp _ (@ExprCore.App typ func)) ::
     	                 (@Patterns.CAbs _ reify_imp_typ (@ExprCore.Abs typ func)) ::
-    	                 (@Patterns.CTypedTable _ _ _ term_table Ext) :: nil))
-  }.
+    	                 (@Patterns.CTypedTable _ _ _ term_table Ext) :: nil)).
 
 Notation "'ap_eq' '[' x ',' y ']'" :=
 	 (ap (T := Fun Lang.stack) (ap (T := Fun Lang.stack) (pure (T := Fun Lang.stack) (@eq val)) x) y).
