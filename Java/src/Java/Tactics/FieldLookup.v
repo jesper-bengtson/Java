@@ -15,7 +15,7 @@ Section FieldLookup.
 
   Definition FIELD_LOOKUP : rtac typ (expr typ func) :=
     fun tus tvs n m c s =>
-      run_default 
+      run_ptrn 
         (pmap (fun P_C_f => 
                  let '(_, P, C, f) := P_C_f in
                  match class_lookup C P with

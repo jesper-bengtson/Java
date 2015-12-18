@@ -614,7 +614,7 @@ Print fptrnProg.
 Check @ptrn_view.
   Definition FIELD_LOOKUP : rtac typ (expr typ func) :=
     fun tus tvs n m c s =>
-      run_default 
+      run_ptrn 
         (pmap (fun P_C_f => 
                  let '(_, P, C, f) := P_C_f in
                  match class_lookup C P with
@@ -634,7 +634,7 @@ Check @ptrn_view.
 
 Require Import MirrorCore.Views.ListView.
 Definition fields_to_list (e : expr typ func) : expr typ func :=
-  run_default (inj (pmap 
+  run_ptrn (inj (pmap 
                       (fun lst => 
                       fold_right (fun x xs => mkCons tyString (mkString x) xs) (mkNil tyString) lst)
                       (ptrn_view _ (fptrnFields get)))) e e.
@@ -682,15 +682,14 @@ Definition ptrnCmd {T : Type}
 
 Definition symE : rtac typ (expr typ func) :=
   fun tus tvs n m ctx s e =>
-    run_tptrn
-      (pdefault
+    run_ptrn      
          (pmap (fun t_l_r => let '(t, _, (_, _, c)) := t_l_r in
                              if t ?[ eq ] tySpec then
                                tripleE c
                              else
                                FAIL)
                              (ptrnEntails get get (ptrnTriple get get (ptrnCmd get))))
-         FAIL) e tus tvs n m ctx s e.
+         FAIL e tus tvs n m ctx s e.
 
 Definition runTac :=
    (THEN' (THEN (THEN (REPEAT 1000 (INTRO typ func)) symE)
@@ -864,7 +863,6 @@ Proof.
   unfold testSkip; simpl.
   Time run_rtac reify_imp term_table runTac_sound.
 Time Qed.
-Print test_skip_lemma3.
 
 Require Import ChargeCore.Logics.BILogic.
 Open Scope string.
@@ -902,6 +900,68 @@ Proof.
 Time Qed.
 
 Require Import BinInt.
+
+  Opaque pure.
+  Opaque ap.
+
+Definition Test_swap2_body := (cseq (cseq (cread ("x")%string ("this")%string ("a")%string) (cseq (cread ("y")%string ("this")%string ("b")%string) (cseq (cwrite ("this")%string ("a")%string (E_var ("y")%string)) (cwrite ("this")%string ("b")%string (E_var ("x")%string))))) cskip).
+Definition Test_swap2_Method := (Build_Method (("this")%string :: nil) Test_swap2_body (E_val nothing)).
+Definition Test_Class := (Build_Class (("a")%string :: (("b")%string :: nil)) ((("swap2")%string, Test_swap2_Method) :: nil)).
+Theorem Test_swap2_s : lentails ltrue (triple
+  (
+    ap_pointsto [("this")%string, ("a")%string, eval (E_val ((0)%Z))] **
+    ap_pointsto [("this")%string, ("b")%string, eval (E_val ((1)%Z))] ** empSP
+  )
+  (
+    ap_pointsto [("this")%string, ("a")%string, eval (E_val ((1)%Z))] **
+    ap_pointsto [("this")%string, ("b")%string, eval (E_val ((0)%Z))] ** empSP
+  )
+  Test_swap2_body
+).
+Proof.
+  unfold Test_swap2_body.
+  Opaque pure.
+  simpl.
+  Time charge.
+Qed.
+
+
+
+
+Definition Test_swap2_body2 := (cseq (cread "x" "this" "a") (cseq (cread "y" "this" "b") (cseq (cwrite "this" "a" (E_var "y")) (cseq (cwrite "this" "b" (E_var "x")) cskip)))).
+Theorem Test_swap3_s : lentails ltrue (triple
+  (
+    ap_pointsto ["this", "a", eval (E_val 0%Z)] **
+    ap_pointsto ["this", "b", eval (E_val 1%Z)] ** empSP
+  )
+  (
+    ap_pointsto ["this", "a", eval (E_val 1%Z)] **
+    ap_pointsto ["this", "b", eval (E_val 0%Z)] ** empSP
+  )
+Test_swap2_body2
+).
+Proof.
+  unfold Test_swap2_body2.
+  simpl.
+  Time charge.
+Admitted.
+
+Lemma test2 :
+
+lentails ltrue (triple
+   ( ap_pointsto ["o", "f1", eval (E_val 1%Z)] **
+       ap_pointsto ["o", "f0", eval (E_val 0%Z)] ** empSP)
+    (ap_pointsto ["o", "f1", eval (E_val 0%Z)] **
+      ap_pointsto ["o", "f0", eval (E_val 1%Z)] ** empSP )
+
+    (cseq (cread "x1" "o" "f1")
+    (cseq (cread "x0" "o" "f0")
+    (cseq (cwrite "o" "f1" (E_var "x0"))
+    (cseq (cwrite "o" "f0" (E_var "x1")) cskip))))).
+Proof.
+  charge.
+Qed.
+
 
 Fixpoint mkSwapPre n : sasn :=
 	match n with
@@ -979,7 +1039,7 @@ Ltac run_rtac2 reify term_table tac_sound :=
 
 Ltac charge2 := run_rtac2 reify_imp term_table runTac_sound; intros.
 
-Lemma test_swap2 : mkSwap 10.
+Lemma test_swap2 : mkSwap 2.
 Proof.
   unfold mkSwap, mkSwapPre, mkSwapPost, mkSwapProg, mkSwapPostAux, mkRead, mkWrite, mkWriteAux.
   Opaque pure.
@@ -989,6 +1049,8 @@ Proof.
   Time charge.
 
 Time Qed.
+
+
 
 
 

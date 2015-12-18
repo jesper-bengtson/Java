@@ -763,12 +763,11 @@ Definition ptrnApEq {T A B : Type} (t : ptrn typ T)
                              a) b).
 
 Definition isEq : expr typ func -> bool :=
-  run_tptrn
-    (pdefault
+  run_ptrn
        (Ptrns.pmap (fun _ => true) 
                    (ptrnEmbed (ptrnPair ptrn_tyPure ptrn_tySasn) 
-                              (ptrnApEq ptrn_tyVal ignore ignore)))
-       false).
+                              (ptrnApEq ptrn_tyVal ignore ignore))) false.
+
 
 
   Lemma evalDExpr_wt (e : dexpr) :
@@ -788,8 +787,7 @@ Definition isEq : expr typ func -> bool :=
   Qed.
 
   Definition is_pure : expr typ func -> bool :=
-    run_tptrn
-      (pdefault
+    run_ptrn
          (por (Ptrns.pmap (fun _ => true) (por (ptrnTrue ignore) (ptrnFalse ignore)))
               (Ptrns.pmap (fun x =>
                        match x with
@@ -797,7 +795,7 @@ Definition isEq : expr typ func -> bool :=
                        | _ => false
                        end)
                     (ptrnEmbed get ignore)))
-         false).
+         false.
 
 Require Import Charge.Tactics.BILNormalize.
 

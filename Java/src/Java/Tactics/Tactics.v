@@ -92,7 +92,8 @@ Proof.
   unfold pctxD in H0; inv_all; subst.
   apply H5.
   unfold goalD_Prop in He'. simpl in He'. forward; inv_all; subst.
-Qed.
+  Unshelve. repeat decide equality. admit.
+Admitted.
 
 Lemma run_rtac_Solved tac s e
   (Hsound : rtac_sound tac) 

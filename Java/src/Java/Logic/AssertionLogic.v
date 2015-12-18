@@ -166,15 +166,16 @@ Definition mk_asn (f: Program -> nat -> heap -> Prop)
   (Hheap: forall P k h h', subheap h h' -> f P k h -> f P k h') : asn.
   refine (mkILPreFrm (fun P => mkILPreFrm (fun k => mkILPreFrm (fun h => f P k h) _) _) _).
 Proof.
-  + intros t t' Htt' H. apply Hheap with t; [apply Htt' | assumption].
-  + intros k k' Hkk' t H.
+  + intros P P' HP k h H. eapply HProg; eassumption.
+  
+  Unshelve. intros t t' Htt' H. apply Hheap with t; [apply Htt' | assumption].
+  Unshelve. intros k k' Hkk' t H.
     assert (forall k' k P h, k' >= k -> f P k' h -> f P k h) as Hnat'. {
       intros m n' P' h Hmn S.  
       induction Hmn; [assumption|].
       apply IHHmn. apply Hnat. assumption.
     }
     apply Hnat' with k; assumption.
-  + intros P P' HP k h H. eapply HProg; eassumption.
 Defined.
 
 Program Definition pointsto_aux (x : ptr) (f : field) (v : val) : asn :=
