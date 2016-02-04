@@ -547,14 +547,14 @@ Require Import MirrorCore.Lambda.ExprCore.
       intuition congruence. }
     { consider (PeanoNat.Nat.eqb u u0); intros; intuition congruence. }
   Qed.
-
+(*
   Lemma expr_eqb_true_sound tus tvs t (e1 e2 : expr typ func)
         (H : expr_eqb e1 e2 = Some true) :
-    ExprDsimul.ExprDenote.exprD' tus tvs t e1 = ExprDsimul.ExprDenote.exprD' tus tvs t e2.
+    exprD tus tvs t e1 = exprD tus tvs t e2.
   Proof.
     pose proof (expr_eqbOk e1 e2). forward.
   Qed.
-
+*)
   Fixpoint solve_in_aux (e : expr typ func) (lst : expr typ func) (c : Ctx typ (expr typ func)) s : Result c :=
       (list_cases
          (fun _ => Fail)
@@ -750,10 +750,11 @@ Eval unfold lst_combine, list_cases, run_tptrn, pdefault, por, pmap,
 
 
 
+(*
   Lemma lst_length_sound tus tvs (t : typ) (lst : expr typ func)
         (x : exprT tus tvs (typD (tyList t))) (n : nat)
-        (H : ExprDsimul.ExprDenote.exprD' tus tvs (tyList t) lst = Some x) :
-    ExprDsimul.ExprDenote.exprD' tus tvs tyNat (lst_length lst t n) =
+        (H : exprD tus tvs (tyList t) lst = Some x) :
+   exprD tus tvs tyNat (lst_length lst t n) =
     Some (castR (exprT tus tvs) nat
                 (fun us vs => length (castD (exprT tus tvs)
                                             (list (typD t)) x us vs) + n)).
@@ -906,5 +907,5 @@ Eval unfold lst_combine, list_cases, run_tptrn, pdefault, por, pmap,
     erewrite fold_ptrn_ok; [reflexivity | eassumption | eassumption | eassumption].
 *)
   Admitted.
-
+*)
 End Tactics.
