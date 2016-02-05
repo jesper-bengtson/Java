@@ -11,8 +11,6 @@ Require Import MirrorCore.MTypes.BaseType.
 Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.Views.FuncView.
 Require Import MirrorCore.Views.ViewSumN.
-Require Import Java.Func.BaseType.
-Require Import Java.Func.ProdType.
 Require Import MirrorCore.MTypes.ListType.
 
 Require Import Charge.Views.ILogicView.
@@ -179,7 +177,6 @@ Instance Typ2Ok_tyProd : Typ2Ok Typ2_tyProd := Typ2Ok_sym (f_insert tProd).
 
 
 
-(* 
 
 Definition null' : TypesI.typD tyVal := null.
 (*
@@ -198,6 +195,36 @@ Proof.
   simpl.
   apply _.
 Defined.
+
+Definition ilops : @logic_ops _ RType_typ.
+
+  refine (fun t => Ptrns.run_ptrn 
+            (Ptrns.pors ((Ptrns.pmap (fun _ => ILogicView._Some _) 
+                                     (ptrn_tyAsn Ptrns.ignore)) ::
+                         (Ptrns.pmap (fun _ => ILogicView._Some _) 
+                                     (ptrn_tySpec Ptrns.ignore))::
+                         (Ptrns.pmap (fun _ => ILogicView._Some _) 
+                                     (ptrn_tySpec Ptrns.ignore))::
+                         (@nil (ILogicView._option (ILogic.ILogicOps (TypesI.typD t))))))
+            (ILogicView._None _) t).
+            (ILogicView._None (ILogicOps (typD t)))).
+  
+  refine (fun t => 
+            ((Ptrns.run_ptrn 
+                (Ptrns.pmap (fun _ => ILogicView._Some should_not_be_necessary) 
+                            (ptrn_tySpec Ptrns.ignore))
+                (ILogicView._None _)) : 
+               forall t, ILogicView._option (ILogic.ILogicOps (TypesI.typD t))) t).
+
+
+   run_ptrn
+      (Ptrns.por
+         (Ptrns.pmap do_nil (ptrnNil Ptrns.get))
+         (Ptrns.pmap (fun t_x_xs =>
+                        let '(t,x,xs) := t_x_xs in
+                        do_cons t x xs) (ptrnCons Ptrns.get Ptrns.get Ptrns.get)))
+      do_default.
+  
 
   Definition ilops : @logic_ops _ RType_typ :=
   fun t =>

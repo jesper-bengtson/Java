@@ -6,6 +6,7 @@ Require Import ExtLib.Tactics.
 Require Import MirrorCore.TypesI.
 Require Import MirrorCore.MTypes.ModularTypes.
 Require Import MirrorCore.Views.FuncView.
+Require Import MirrorCore.Views.Ptrns.
 
 Require Import ChargeCore.Open.Subst.
 
@@ -108,5 +109,165 @@ Section FuncView_java_type.
   Definition tyCmd := f_insert tCmd.
   Definition tyExpr := f_insert tExpr.
   Definition tySubst := f_insert tSubst.
+
+  Definition ptrn_tyVal {T} (p : ptrn unit T) : ptrn typ T :=
+    fun f U good bad =>
+      match f_view f with
+        | pSome tVal => p tt U good (fun _ => bad f)
+        | _ => bad f
+      end.
+
+  Definition ptrn_tySpec {T} (p : ptrn unit T) : ptrn typ T :=
+    fun f U good bad =>
+      match f_view f with
+        | pSome tSpec => p tt U good (fun _ => bad f)
+        | _ => bad f
+      end.
+
+  Definition ptrn_tyAsn {T} (p : ptrn unit T) : ptrn typ T :=
+    fun f U good bad =>
+      match f_view f with
+        | pSome tAsn => p tt U good (fun _ => bad f)
+        | _ => bad f
+      end.
+
+  Definition ptrn_tyProg {T} (p : ptrn unit T) : ptrn typ T :=
+    fun f U good bad =>
+      match f_view f with
+        | pSome tProg => p tt U good (fun _ => bad f)
+        | _ => bad f
+      end.
+
+  Definition ptrn_tyMethod {T} (p : ptrn unit T) : ptrn typ T :=
+    fun f U good bad =>
+      match f_view f with
+        | pSome tMethod => p tt U good (fun _ => bad f)
+        | _ => bad f
+      end.
+
+  Definition ptrn_tyCmd {T} (p : ptrn unit T) : ptrn typ T :=
+    fun f U good bad =>
+      match f_view f with
+        | pSome tCmd => p tt U good (fun _ => bad f)
+        | _ => bad f
+      end.
+
+  Definition ptrn_tyExpr {T} (p : ptrn unit T) : ptrn typ T :=
+    fun f U good bad =>
+      match f_view f with
+        | pSome tExpr => p tt U good (fun _ => bad f)
+        | _ => bad f
+      end.
+
+  Definition ptrn_tySubst {T} (p : ptrn unit T) : ptrn typ T :=
+    fun f U good bad =>
+      match f_view f with
+        | pSome tSubst => p tt U good (fun _ => bad f)
+        | _ => bad f
+      end.
+
+  Global Instance ptrn_tyVal_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+    ptrn_ok (ptrn_tyVal p).
+  Proof.
+    red; intros.
+    unfold ptrn_tyVal.
+    unfold Succeeds; unfold Fails. 
+    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
+    try (right; unfold Fails; reflexivity); destruct (Hok tt).
+    { left. destruct H as [y H]. exists y. revert H. compute; intros.
+      rewrite H. reflexivity. }
+    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+  Qed.
+
+  Global Instance ptrn_tySpec_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+    ptrn_ok (ptrn_tySpec p).
+  Proof.
+    red; intros.
+    unfold ptrn_tySpec.
+    unfold Succeeds; unfold Fails. 
+    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
+    try (right; unfold Fails; reflexivity); destruct (Hok tt).
+    { left. destruct H as [y H]. exists y. revert H. compute; intros.
+      rewrite H. reflexivity. }
+    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+  Qed.
+
+  Global Instance ptrn_tyAsn_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+    ptrn_ok (ptrn_tyAsn p).
+  Proof.
+    red; intros.
+    unfold ptrn_tyAsn.
+    unfold Succeeds; unfold Fails. 
+    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
+    try (right; unfold Fails; reflexivity); destruct (Hok tt).
+    { left. destruct H as [y H]. exists y. revert H. compute; intros.
+      rewrite H. reflexivity. }
+    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+  Qed.
+
+  Global Instance ptrn_tyProg_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+    ptrn_ok (ptrn_tyProg p).
+  Proof.
+    red; intros.
+    unfold ptrn_tyProg.
+    unfold Succeeds; unfold Fails. 
+    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
+    try (right; unfold Fails; reflexivity); destruct (Hok tt).
+    { left. destruct H as [y H]. exists y. revert H. compute; intros.
+      rewrite H. reflexivity. }
+    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+  Qed.
+
+  Global Instance ptrn_tyMethod_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+    ptrn_ok (ptrn_tyMethod p).
+  Proof.
+    red; intros.
+    unfold ptrn_tyMethod.
+    unfold Succeeds; unfold Fails. 
+    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
+    try (right; unfold Fails; reflexivity); destruct (Hok tt).
+    { left. destruct H as [y H]. exists y. revert H. compute; intros.
+      rewrite H. reflexivity. }
+    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+  Qed.
+
+  Global Instance ptrn_tyCmd_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+    ptrn_ok (ptrn_tyCmd p).
+  Proof.
+    red; intros.
+    unfold ptrn_tyCmd.
+    unfold Succeeds; unfold Fails. 
+    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
+    try (right; unfold Fails; reflexivity); destruct (Hok tt).
+    { left. destruct H as [y H]. exists y. revert H. compute; intros.
+      rewrite H. reflexivity. }
+    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+  Qed.
+
+  Global Instance ptrn_tyExpr_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+    ptrn_ok (ptrn_tyExpr p).
+  Proof.
+    red; intros.
+    unfold ptrn_tyExpr.
+    unfold Succeeds; unfold Fails. 
+    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
+    try (right; unfold Fails; reflexivity); destruct (Hok tt).
+    { left. destruct H as [y H]. exists y. revert H. compute; intros.
+      rewrite H. reflexivity. }
+    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+  Qed.
+
+  Global Instance ptrn_tySubst_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+    ptrn_ok (ptrn_tySubst p).
+  Proof.
+    red; intros.
+    unfold ptrn_tySubst.
+    unfold Succeeds; unfold Fails. 
+    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
+    try (right; unfold Fails; reflexivity); destruct (Hok tt).
+    { left. destruct H as [y H]. exists y. revert H. compute; intros.
+      rewrite H. reflexivity. }
+    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+  Qed.
 
 End FuncView_java_type.
