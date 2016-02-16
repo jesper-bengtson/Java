@@ -195,50 +195,83 @@ Proof.
   simpl.
   apply _.
 Defined.
-
-Definition ilops : @logic_ops _ RType_typ.
-
-  refine (fun t => Ptrns.run_ptrn 
-            (Ptrns.pors ((Ptrns.pmap (fun _ => ILogicView._Some _) 
-                                     (ptrn_tyAsn Ptrns.ignore)) ::
-                         (Ptrns.pmap (fun _ => ILogicView._Some _) 
-                                     (ptrn_tySpec Ptrns.ignore))::
-                         (Ptrns.pmap (fun _ => ILogicView._Some _) 
-                                     (ptrn_tySpec Ptrns.ignore))::
-                         (@nil (ILogicView._option (ILogic.ILogicOps (TypesI.typD t))))))
-            (ILogicView._None _) t).
-            (ILogicView._None (ILogicOps (typD t)))).
-  
-  refine (fun t => 
-            ((Ptrns.run_ptrn 
-                (Ptrns.pmap (fun _ => ILogicView._Some should_not_be_necessary) 
-                            (ptrn_tySpec Ptrns.ignore))
-                (ILogicView._None _)) : 
-               forall t, ILogicView._option (ILogic.ILogicOps (TypesI.typD t))) t).
-
-
-   run_ptrn
-      (Ptrns.por
-         (Ptrns.pmap do_nil (ptrnNil Ptrns.get))
-         (Ptrns.pmap (fun t_x_xs =>
-                        let '(t,x,xs) := t_x_xs in
-                        do_cons t x xs) (ptrnCons Ptrns.get Ptrns.get Ptrns.get)))
-      do_default.
-  
-
-  Definition ilops : @logic_ops _ RType_typ :=
+Print typ.
+Print mtyp.
+Print tyProp.
+Print base_typ.
+Check @f_view.
+Print logic_ops.
+Print RType_typ.
+Print typ.
+Print typ'.
+Print typ'.
+Check @f_view typ (base_typ 0) _ tyProp.
+Check typ0_match.
+  Definition ilops : @logic_ops typ RType_typ.
+                       refine (
   fun t =>
-    match t
-          return _option (ILogic.ILogicOps (TypesI.typD t))
-    with
-      | tyProp => _Some _
-      | tyAsn => _Some _
+    match @f_view typ (base_typ 0) TypeView_base_typ t as x 
+          return x = @f_view typ (base_typ 0) TypeView_base_typ t -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+      | pSome p =>
+        match p in base_typ 0 with
+        | tProp => fun pf => pSome _
+        | _ => fun _ => pNone
+        end
+      | _ => fun _ => pNone
+    end eq_refl).
+
+(*      | tyAsn => pSome _
       | tySasn => _Some (@ILFun_Ops stack asn _)
       | tySpec => _Some should_not_be_necessary
-      | tyPure => _Some (@ILFun_Ops stack Prop _)
-      | _ => _None _
-    end.
+      | tyPure => _Some (@ILFun_Ops stack Prop _)*)
+      | _ => fun _ => pNone
+    end eq_refl).
+  destruct t; try congruence.
+SearchAbout asNth.
+unfold typ' in t.
+simpl in *.
+assert ({x :
+    match pmap_lookup' (typ_map 0) 3 return TypeR with
+    | _Some T => T
+    | _None => Empty_set
+    end & asNth 3 t = Some x}) by (destruct (asNth 3 t); [eexists; reflexivity|congruence]).
+destruct X.
+rewrite e in H0.
+simpl in *.
+inversion H0; subst.
+pose proof (asNth_eq 3 t e).
+subst. simpl.
+apply (@pSome (ILogicOps Prop)).
+apply _.
+Defined.
 
+
+  Print asNth'.
+  unfold asNth, asNth' in *. simpl in *.
+  destruct t; simpl in *.
+  destruct index0; simpl in *; try congruence.
+  destruct index0; simpl in *; try congruence.
+  inversion H0; subst. simpl.
+  inv_all; subst.
+  apply pSome. apply _.
+Defined.
+  assert (index0 = (3%positive)). admit.
+  subst. simpl in *.
+  revert H0.
+  remember (pmap_lookup' (typ_map 0) index0).
+  simpl in *.
+remember (asNth 3 t) as o.
+destruct o; try congruence.
+simpl. apply pSome. inversion H0. subst.
+destruct t. simpl in *.
+SearchAbout asNth.
+subst.
+simpl in *.
+unfold asNth, asNth' in Heqo. simpl in *.
+inv_all. subst. simpl. apply _.
+unfold typ'D.
+simpl.
+rewrite <- Heqo.
   Definition bilops : @bilogic_ops _ RType_typ :=
   fun t =>
     match t
