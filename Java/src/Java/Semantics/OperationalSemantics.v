@@ -517,7 +517,7 @@ Open Scope open_scope.
 
   Definition method_spec C m (ps : list Lang.var) (rn : Lang.var) (P Q : sasn) := (
     NoDup (rn :: ps) /\\
-    Exists ps' : (list Lang.var), Exists c : cmd, Exists re : dexpr,
+    Exists ps' : (PList.plist Lang.var), Exists c : cmd, Exists re : dexpr,
       [prog] (fun X : Program => method_lookup X C m (Build_Method ps' c re)
         /\ length ps = length ps' /\
         (forall x, List.In x ps' -> ~ List.In x (modifies c)))

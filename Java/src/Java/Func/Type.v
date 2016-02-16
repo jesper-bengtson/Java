@@ -195,93 +195,157 @@ Proof.
   simpl.
   apply _.
 Defined.
-Print typ.
-Print mtyp.
-Print tyProp.
-Print base_typ.
-Check @f_view.
-Print logic_ops.
-Print RType_typ.
-Print typ.
-Print typ'.
-Print typ'.
-Check @f_view typ (base_typ 0) _ tyProp.
-Check typ0_match.
-  Definition ilops : @logic_ops typ RType_typ.
-                       refine (
-  fun t =>
-    match @f_view typ (base_typ 0) TypeView_base_typ t as x 
-          return x = @f_view typ (base_typ 0) TypeView_base_typ t -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-      | pSome p =>
-        match p in base_typ 0 with
-        | tProp => fun pf => pSome _
-        | _ => fun _ => pNone
-        end
-      | _ => fun _ => pNone
-    end eq_refl).
 
-(*      | tyAsn => pSome _
-      | tySasn => _Some (@ILFun_Ops stack asn _)
-      | tySpec => _Some should_not_be_necessary
-      | tyPure => _Some (@ILFun_Ops stack Prop _)*)
-      | _ => fun _ => pNone
-    end eq_refl).
-  destruct t; try congruence.
-SearchAbout asNth.
-unfold typ' in t.
-simpl in *.
-assert ({x :
-    match pmap_lookup' (typ_map 0) 3 return TypeR with
-    | _Some T => T
-    | _None => Empty_set
-    end & asNth 3 t = Some x}) by (destruct (asNth 3 t); [eexists; reflexivity|congruence]).
-destruct X.
-rewrite e in H0.
-simpl in *.
-inversion H0; subst.
-pose proof (asNth_eq 3 t e).
-subst. simpl.
-apply (@pSome (ILogicOps Prop)).
-apply _.
-Defined.
+Definition ilops : @logic_ops typ RType_typ.
+  refine (
+      fun t =>
+        match @f_view typ (base_typ 0) TypeView_base_typ t as x 
+              return x = @f_view typ (base_typ 0) TypeView_base_typ t -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+        | pSome p =>
+          fun pf =>
+            match p as x in base_typ 0 return p = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+            | tProp => fun pf' => pSome _
+            | _ => fun _ => pNone
+            end eq_refl
+        | _ => 
+          fun _ =>
+            match @f_view typ (java_typ 0) TypeView_java_typ t as x 
+                  return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+            | pSome p =>
+              fun pf =>
+                match p as x in java_typ 0 return p = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                | tAsn => fun pfAsn => pSome _
+                | tSpec => fun pfSpec => pSome _
+                | _ => fun _ => pNone
+                end eq_refl
+            | pNone => 
+              fun _ => 
+                match t as x return t = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                | tyArr _ (tyArr _ t1 t2) t3 => 
+                  fun _ =>
+                  match @f_view typ (base_typ 0) TypeView_base_typ t1 as x 
+                        return x = @f_view typ (base_typ 0) TypeView_base_typ t1 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                  | pSome p1 => 
+                    fun pft1 => 
+                      match p1 as x in base_typ 0 return p1 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                      | tString => 
+                        fun pf'' =>
+                          match @f_view typ (java_typ 0) TypeView_java_typ t2 as x 
+                                return x = @f_view typ (java_typ 0) TypeView_java_typ t2 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                          | pSome p2 => 
+                            fun pft1 => 
+                              match p2 as x in java_typ 0 return p2 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                              | tVal =>
+                                fun pf''' =>
+                                  match @f_view typ (base_typ 0) TypeView_base_typ t3 as x 
+                                        return x = @f_view typ (base_typ 0) TypeView_base_typ t3 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                                  | pSome p3 =>
+                                    fun pf =>
+                                      match p3 as x in base_typ 0 return p3 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                                      | tProp => fun pf' => pSome _
+                                      | _ => fun _ => pNone
+                                      end eq_refl
+                                  | pNone => 
+                                    fun _ =>
+                                      match @f_view typ (java_typ 0) TypeView_java_typ t as x 
+                                            return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                                      | pSome p3 =>
+                                        fun pf =>
+                                          match p3 as x in java_typ 0 return p3 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                                          | tAsn => fun _ => pSome _
+                                          | _ => fun _ => pNone
+                                          end eq_refl
+                                      | pNone => fun _ => pNone
+                                      end eq_refl
+                                  end eq_refl
+                              | _ => fun _ => pNone
+                              end eq_refl
+                          | pNone => fun _ => pNone
+                          end eq_refl
+                      | _ => fun _ => pNone
+                      end eq_refl
+                  | pNone => fun _ => pNone
+                  end eq_refl
+                | _ => fun _ => pNone
+                end eq_refl
+            end eq_refl
+        end eq_refl).
+    + assert (f_insert p = t) by admit.  (* This is fv_ok which we do not yet have. *)
+      subst. simpl in *. apply _.
+    + assert (f_insert p = t) by admit.  (* This is fv_ok which we do not yet have. *)
+      subst. simpl in *. apply _.
+    + assert (f_insert p = t) by admit.  (* This is fv_ok which we do not yet have. *)
+      subst. simpl in *. apply _. 
+    + assert (f_insert p1 = t1) by admit.  (* This is fv_ok which we do not yet have. *)
+      assert (f_insert p2 = t2) by admit.  (* This is fv_ok which we do not yet have. *)
+      assert (f_insert p3 = t3) by admit.  (* This is fv_ok which we do not yet have. *)
+      subst; simpl in *. apply _.
+    + assert (f_insert p1 = t1) by admit.  (* This is fv_ok which we do not yet have. *)
+      assert (f_insert p2 = t2) by admit.  (* This is fv_ok which we do not yet have. *)
+      assert (f_insert p3 = t3) by admit.  (* This is fv_ok which we do not yet have. *)
+      subst; simpl in *. apply _.
+  Admitted.
 
+  Definition bilops : @bilogic_ops _ RType_typ.
+  refine (
+      fun t =>
+        match @f_view typ (java_typ 0) TypeView_java_typ t as x 
+              return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (BILogic.BILOperators (TypesI.typD t)) with
+        | pSome p =>
+          fun pf =>
+            match p as x in java_typ 0 return p = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
+            | tAsn => fun pfAsn => pSome _
+            | _ => fun _ => pNone
+            end eq_refl
+        | pNone => 
+          fun _ => 
+            match t as x return t = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
+            | tyArr _ (tyArr _ t1 t2) t3 => 
+              fun _ =>
+                match @f_view typ (base_typ 0) TypeView_base_typ t1 as x 
+                      return x = @f_view typ (base_typ 0) TypeView_base_typ t1 -> poption (BILogic.BILOperators (TypesI.typD t)) with
+                | pSome p1 => 
+                  fun pft1 => 
+                    match p1 as x in base_typ 0 return p1 = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
+                    | tString => 
+                      fun pf'' => 
+                        match @f_view typ (java_typ 0) TypeView_java_typ t2 as x 
+                              return x = @f_view typ (java_typ 0) TypeView_java_typ t2 -> poption (BILogic.BILOperators (TypesI.typD t)) with
+                        | pSome p2 => 
+                          fun pft1 => 
+                            match p2 as x in java_typ 0 return p2 = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
+                            | tVal =>
+                              fun pf''' => 
+                                match @f_view typ (java_typ 0) TypeView_java_typ t as x 
+                                      return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (BILogic.BILOperators (TypesI.typD t)) with
+                                | pSome p3 =>
+                                  fun pf =>
+                                    match p3 as x in java_typ 0 return p3 = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
+                                    | tAsn => fun _ => pSome _
+                                    | _ => fun _ => pNone
+                                    end eq_refl
+                                | pNone => fun _ => pNone
+                                end eq_refl 
+                            | _ => fun _ => pNone
+                            end eq_refl 
+                        | _ => fun _ => pNone
+                        end eq_refl 
+                    | _ => fun _ => pNone
+                    end eq_refl 
+                | pNone => fun _ => pNone
+                end eq_refl 
+            | _ => fun _ => pNone
+            end eq_refl 
+        end eq_refl).
+  + assert (f_insert p = t) by admit.  (* This is fv_ok which we do not yet have. *)
+    subst. simpl in *. apply _.
+  + assert (f_insert p1 = t1) by admit.  (* This is fv_ok which we do not yet have. *)
+    assert (f_insert p2 = t2) by admit.  (* This is fv_ok which we do not yet have. *)
+    assert (f_insert p3 = t3) by admit.  (* This is fv_ok which we do not yet have. *)
+    subst; simpl in *. apply _.
+  Admitted.
 
-  Print asNth'.
-  unfold asNth, asNth' in *. simpl in *.
-  destruct t; simpl in *.
-  destruct index0; simpl in *; try congruence.
-  destruct index0; simpl in *; try congruence.
-  inversion H0; subst. simpl.
-  inv_all; subst.
-  apply pSome. apply _.
-Defined.
-  assert (index0 = (3%positive)). admit.
-  subst. simpl in *.
-  revert H0.
-  remember (pmap_lookup' (typ_map 0) index0).
-  simpl in *.
-remember (asNth 3 t) as o.
-destruct o; try congruence.
-simpl. apply pSome. inversion H0. subst.
-destruct t. simpl in *.
-SearchAbout asNth.
-subst.
-simpl in *.
-unfold asNth, asNth' in Heqo. simpl in *.
-inv_all. subst. simpl. apply _.
-unfold typ'D.
-simpl.
-rewrite <- Heqo.
-  Definition bilops : @bilogic_ops _ RType_typ :=
-  fun t =>
-    match t
-          return option (BILogic.BILOperators (TypesI.typD t))
-    with
-      | tyAsn => Some _
-      | tySasn => Some (@BILFun_Ops stack asn _)
-      | _ => None
-    end.
-
+(*
 Definition eops : @embed_ops _ RType_typ :=
   fun t u =>
     match t as t , u as u
@@ -291,7 +355,8 @@ Definition eops : @embed_ops _ RType_typ :=
       | tyPure, tySasn => Some _
       | tyProp, tyAsn => Some _
       | _ , _ => None
-    end.
+    end. 
+*)
 (*
 Definition lops : @later_ops _ RType_typ :=
   fun t =>
@@ -300,6 +365,7 @@ Definition lops : @later_ops _ RType_typ :=
 	  | _ => None
     end.
 *)
+(*
 Definition ilp : il_pointwise :=
   fun t =>
     match t with
@@ -322,6 +388,8 @@ Definition eilp : eil_pointwise :=
       | tyStack, tyAsn => true
       | _, _ => false
     end.
+*)
+
 (*
 Lemma eilpOk : eil_pointwiseOk eops eilp.
 Proof.
@@ -383,6 +451,7 @@ Proof.
   repeat split.
 Qed.
 *)
+(*
 Fixpoint edt (t : typ) : typD t -> typD t -> option bool :=
   match t return typD t -> typD t -> option bool with
     | tyBool => fun e1 e2 => Some (e1 ?[ eq ] e2)
@@ -401,6 +470,7 @@ Fixpoint edt (t : typ) : typD t -> typD t -> option bool :=
         end
     | _ => fun _ _ => None
   end.
+*)
 (*
 Instance SemiEqDecTyp_edt : SemiEqDecTyp typ := {
     semi_eq_dec_typ := edt
@@ -434,4 +504,4 @@ Instance SemiEqDecTypOk_edt : SemiEqDecTypOk SemiEqDecTyp_edt := {
     semi_eq_dec_typOk := edtOk
   }.
 
-*) *)
+*)

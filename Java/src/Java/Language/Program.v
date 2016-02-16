@@ -5,67 +5,13 @@ Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Tactics.Consider.
 
 Require Import ExtLib.Data.Pair.
-Require Import ExtLib.Data.List.
+Require Import ExtLib.Data.PList.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 
-Section RelDecNoDup.
-	Require Import Coq.Bool.Bool.
-
-	Context {A : Type} {RelDec_A : RelDec (@eq A)} 
-	        {RelDec_Correct_A : RelDec_Correct RelDec_A}.
-
-	Fixpoint inb (x : A) (lst : list A) := 
-	  match lst with
-	    | nil => false
-	    | l::ls => if x ?[ eq ] l then true else inb x ls
-	  end.
-	  
-    Lemma inb_sound (x : A) (lst : list A) (H : inb x lst = true) : In x lst.
-    Proof.
-      induction lst; simpl in *; try congruence.
-	  consider (x ?[ eq ] a); intros; subst.
-	  + left; reflexivity.
-	  + right; apply IHlst; assumption.
-    Qed.
-    
-    Lemma inb_complete (x : A) (lst : list A) (H : In x lst) : inb x lst = true.
-    Proof.
-	  induction lst; simpl in *; try intuition congruence.
-      consider (x ?[ eq ] a); intros; destruct H as [H | H]; try congruence.
-      apply IHlst; assumption.
-    Qed.
-    
-	Fixpoint nodup (lst : list A) : bool :=
-		match lst with
-		  | nil => true
-		  | l :: ls => (negb (inb l ls) && nodup ls)%bool
-		end.
-
-	Lemma nodup_sound (lst : list A) (H : nodup lst = true) : NoDup lst.
-	Proof.
-	  induction lst.
-	  + constructor.
-	  + simpl in *. rewrite andb_true_iff in H; destruct H as [H1 H2].
-	    rewrite negb_true_iff in H1. constructor.
-	    * intro H. apply inb_complete in H. intuition congruence.
-	    * apply IHlst; assumption.
-	Qed.
-	  	
-	Lemma nodup_complete (lst : list A) (H : NoDup lst) : nodup lst = true.
-	Proof.
-	  induction lst.
-	  + constructor.
-	  + simpl in *. rewrite andb_true_iff. inversion H; subst; split; clear H.
-	    * apply eq_true_not_negb. intros H; apply H2. apply inb_sound; assumption.
-	    * apply IHlst; assumption.
-	Qed.
-	  	
-End RelDecNoDup.
-
 Record Method := {
-  m_params: list var;
+  m_params: plist var;
   m_body: cmd;
   m_ret: dexpr
 }.
@@ -120,7 +66,7 @@ Definition valid_method (M : Method) := nodup (m_params M).
 
 Definition valid_class (C : Class) : bool :=
 	let (names, methods) := split (c_methods C) in
-	nodup (c_fields C) && nodup names &&
+	List.nodup (c_fields C) && nodup names &&
 	  forallb (fun M => valid_method M) methods.
 
 Definition valid_program (P : Program) : bool :=
