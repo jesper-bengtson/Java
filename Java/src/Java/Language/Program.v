@@ -6,6 +6,7 @@ Require Import ExtLib.Tactics.Consider.
 
 Require Import ExtLib.Data.PPair.
 Require Import ExtLib.Data.PList.
+Require Import ExtLib.Data.String.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -32,46 +33,28 @@ Qed.
 
 Record Class := {
   c_fields  : plist field;
-  c_methods : plist (@ppair string Method)
+  c_methods : plist (ppair string Method)
 }.
 
 Require Import ExtLib.Data.String.
 
 Definition rel_dec_Class (c1 c2 : Class) : bool :=
-  (c_fields c1 ?[ eq ] c_fields c2 &&
-	    c_methods c1 ?[ eq ] c_methods c2)%bool.
-Next Obligation.
-split. intros.
-apply (@rel_dec (plist (@ppair string Method)) (@eq (plist (@ppair string Method))) (@RelDec_eq_plist (@ppair string Method) (@RelDec_eq_ppair string Method RelDec_string RelDec_Method))).
-apply (c_methods c1).
+  (c_fields c1 ?[ eq ] c_fields c2 && c_methods c1 ?[ eq ] c_methods c2).
 
 Polymorphic Instance RelDec_Class : RelDec (@eq Class) := {
-    rel_dec c1 c2 := 
+    rel_dec := rel_dec_Class
 }.
-split.
-intros.
-apply X.
-clear c1 c2.
-intros c1 c2.
-apply ((c_fields c1 ?[ eq ] c_fields c2 &&
-			       c_methods c1 ?[ eq ] c_methods c2)%bool).
-destruct c1, c2; simpl.
-split.
-simpl.
-unfold rel_dec.
-constructor.
-
 
 Instance RelDec_Correct_Class : RelDec_Correct RelDec_Class.
 Proof.
-	split; intros; destruct x, y; simpl.
-	consider (c_fields0 ?[ eq ] c_fields1);
-	consider (c_methods0 ?[ eq ] c_methods1); intros;
+  split; intros; destruct x, y; simpl; unfold rel_dec_Class; simpl. 
+  consider (c_fields0 ?[ eq ] c_fields1);
+    consider (c_methods0 ?[ eq ] c_methods1); intros; subst;
 		 simpl; try intuition congruence.
 Qed.
 
 Record Program := {
-  p_classes: plist (string * Class)
+  p_classes: plist (ppair string Class)
 }.
 
 Instance RelDec_Program : RelDec (@eq Program) := {
@@ -80,35 +63,34 @@ Instance RelDec_Program : RelDec (@eq Program) := {
 
 Instance RelDec_Correct_Program : RelDec_Correct RelDec_Program.
 Proof.
-	split; intros; destruct x, y; simpl.
-	consider (p_classes0 ?[ eq ] p_classes1); intuition congruence.
+  split; intros; destruct x, y; simpl.
+  consider (p_classes0 ?[ eq ] p_classes1); intuition congruence.
 Qed.
 
 Definition valid_method (M : Method) := nodup (m_params M).
-Print split.
+
 Definition valid_class (C : Class) : bool :=
-	let (names, methods) := split (c_methods C) in
-	nodup (c_fields C) && nodup names &&
-	  allb (fun M => valid_method M) methods.
+  let (names, methods) := split (c_methods C) in
+  nodup (c_fields C) && nodup names &&
+	allb (fun M => valid_method M) methods.
 
 Definition valid_program (P : Program) : bool :=
-	let (names, classes) := split (p_classes P) in
-	    nodup names &&
-		allb valid_class classes.
+  let (names, classes) := split (p_classes P) in
+  nodup names && allb valid_class classes.
 
-Fixpoint class_lookup_aux C (lst : plist (string * Class)) :=
-	match lst with
-		| pnil => None
-		| pcons (c, Crec) ls => if C ?[ eq ] c then Some Crec else class_lookup_aux C ls
-	end.
+Fixpoint class_lookup_aux C (lst : plist (ppair string Class)) :=
+  match lst with
+  | pnil => None
+  | pcons (pprod c Crec) ls => if C ?[ eq ] c then Some Crec else class_lookup_aux C ls
+  end.
 
 Definition class_lookup C P := class_lookup_aux C (p_classes P).
 
-Fixpoint method_lookup_aux m (lst : plist (string * Method)) :=
-	match lst with
-		| pnil => None
-		| pcons (m', M) ls => if m ?[ eq ] m' then Some M else method_lookup_aux m ls
-	end.
+Fixpoint method_lookup_aux m (lst : plist (ppair string Method)) :=
+  match lst with
+  | pnil => None
+  | pcons (pprod m' M) ls => if m ?[ eq ] m' then Some M else method_lookup_aux m ls
+  end.
 
 Definition method_lookup' C M P :=
   match class_lookup C P with 
@@ -116,7 +98,7 @@ Definition method_lookup' C M P :=
     | None => None
   end.
 
-Polymorphic Lemma split_Prop {A B C : Type} (lst : plist (A * B)) (P : plist A -> plist B -> C) : 
+Polymorphic Lemma split_Prop {A B C : Type} (lst : plist (ppair A B)) (P : plist A -> plist B -> C) : 
 	(let (a, b) := split lst in P a b) =
 	P (fst (split lst)) (snd (split lst)).
 Proof.
@@ -132,8 +114,8 @@ Section Pwf.
   Variable Prog: Program.
   Variable (Valid : valid_program Prog = true).
 
-  Definition field_lookup (C:class) (fields: plist field) :=
-  	exists Crec, pIn (C, Crec) (p_classes Prog) /\
+  Definition field_lookup (C:string) (fields: plist field) :=
+  	exists Crec, pIn (pprod C Crec) (p_classes Prog) /\
   		fields = c_fields Crec.
 
   Lemma field_lookup_function C f f' 
@@ -154,25 +136,23 @@ Section Pwf.
     destruct H11, H21.
     + inversion H; inversion H0; subst; apply H8.
     + inversion H; subst; clear IHp.
-      Set Printing All.
-      assert (~inb C (fst (split p)) = true).
-      unfold class.
-      intro H4. rewrite H4 in H1.
- by (intro H4; intuition congruence).
-	  contradiction H5; clear H H5.
-	  apply inb_complete.
-	  apply in_split_l in H4. apply H4.
-	+ inversion H4; subst; clear IHl.
-      assert (~inb C (fst (split l)) = true) by (unfold class; intuition congruence).
-	  contradiction H5; clear H H5.
-	  apply inb_complete.
-	  apply in_split_l in H3. apply H3.
-    + apply IHl; try assumption.
+      assert (~inb C (fst (split p)) = true) by (intuition congruence).
+      contradiction H4; clear H H4.
+      apply inb_complete.
+      apply pIn_split_l in H0. apply H0.
+    + inversion H0; subst; clear IHp.
+      assert (~inb C (fst (split p)) = true) by (intuition congruence).
+      contradiction H4.
+      apply inb_complete.
+      apply pIn_split_l in H. apply H.
+    + apply IHp; try assumption.
+      rewrite Bool.andb_true_iff. split. assumption.
+      destruct (valid_class c); [assumption|congruence].
   Qed.
 
-  Definition method_lookup (C:class) m mrec :=
-    exists Crec, In (C, Crec) (p_classes Prog) /\
-      In (m, mrec) (c_methods Crec).
+  Definition method_lookup (C:string) m mrec :=
+    exists Crec, pIn (pprod C Crec) (p_classes Prog) /\
+      pIn (pprod m mrec) (c_methods Crec).
 
   Lemma method_lookup_function : forall C m mr0 mr1
     (HML0 : method_lookup C m mr0)
@@ -181,82 +161,84 @@ Section Pwf.
   Proof.
     unfold Pwf.method_lookup; intros; destruct HML0 as [C0 [HC0 HM0]];
       destruct HML1 as [C1 [HC1 HM1]].
-   unfold valid_program in Valid. simpl in *.
-    rewrite split_Prop, andb_true_iff in Valid.
+    unfold valid_program in Valid. simpl in *.
+    rewrite split_Prop, Bool.andb_true_iff in Valid.
     destruct Valid; clear Valid.
     induction (p_classes Prog); simpl in *; try intuition congruence.
-    destruct a; simpl in *.
-    rewrite split_Prop in H, H0; simpl in *; rewrite andb_true_iff in H, H0.
-    destruct H, H0.
-    rewrite negb_true_iff in H.
+    destruct t; simpl in *.
+    rewrite split_Prop in H, H0; simpl in *; rewrite Bool.andb_true_iff in H.
+    remember (valid_class c). symmetry in Heqb.
+    destruct b; [|congruence].
+    destruct H.
+    rewrite Bool.negb_true_iff in H.
     destruct HC0, HC1.
-    + clear IHl; inversion H3; inversion H4. repeat subst; clear H H1 H2 H3 H4 H8.
-	  unfold valid_class in H0. rewrite split_Prop in H0; repeat rewrite andb_true_iff in H0.
-	  destruct H0 as [[_ H] _].
-	  induction (c_methods C1); simpl in *; try intuition congruence.
-	  destruct a; rewrite split_Prop in H; simpl in H.
-	  rewrite andb_true_iff in H; destruct H as [H1 H2].
-	  rewrite negb_true_iff in H1.
-	  destruct HM1, HM0.
-	  * inversion H; inversion H0; repeat subst; reflexivity.
-	  * inversion H; subst; clear IHl0.
-        assert (~inb m (fst (split l0)) = true) by intuition congruence.
-        contradiction H3. apply inb_complete.
-        apply in_split_l in H0; apply H0.
-	  * inversion H0; subst; clear IHl0.
-        assert (~inb m (fst (split l0)) = true) by intuition congruence.
-        contradiction H3. apply inb_complete.
-        apply in_split_l in H; apply H.
-	  * apply IHl0; assumption.
-    + inversion H3; subst; clear IHl.
-      assert (~inb C (fst (split l)) = true) by (unfold class; intuition congruence).
-	  contradiction H5; clear H H5.
-	  apply inb_complete.
-	  apply in_split_l in H4. apply H4.
-	+ inversion H4; subst; clear IHl.
-      assert (~inb C (fst (split l)) = true) by (unfold class; intuition congruence).
-	  contradiction H5; clear H H5.
-	  apply inb_complete.
-	  apply in_split_l in H3. apply H3.
-    + apply IHl; try assumption.
+    + clear IHp; inversion H2; inversion H3. repeat subst; clear H H1 H2 H3 H7.
+      unfold valid_class in Heqb. rewrite split_Prop in Heqb; repeat rewrite Bool.andb_true_iff in Heqb.
+      destruct Heqb as [[_ H] _].
+      induction (c_methods C1); simpl in *; try intuition congruence.
+      destruct t; rewrite split_Prop in H; simpl in H.
+      rewrite Bool.andb_true_iff in H; destruct H as [H1 H2].
+      rewrite Bool.negb_true_iff in H1.
+      destruct HM1, HM0.
+      * inversion H; inversion H3; repeat subst; reflexivity.
+      * inversion H; subst; clear IHp0.
+        assert (~inb m (fst (split p0)) = true) by intuition congruence.
+        contradiction H4. apply inb_complete.
+        apply pIn_split_l in H3; apply H3.
+      * inversion H3; subst; clear IHp0.
+        assert (~inb m (fst (split p0)) = true) by intuition congruence.
+        contradiction H4. apply inb_complete.
+        apply pIn_split_l in H; apply H.
+      * apply IHp0; assumption.
+    + inversion H2; subst; clear IHp.
+      assert (~inb C (fst (split p)) = true) by (intuition congruence).
+      contradiction H4; clear H H4.
+      apply inb_complete.
+      apply pIn_split_l in H3. apply H3.
+    + inversion H3; subst; clear IHp.
+      assert (~inb C (fst (split p)) = true) by (unfold class; intuition congruence).
+      contradiction H4; clear H H4.
+      apply inb_complete.
+      apply pIn_split_l in H2. apply H2.
+    + apply IHp; try assumption.
   Qed.
 
-  Lemma method_lookup_nodup C m mr (H : method_lookup C m mr) : NoDup (m_params mr).
+  Lemma method_lookup_nodup C m mr (H : method_lookup C m mr) : pNoDup (m_params mr).
   Proof.
     unfold method_lookup in H.
     destruct H as [Crec [H1 H2]].
     unfold valid_program in Valid.
-    rewrite split_Prop, andb_true_iff in Valid.
+    rewrite split_Prop, Bool.andb_true_iff in Valid.
     destruct Valid as [H3 H4]; clear Valid.
-	induction (p_classes Prog); simpl in *; try intuition congruence.
-	destruct a; rewrite split_Prop in H3; simpl in *.
-	rewrite andb_true_iff in H3; destruct H3 as [H3 H5].
-	rewrite negb_true_iff in H3.
-	rewrite split_Prop in H4; simpl in *.
-	rewrite andb_true_iff in H4; destruct H4 as [H4 H6].
-	unfold valid_class in H4. rewrite split_Prop in H4; repeat rewrite andb_true_iff in H4.
-	destruct H4 as [[H4 _] H7].
-	destruct H1 as [H1 | H1]; [
-		inversion H1; repeat subst; clear H1 IHl|
-		apply IHl; assumption
-	].
-	clear H3 H4 H5 H6 l C Prog.
-	induction (c_methods Crec); simpl in *; try intuition congruence.
-	destruct a; simpl in *; rewrite split_Prop in H7; simpl in *.
-	rewrite andb_true_iff in H7; destruct H7 as [H1 H3].
-	destruct H2 as [H2 | H2]; [|apply IHl; assumption].
-	inversion H2; subst; clear H2 H3 IHl.
-	unfold valid_method in H1. apply nodup_sound; assumption.
-Qed.
+    induction (p_classes Prog); simpl in *; try intuition congruence.
+    destruct t; rewrite split_Prop in H3; simpl in *.
+    rewrite Bool.andb_true_iff in H3; destruct H3 as [H3 H5].
+    rewrite Bool.negb_true_iff in H3.
+    rewrite split_Prop in H4; simpl in *.
+    remember (valid_class c) as b; destruct b; symmetry in Heqb; [|congruence].
+    unfold valid_class in Heqb. rewrite split_Prop in Heqb; repeat rewrite Bool.andb_true_iff in Heqb.
+    destruct Heqb as [[H6 _] H7].
+    destruct H1 as [H1 | H1]; [
+	inversion H1; repeat subst; clear H1 IHp|
+	apply IHp; assumption
+      ].
+    clear H3 H4 H5 H6 p C Prog.
+    induction (c_methods Crec); simpl in *; try intuition congruence.
+    destruct t; simpl in *; rewrite split_Prop in H7; simpl in *.
+    remember (valid_method m0) as b; destruct b; [|congruence]; symmetry in Heqb.
+    destruct H2 as [H2 | H2]; [|apply IHp; assumption].
+    inversion H2; subst; clear H2 H7 IHp.
+    unfold valid_method in Heqb. apply nodup_sound; assumption.
+  Qed.
 
 End Pwf.
 
 Definition Prog_compat (P Q : Program) :=
-  forall C, ~ (In C (p_classes P) /\ In C (p_classes Q)).
+  forall C, ~ (pIn C (p_classes P) /\ pIn C (p_classes Q)).
 
 Definition Prog_sub (P Q : Program) :=
-  forall C crec, In (C, crec) (p_classes P) ->
-    exists crec', In (C, crec') (p_classes Q) /\
+  forall C crec, pIn (pprod C crec) (p_classes P) ->
+    exists crec', pIn (pprod C crec') (p_classes Q) /\
       c_fields crec = c_fields crec' /\
       c_methods crec = c_methods crec'.
 

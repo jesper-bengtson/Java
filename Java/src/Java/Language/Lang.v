@@ -8,6 +8,7 @@ Require Import Coq.Bool.Bool.
 Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Data.String.
 Require Import ExtLib.Data.Z.
+Require Import ExtLib.Data.PList.
 Require Import ExtLib.Tactics.Consider.
 
 Require Import ChargeCore.Open.Stack.
@@ -280,8 +281,8 @@ Qed.
 (* The set of stack variables potentially modified by a command *)
 Fixpoint modifies (c: cmd) :=
   match c with
-  | cseq c1 c2     => (modifies c1) ++ (modifies c2)
-  | cif _ c1 c2    => (modifies c1) ++ (modifies c2)
+  | cseq c1 c2     => app _ (modifies c1) (modifies c2)
+  | cif _ c1 c2    => app _ (modifies c1) (modifies c2)
   | cwhile _ c     => modifies c
   | cassign x _    
   | cread x _ _    
@@ -289,8 +290,8 @@ Fixpoint modifies (c: cmd) :=
   | carralloc x _  
   | calloc x _     
   | cdcall x _ _ _ 
-  | cscall x _ _ _ => x::nil
-  |  _             => nil
+  | cscall x _ _ _ => pcons x pnil
+  |  _             => pnil
   end.
 
 Notation " x 'A=' e "  := (cassign x e) (at level 60, no associativity) : cmd_scope.
