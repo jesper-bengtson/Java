@@ -4,7 +4,7 @@ Require Import Lang Util.
 Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Tactics.Consider.
 
-Require Import ExtLib.Data.Pair.
+Require Import ExtLib.Data.PPair.
 Require Import ExtLib.Data.PList.
 
 Set Implicit Arguments.
@@ -31,14 +31,36 @@ Proof.
 Qed.
 
 Record Class := {
-  c_fields  : list field;
-  c_methods : list (string * Method)
+  c_fields  : plist field;
+  c_methods : plist (@ppair string Method)
 }.
 
-Instance RelDec_Class : RelDec (@eq Class) := {
-	rel_dec c1 c2 := (c_fields c1 ?[ eq ] c_fields c2 &&
-					  c_methods c1 ?[ eq ] c_methods c2)%bool
+Require Import ExtLib.Data.String.
+
+Definition rel_dec_Class (c1 c2 : Class) : bool :=
+  (c_fields c1 ?[ eq ] c_fields c2 &&
+	    c_methods c1 ?[ eq ] c_methods c2)%bool.
+Next Obligation.
+split. intros.
+apply (@rel_dec (plist (@ppair string Method)) (@eq (plist (@ppair string Method))) (@RelDec_eq_plist (@ppair string Method) (@RelDec_eq_ppair string Method RelDec_string RelDec_Method))).
+apply (c_methods c1).
+
+Polymorphic Instance RelDec_Class : RelDec (@eq Class) := {
+    rel_dec c1 c2 := 
 }.
+split.
+intros.
+apply X.
+clear c1 c2.
+intros c1 c2.
+apply ((c_fields c1 ?[ eq ] c_fields c2 &&
+			       c_methods c1 ?[ eq ] c_methods c2)%bool).
+destruct c1, c2; simpl.
+split.
+simpl.
+unfold rel_dec.
+constructor.
+
 
 Instance RelDec_Correct_Class : RelDec_Correct RelDec_Class.
 Proof.
@@ -49,7 +71,7 @@ Proof.
 Qed.
 
 Record Program := {
-  p_classes: list (string * Class)
+  p_classes: plist (string * Class)
 }.
 
 Instance RelDec_Program : RelDec (@eq Program) := {
@@ -63,29 +85,29 @@ Proof.
 Qed.
 
 Definition valid_method (M : Method) := nodup (m_params M).
-
+Print split.
 Definition valid_class (C : Class) : bool :=
 	let (names, methods) := split (c_methods C) in
-	List.nodup (c_fields C) && nodup names &&
-	  forallb (fun M => valid_method M) methods.
+	nodup (c_fields C) && nodup names &&
+	  allb (fun M => valid_method M) methods.
 
 Definition valid_program (P : Program) : bool :=
 	let (names, classes) := split (p_classes P) in
 	    nodup names &&
-		forallb valid_class classes.
+		allb valid_class classes.
 
-Fixpoint class_lookup_aux C (lst : list (string * Class)) :=
+Fixpoint class_lookup_aux C (lst : plist (string * Class)) :=
 	match lst with
-		| nil => None
-		| (c, Crec)::ls => if C ?[ eq ] c then Some Crec else class_lookup_aux C ls
+		| pnil => None
+		| pcons (c, Crec) ls => if C ?[ eq ] c then Some Crec else class_lookup_aux C ls
 	end.
 
 Definition class_lookup C P := class_lookup_aux C (p_classes P).
 
-Fixpoint method_lookup_aux m (lst : list (string * Method)) :=
+Fixpoint method_lookup_aux m (lst : plist (string * Method)) :=
 	match lst with
-		| nil => None
-		| (m', M)::ls => if m ?[ eq ] m' then Some M else method_lookup_aux m ls
+		| pnil => None
+		| pcons (m', M) ls => if m ?[ eq ] m' then Some M else method_lookup_aux m ls
 	end.
 
 Definition method_lookup' C M P :=
@@ -94,14 +116,14 @@ Definition method_lookup' C M P :=
     | None => None
   end.
 
-Lemma split_Prop {A B C : Type} (lst : list (A * B)) (P : list A -> list B -> C) : 
+Polymorphic Lemma split_Prop {A B C : Type} (lst : plist (A * B)) (P : plist A -> plist B -> C) : 
 	(let (a, b) := split lst in P a b) =
 	P (fst (split lst)) (snd (split lst)).
 Proof.
   generalize dependent C.
-  induction lst; try reflexivity; intros; destruct a; simpl.
-  replace (let (g, d) := split lst in (a :: g, b :: d)) with
-  		  (a :: fst (split lst), b :: snd (split lst)) by (symmetry; apply IHlst).
+  induction lst; try reflexivity; intros; destruct t; simpl.
+  replace (let (g, d) := split lst in (pcons a g, pcons b d)) with
+  		  (pcons a (fst (split lst)), pcons b (snd (split lst))) by (symmetry; apply IHlst).
   reflexivity.
 Qed.
 
@@ -110,8 +132,8 @@ Section Pwf.
   Variable Prog: Program.
   Variable (Valid : valid_program Prog = true).
 
-  Definition field_lookup (C:class) (fields: list field) :=
-  	exists Crec, In (C, Crec) (p_classes Prog) /\
+  Definition field_lookup (C:class) (fields: plist field) :=
+  	exists Crec, pIn (C, Crec) (p_classes Prog) /\
   		fields = c_fields Crec.
 
   Lemma field_lookup_function C f f' 
@@ -121,17 +143,22 @@ Section Pwf.
     destruct H1 as [m [H11 H12]]; destruct H2 as [n [H21 H22]].
     unfold valid_program in Valid. simpl in *.
     assert (m = n); [|subst; reflexivity].
-    rewrite split_Prop, andb_true_iff in Valid.
-    destruct Valid; clear Valid.
+    rewrite split_Prop in Valid.
     induction (p_classes Prog); simpl in *; try intuition congruence.
-    destruct a; simpl in *.
-    rewrite split_Prop in H, H0; simpl in *; rewrite andb_true_iff in H, H0.
-    destruct H, H0.
-    rewrite negb_true_iff in H.
+    destruct t; simpl in *.    
+    rewrite split_Prop in Valid.
+    simpl in *.
+    repeat rewrite Bool.andb_true_iff in Valid.
+    rewrite Bool.negb_true_iff in Valid.
+    destruct Valid as [[H1 H2] H3]; clear Valid.
     destruct H11, H21.
-    + inversion H3; inversion H4; subst; apply H9.
-    + inversion H3; subst; clear IHl.
-      assert (~inb C (fst (split l)) = true) by (unfold class; intuition congruence).
+    + inversion H; inversion H0; subst; apply H8.
+    + inversion H; subst; clear IHp.
+      Set Printing All.
+      assert (~inb C (fst (split p)) = true).
+      unfold class.
+      intro H4. rewrite H4 in H1.
+ by (intro H4; intuition congruence).
 	  contradiction H5; clear H H5.
 	  apply inb_complete.
 	  apply in_split_l in H4. apply H4.
