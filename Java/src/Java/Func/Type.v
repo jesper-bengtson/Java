@@ -1,5 +1,6 @@
 Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Data.Fun.
+Require Import ExtLib.Data.PList.
 Require Import ExtLib.Data.POption.
 Require Import ExtLib.Tactics.
 
@@ -38,14 +39,51 @@ Import OneOfType.
 
 Definition typ_map x := 
   list_to_pmap 
-    (prod_typ x :: 
-     list_typ x :: 
-     base_typ x :: 
-     java_typ x :: 
-     nil).
+    (pcons (prod_typ x)
+           (pcons (list_typ x)
+                  (pcons (base_typ x)
+                         (pcons (java_typ x)
+                                pnil)))).
 
 Definition typ' x := OneOfType.OneOf (typ_map x).
 Definition typ := mtyp typ'.
+
+Ltac test a b :=   
+  intros;
+  destruct a, b; simpl in *;
+  subst; simpl in *.
+(* *)
+
+
+Ltac test2 :=
+match goal with
+  | a : OneOf _, b : OneOf _ |- _ => 
+    destruct a as [i1 v1];
+      destruct b as [i2 v2];
+      consider (i1 ?[eq] i2); intros; [| apply false]; subst;
+      repeat match goal with
+             | H : match pmap_lookup' Empty ?i with | _Some _ => _ | _None => Empty_set end |- _ => 
+               rewrite pmap_lookup'_Empty in H; destruct H
+             | H1 : match pmap_lookup' _ ?i with | _Some _ => _ | _None => Empty_set end |- _ => 
+               destruct i; simpl in *
+             | v1 : _, v2 : _ |- _ => apply (v1 ?[eq] v2)
+             end
+end.
+
+
+Definition rel_dec_typ' {x : nat} (a b : typ' x) : bool.
+  unfold typ' in *; test2.
+Defined.
+
+Ltac eq_dec_right :=
+  let H := fresh "H" in
+    right; intro H; inv_all; congruence.
+
+Instance RelDec_typ : RelDec (@eq typ) := {
+  rel_dec := rel_dec_typ'
+}.
+split.
+simpl.
 
 Ltac pmap_lookup'_simpl :=
   repeat (
@@ -55,10 +93,6 @@ Ltac pmap_lookup'_simpl :=
     | H : match pmap_lookup' _ ?p with | _Some _ => _ | _None => Empty_set end |- _ => 
       destruct p; simpl in H
     end).
-
-Ltac eq_dec_right :=
-  let H := fresh "H" in
-    right; intro H; inv_all; congruence.
 
 Definition typ'_dec {n} (a : typ' n) : forall b, {a = b} + {a <> b}.
 Proof.
@@ -132,6 +166,8 @@ eapply FuncView_sym0.
 apply TypeView_java_typ'.
 Defined.
 
+Arguments tyArr {_} _ _.
+
 Notation "'tyStack'" := (tyArr tyString tyVal).
 
 Notation "'tyPure'" := (tyArr tyStack tyProp).
@@ -139,7 +175,7 @@ Notation "'tySasn'" := (tyArr tyStack tyAsn).
 Notation "'tyExpr'" := (tyArr tyStack tyVal).
 Notation "'tyFields'" := (tyList tyString).
 
-Notation "'tyVarList'" := (tyList tyString).
+Notation "'tyStringList'" := (tyList tyString).
 Notation "'tyDExprList'" := (tyList tyExpr).
 Notation "'tySubstList'" := (tyList (tyProd tyString tyExpr)).
 
@@ -169,7 +205,7 @@ Instance Typ0Ok_tyString : Typ0Ok Typ0_tyString := Typ0Ok_sym tyString.
 Instance Typ0_tyBool : Typ0 RType_typ bool := Typ0_sym tyBool.
 Instance Typ0Ok_tyBool : Typ0Ok Typ0_tyBool := Typ0Ok_sym tyBool.
 
-Instance Typ1_tyList : Typ1 RType_typ list := Typ1_sym (f_insert tList).
+Instance Typ1_tyList : Typ1 RType_typ plist := Typ1_sym (f_insert tList).
 Instance Typ1Ok_tyList : Typ1Ok Typ1_tyList := Typ1Ok_sym (f_insert tList).
 
 Instance Typ2_tyProd : Typ2 RType_typ prod := Typ2_sym (f_insert tProd).
@@ -221,7 +257,7 @@ Definition ilops : @logic_ops typ RType_typ.
             | pNone => 
               fun _ => 
                 match t as x return t = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                | tyArr _ (tyArr _ t1 t2) t3 => 
+                | tyArr (tyArr t1 t2) t3 => 
                   fun _ =>
                   match @f_view typ (base_typ 0) TypeView_base_typ t1 as x 
                         return x = @f_view typ (base_typ 0) TypeView_base_typ t1 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
@@ -300,7 +336,7 @@ Definition ilops : @logic_ops typ RType_typ.
         | pNone => 
           fun _ => 
             match t as x return t = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
-            | tyArr _ (tyArr _ t1 t2) t3 => 
+            | tyArr (tyArr t1 t2) t3 => 
               fun _ =>
                 match @f_view typ (base_typ 0) TypeView_base_typ t1 as x 
                       return x = @f_view typ (base_typ 0) TypeView_base_typ t1 -> poption (BILogic.BILOperators (TypesI.typD t)) with

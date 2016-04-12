@@ -193,8 +193,8 @@ Definition vlogic_eval (e : dexpr) : vlogic := fun s => eval e s = true.
 Definition eval_exprs (s : stack) (es : list dexpr) :=
   map (fun e => eval_aux s e) es.
 
-Definition field  := string.
-Definition method := string.
+Notation "'field'"  := string.
+Notation "'method'" := string.
 
 Inductive cmd :=
 | cassign   : var -> dexpr -> cmd
@@ -252,10 +252,10 @@ Proof.
 	  rewrite andb_true_iff, IHc.
 	  consider (d ?[ eq ] d0); intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v0); consider (f ?[ eq ] f0); consider (d ?[ eq ] d0); 
+	  consider (v ?[ eq ] v0); consider (s ?[ eq ] s0); consider (d ?[ eq ] d0); 
 	    simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (f ?[ eq ] f0); 
+	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (s ?[ eq ] s0); 
 	    simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
 	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (l ?[ eq ] l0); 
@@ -268,10 +268,10 @@ Proof.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
 	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (m ?[ eq ] m0); 
+	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (s ?[ eq ] s0); 
 	    consider (l ?[ eq ] l0); simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); consider (m ?[ eq ] m0); 
+	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); consider (s ?[ eq ] s0); 
 	    consider (l ?[ eq ] l0); simpl; try intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
 	  consider (d ?[ eq ] d0); try intuition congruence.
@@ -281,8 +281,8 @@ Qed.
 (* The set of stack variables potentially modified by a command *)
 Fixpoint modifies (c: cmd) :=
   match c with
-  | cseq c1 c2     => app _ (modifies c1) (modifies c2)
-  | cif _ c1 c2    => app _ (modifies c1) (modifies c2)
+  | cseq c1 c2     => app (modifies c1) (modifies c2)
+  | cif _ c1 c2    => app (modifies c1) (modifies c2)
   | cwhile _ c     => modifies c
   | cassign x _    
   | cread x _ _    

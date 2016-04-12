@@ -522,7 +522,7 @@ Open Scope open_scope.
     Exists ps' : (PList.plist Lang.var), Exists c : cmd, Exists re : dexpr,
       [prog] (fun X : Program => method_lookup X C m (Build_Method ps' c re)
         /\ length _ ps = length _ ps' /\
-        (forall x, pIn x ps' -> ~ List.In x (modifies c)))
+        (forall x, pIn x ps' -> ~ PList.pIn x (modifies c)))
       //\\ {[ P //! zip ps (fmap_plist var_expr ps') ]}
          c {[ Q //! zip (pcons rn ps) (pcons (eval re) (fmap_plist var_expr ps'))]}
     ).
@@ -659,7 +659,7 @@ Section StructuralRules.
     + apply lforallR; intro x; apply lforallR; intro sc. apply lpropimplR; intro Hsc.
       apply lforallL with sc. apply lpropimplL; [assumption | apply lforallL with x; reflexivity].
   Qed.
-  
+  (*
   Lemma existentialise_triple (x : Lang.var) (P Q : sasn) c (G : spec) 
 	(H : forall (v : val), G |-- {[@lembedand vlogic sasn _ _ (open_eq (var_expr x) (V_expr v)) P]} c {[Q]}) :
     G |-- {[P]} c {[Q]}.
@@ -667,5 +667,5 @@ Section StructuralRules.
     eapply roc_pre; [apply existentialise_var with (x0 := x)|].
     rewrite <- exists_into_precond2. apply lforallR; intro y. apply H.
   Qed.
-
+*)
 End StructuralRules.

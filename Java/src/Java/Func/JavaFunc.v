@@ -3,6 +3,7 @@ Require Import ExtLib.Data.Fun.
 Require Import ExtLib.Data.String.
 Require Import ExtLib.Data.Sum.
 Require Import ExtLib.Data.Positive.
+Require Import ExtLib.Data.PList.
 Require Import ExtLib.Tactics.Consider.
 
 Require Import ChargeCore.Open.Subst.
@@ -16,6 +17,10 @@ Require Import Charge.Views.EmbedView.
 Require Import Java.Func.ListOpView.
 
 Require Import MirrorCore.TypesI.
+Require Import MirrorCore.MTypes.ModularTypes.
+Require Import MirrorCore.MTypes.ListType.
+Require Import MirrorCore.MTypes.ProdType.
+Require Import MirrorCore.MTypes.BaseType.
 Require Import MirrorCore.SymI.
 Require Import MirrorCore.Lemma.
 Require Import MirrorCore.Lambda.Expr.
@@ -39,6 +44,7 @@ Require Import Java.Language.Lang.
 Require Import Java.Language.Program.
 Require Import Java.Semantics.OperationalSemantics.
 Require Import Java.Func.JavaType.
+Require Import Java.Func.Type.
 
 Require Import Coq.Strings.String.
 Require Import Coq.Bool.Bool.
@@ -46,13 +52,15 @@ Require Import Coq.Bool.Bool.
 Set Implicit Arguments.
 Set Strict Implicit.
 
+Universe UJFun.
+
 Inductive java_func :=
 | pProg (p : Program)
 | pMethod (m : Method)
 | pVal (v : val)
 | pCmd (c : cmd)
 | pExpr (e : dexpr)
-| pFields (f : list string)
+| pFields (f : plist@{UJFun} string)
 
 | pMethodSpec
 | pProgEq
@@ -67,7 +75,6 @@ Inductive java_func :=
 | pMethodBody
 | pMethodArgs
 | pMethodRet
-
 
 | pPlus
 | pMinus
@@ -94,8 +101,12 @@ Definition typeof_java_func bf :=
   | pExpr _ => Some tyDExpr
   | pFields _ => Some (tyList tyString)
 
-  | pMethodSpec => Some (tyArr tyString (tyArr tyString (tyArr tyVarList
-		    	                                       (tyArr tyString (tyArr tySasn (tyArr tySasn tySpec))))))
+  | pMethodSpec => 
+    Some (tyArr tyString 
+  	        (tyArr tyString 
+  	               (tyArr tyStringList
+		              (tyArr tyString 
+		                     (tyArr tySasn (tyArr tySasn tySpec))))))
   | pProgEq => Some (tyArr tyProg tySpec)
   | pTriple => Some (tyArr tySasn (tyArr tySasn (tyArr tyCmd tySpec)))
 
@@ -174,11 +185,19 @@ Qed.
 Definition set_fold_fun (x : String.string) (f : field) (P : sasn) :=
 	(liftn pointsto) (x/V) `f `null ** P.
 *)
+Require Import Coq.Strings.String.
+Eval compute in 
+    match typeof_java_func (pFields (pcons ("hopp"%string) pnil)) with
+      | Some t => typD t
+      | None => unit
+    end.
+
 Definition java_func_symD bf :=
-  match bf as bf return match typeof_java_func bf return Type@{Urefl} with
-			| Some t => typD t
-			| None => unit
-			end with
+  match bf as bf 
+        return match typeof_java_func bf return Type@{Urefl} with
+	       | Some t => typD t
+	       | None => unit
+	       end with
 
   | pProg p => p
   | pMethod m => m
@@ -230,39 +249,24 @@ Proof.
   consider (e ?[ eq ] e0); intros; subst; intuition congruence.
   consider (f ?[ eq ] f0); intros; subst; intuition congruence.
 Qed.
-
-Inductive list' :=
-| nil' : list'
-| cons' : OneOfType.TypeR -> list' -> list'.
-
-Fixpoint list_to_pmap_aux (lst : list') (p : positive)
-: OneOfType.pmap :=
-  match lst with
-  | nil' => OneOfType.Empty
-  | cons' x xs => OneOfType.pmap_insert p (list_to_pmap_aux xs (p + 1)) x
-  end.
-
-Definition list_to_pmap (lst : list') := list_to_pmap_aux lst 1.
-
-
 Set Printing Universes.
 
 Definition func_map : OneOfType.pmap :=
-	list_to_pmap
-	  (cons' java_func
-          (cons' SymEnv.func
-          (cons' (@ilfunc typ)
-          (cons' (@bilfunc typ)
-          (cons' (@list_func typ)
-	  (cons' (@subst_func typ)
-          (cons' (@embed_func typ)
-          (cons' (natFunc:Type)
-          (cons' (stringFunc:Type)
-          (cons' (boolFunc:Type)
-          (cons' (@prod_func typ)
-          (cons' (@eq_func typ)
-          (cons' (@ap_func typ)
-          (cons' (@listOp_func typ) nil')))))))))))))).
+	OneOfType.list_to_pmap 
+	  (java_func::
+           SymEnv.func::
+           @ilfunc typ::
+           @bilfunc typ::
+           @list_func typ::
+	   @subst_func typ::
+           @embed_func typ::
+           (natFunc:Type)::
+           (stringFunc:Type)::
+           (boolFunc:Type)::
+           @prod_func typ::
+           @eq_func typ::
+           @ap_func typ::
+           @listOp_func typ::(@nil Type)).
 
 Definition func := OneOfType.OneOf func_map.
 
@@ -364,7 +368,7 @@ Require Import MirrorCore.Lambda.Ptrns.
         | _ => bad f
       end.
 
-  Definition fptrnFields {T : Type} (p : Ptrns.ptrn (list string) T) : ptrn java_func T :=
+  Definition fptrnFields {T : Type} (p : Ptrns.ptrn (plist string) T) : ptrn java_func T :=
     fun f U good bad =>
       match f with
         | pFields fs => p fs U good (fun x => bad f)
@@ -544,6 +548,7 @@ Definition fs : @SymEnv.functions typ _ :=
   	 @SymEnv.F typ _ (tyArr tyVal (tyArr (tyList tyVal) tyAsn)) NodeList::nil).
 
 *)
+Set Printing All.
 
   Global Instance RSym_ilfunc : RSym (@ilfunc typ) :=
 	  RSym_ilfunc ilops.

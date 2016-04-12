@@ -11,19 +11,21 @@ Require Import ExtLib.Data.String.
 Set Implicit Arguments.
 Unset Strict Implicit.
 
-Record Method := {
-  m_params: plist var;
+Universes UProg.
+
+Polymorphic Record Method := {
+  m_params: plist@{UProg} var;
   m_body: cmd;
   m_ret: dexpr
 }.
 
-Instance RelDec_Method : RelDec (@eq Method) := {
+Polymorphic Instance RelDec_Method : RelDec (@eq Method) := {
 	rel_dec m1 m2 := (m_params m1 ?[ eq ] m_params m2 &&
 					  m_body m1 ?[ eq ] m_body m2 &&
 					  m_ret m1 ?[ eq ] m_ret m2)%bool
 }.
 
-Instance RelDec_Correct_Method : RelDec_Correct RelDec_Method.
+Polymorphic Instance RelDec_Correct_Method : RelDec_Correct RelDec_Method.
 Proof.
 	split; intros; destruct x, y; simpl.
 	consider (m_params0 ?[ eq ] m_params1);
@@ -31,9 +33,9 @@ Proof.
 	consider (m_ret0 ?[ eq ] m_ret1); simpl; intuition congruence.
 Qed.
 
-Record Class := {
-  c_fields  : plist field;
-  c_methods : plist (ppair string Method)
+Polymorphic Record Class := {
+  c_fields  : plist@{UProg} field;
+  c_methods : plist@{UProg} (ppair string Method)
 }.
 
 Require Import ExtLib.Data.String.
@@ -111,14 +113,14 @@ Qed.
 
 Section Pwf.
 
-  Variable Prog: Program.
-  Variable (Valid : valid_program Prog = true).
+  Polymorphic Variable Prog: Program.
+  Polymorphic Variable (Valid : valid_program Prog = true).
 
-  Definition field_lookup (C:string) (fields: plist field) :=
+  Polymorphic Definition field_lookup (C:string) (fields: plist@{UProg} string) :=
   	exists Crec, pIn (pprod C Crec) (p_classes Prog) /\
   		fields = c_fields Crec.
 
-  Lemma field_lookup_function C f f' 
+  Polymorphic Lemma field_lookup_function C f f' 
   	(H1 : field_lookup C f) (H2 : field_lookup C f') : f = f'. 
   Proof.
     unfold field_lookup in *.
@@ -150,11 +152,11 @@ Section Pwf.
       destruct (valid_class c); [assumption|congruence].
   Qed.
 
-  Definition method_lookup (C:string) m mrec :=
+  Polymorphic Definition method_lookup (C:string) m mrec :=
     exists Crec, pIn (pprod C Crec) (p_classes Prog) /\
       pIn (pprod m mrec) (c_methods Crec).
 
-  Lemma method_lookup_function : forall C m mr0 mr1
+  Polymorphic Lemma method_lookup_function : forall C m mr0 mr1
     (HML0 : method_lookup C m mr0)
     (HML1 : method_lookup C m mr1),
     mr0 = mr1.
@@ -203,7 +205,7 @@ Section Pwf.
     + apply IHp; try assumption.
   Qed.
 
-  Lemma method_lookup_nodup C m mr (H : method_lookup C m mr) : pNoDup (m_params mr).
+  Polymorphic Lemma method_lookup_nodup C m mr (H : method_lookup C m mr) : pNoDup (m_params mr).
   Proof.
     unfold method_lookup in H.
     destruct H as [Crec [H1 H2]].

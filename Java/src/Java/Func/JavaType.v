@@ -99,7 +99,7 @@ Definition java_typD {n} (t : java_typ n) : type_for_arity n :=
 
 Section FuncView_java_type.
   Context {typ : Type}.
-  Context {FV : FuncView typ (java_typ 0)}.
+  Context {FV : PartialView typ (java_typ 0)}.
 
   Definition tyVal := f_insert tVal.
   Definition tySpec := f_insert tSpec.
@@ -107,7 +107,7 @@ Section FuncView_java_type.
   Definition tyProg := f_insert tProg.
   Definition tyMethod := f_insert tMethod.
   Definition tyCmd := f_insert tCmd.
-  Definition tyExpr := f_insert tExpr.
+  Definition tyDExpr := f_insert tExpr.
   Definition tySubst := f_insert tSubst.
 
   Definition ptrn_tyVal {T} (p : ptrn unit T) : ptrn typ T :=
@@ -152,7 +152,7 @@ Section FuncView_java_type.
         | _ => bad f
       end.
 
-  Definition ptrn_tyExpr {T} (p : ptrn unit T) : ptrn typ T :=
+  Definition ptrn_tyDExpr {T} (p : ptrn unit T) : ptrn typ T :=
     fun f U good bad =>
       match f_view f with
         | pSome tExpr => p tt U good (fun _ => bad f)
@@ -244,11 +244,11 @@ Section FuncView_java_type.
     { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
   Qed.
 
-  Global Instance ptrn_tyExpr_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
-    ptrn_ok (ptrn_tyExpr p).
+  Global Instance ptrn_tyDExpr_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+    ptrn_ok (ptrn_tyDExpr p).
   Proof.
     red; intros.
-    unfold ptrn_tyExpr.
+    unfold ptrn_tyDExpr.
     unfold Succeeds; unfold Fails. 
     remember (f_view x) as o; destruct o as [j|]; [destruct j|];
     try (right; unfold Fails; reflexivity); destruct (Hok tt).
@@ -271,3 +271,23 @@ Section FuncView_java_type.
   Qed.
 
 End FuncView_java_type.
+
+Section RelDec_java_type.
+
+  Global Instance RelDec_java_typ (x : nat) : RelDec (@eq (java_typ x)) := {
+    rel_dec a b :=
+      match java_typ_dec a b with
+      | left _ => true
+      | right _ => false
+      end
+  }.
+
+  Global Instance RelDecOk_java_typ (x : nat) : RelDec_Correct (RelDec_java_typ x).
+  Proof.
+    split; intros.
+    unfold rel_dec; simpl.
+    remember (java_typ_dec x0 y).
+    destruct s; subst; intuition.
+  Qed.
+  
+End RelDec_java_type.
