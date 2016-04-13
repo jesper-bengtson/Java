@@ -179,7 +179,7 @@ Proof.
   eapply PartialView_transOk.
   eapply TypeViewOk_sym2.
   About PartialView_prodOk.
-  Arguments PartialView_prodOk {_ _ _ _ _ _ _ _} _ _ : clear implicits.
+  Arguments PartialViewOk_prod {_ _ _ _ _ _ _ _} _ _ : clear implicits.
   eapply PartialView_prodOk.
   eapply PartialViewOk_TSymOneOf with (p := 1%positive) (H := TSymAll_typ_map).
   eapply PartialViewOk_id; eapply eq_Reflexive.

@@ -246,8 +246,10 @@ Ltac reify_imp e :=
 
 Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
   intros Pr C v fields.
+Set Printing Universes.
 
   reify_imp (typeof C v).
+(*
   reify_imp (field_lookup).
   reify_imp (field_lookup Pr C fields).
 
@@ -281,11 +283,11 @@ Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
 
   reify_imp (forall x : nat, x = x).
   reify_imp (exists x : nat, x = x).
-
+(*
   reify_imp (@subst1 Lang.var val _).
   reify_imp (cseq cskip cskip).
 
-(*  reify_imp (@map nat nat).*)
+  reify_imp (@map nat nat).*)
   reify_imp (ILogic.lentails True True).
 
   reify_imp ((True -> False) -> True).
@@ -303,7 +305,7 @@ Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
   reify_imp (x = x).
 
   reify_imp (@ltrue sasn _).
-
+*)
   exact I.
 
 Defined.
