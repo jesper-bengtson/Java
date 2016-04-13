@@ -8,6 +8,7 @@ Require Import Coq.Bool.Bool.
 Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Data.String.
 Require Import ExtLib.Data.Z.
+Require Import ExtLib.Data.List.
 Require Import ExtLib.Tactics.Consider.
 
 Require Import ChargeCore.Open.Stack.

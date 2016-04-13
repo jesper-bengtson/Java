@@ -8,7 +8,6 @@ Require Import MirrorCore.Lemma.
 Require Import MirrorCore.TypesI.
 Require Import MirrorCore.Lambda.Expr.
 Require Import MirrorCore.RTac.RTac.
-Require Import MirrorCore.provers.DefaultProver.
 Require MirrorCore.syms.SymEnv.
 Require MirrorCore.syms.SymSum.
 Require Import MirrorCore.Subst.FMapSubst.
@@ -26,9 +25,9 @@ Require Import Charge.Tactics.BILNormalize.
 Require Import Charge.Tactics.SynSepLog.
 Require Import Charge.Tactics.SepLogFold.
 *)
-Require Import Java.Tactics.Semantics.
 Require Import Java.Func.JavaType.
 Require Import Java.Func.JavaFunc.
+Require Import Java.Tactics.Semantics.
 
 Require Import Charge.Views.BILogicView.
 
@@ -1399,5 +1398,3 @@ Proof.
   Print func.
 *)
 
-
-End blurb 
