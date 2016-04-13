@@ -16,8 +16,6 @@ Require Import Java.Language.Lang.
 
 Require Import Omega.
 
-Require Import ExtLib.Data.PList.
-
 Set Implicit Arguments.
 Unset Strict Implicit.
 Set Maximal Implicit Insertion.
@@ -45,8 +43,8 @@ Section Rules.
       forall PP s s' h h' n (HSem : c PP n s h (Some (s', h'))),
         s x = s' x.
 
-    Lemma frame_rule : forall P Q R c (xs: plist var)
-      (HMod : forall x, ~ pIn x xs -> not_modifies c x),
+    Lemma frame_rule : forall P Q R c (xs: list var)
+      (HMod : forall x, ~ List.In x xs -> not_modifies c x),
       {{ P }} c {{ Q }} |--
       {{ P ** R }} c {{ Q ** Exists vs, apply_subst R (subst_fresh vs xs) }}.
     Proof.

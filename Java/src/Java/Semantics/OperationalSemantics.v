@@ -520,9 +520,9 @@ Open Scope open_scope.
     Exists ps' : (list Lang.var), Exists c : cmd, Exists re : dexpr,
       [prog] (fun X : Program => method_lookup X C m (Build_Method ps' c re)
         /\ length ps = length ps' /\
-        (forall x, In x ps' -> ~ In x (modifies c))) (*
-      //\\ {[ P //! zip ps (map var_expr ps') ]}
-         c {[ Q //! zip (cons rn ps) (cons (eval re) (map var_expr ps'))]}*)
+        (forall x, In x ps' -> ~ In x (modifies c))) 
+      //\\ {[ P //! combine ps (map var_expr ps') ]}
+         c {[ Q //! combine (cons rn ps) (cons (eval re) (map var_expr ps'))]}
     ).
 
   Notation " C ':.:' m |-> ps {{ P }}-{{ r , Q }} " :=
@@ -618,7 +618,7 @@ Section StructuralRules.
   Proof.
     eapply roc; eassumption || reflexivity.
   Qed.
-  (*
+  
   Lemma rule_frame_ax_list P Q R c (xs: list Lang.var)
     (HMod : forall x, ~ In x xs -> c_not_modifies c x) :
     {[ P ]} c {[ Q ]} |--
@@ -666,5 +666,5 @@ Section StructuralRules.
     rewrite <- exists_into_precond2. apply lforallR; intro y. apply H.
   Qed.
 *)
-*)
+
 End StructuralRules.

@@ -249,6 +249,9 @@ Global Instance Typ0Ok_tyNat : Typ0Ok Typ0_tyNat := Typ0Ok_sym tyNat.
 Global Instance Typ0_tyString : Typ0 RType_typ string := Typ0_sym tyString.
 Global Instance Typ0Ok_tyString : Typ0Ok Typ0_tyString := Typ0Ok_sym tyString.
 
+Global Instance Typ0_tyVal : Typ0 RType_typ val := Typ0_sym tyVal.
+Global Instance Typ0Ok_tyVal : Typ0Ok Typ0_tyVal := Typ0Ok_sym tyVal.
+
 Global Instance Typ0_tyBool : Typ0 RType_typ bool := Typ0_sym tyBool.
 Global Instance Typ0Ok_tyBool : Typ0Ok Typ0_tyBool := Typ0Ok_sym tyBool.
 
@@ -257,9 +260,6 @@ Global Instance Typ1Ok_tyList : Typ1Ok Typ1_tyList := Typ1Ok_sym (f_insert tList
 
 Global Instance Typ2_tyProd : Typ2 RType_typ prod := Typ2_sym (f_insert tProd).
 Global Instance Typ2Ok_tyProd : Typ2Ok Typ2_tyProd := Typ2Ok_sym (f_insert tProd).
-
-
-
 
 Definition null' : TypesI.typD tyVal := null.
 (*

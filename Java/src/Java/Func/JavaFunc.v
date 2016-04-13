@@ -60,7 +60,7 @@ Inductive java_func :=
 | pVal (v : val)
 | pCmd (c : cmd)
 | pExpr (e : dexpr)
-| pFields (f : plist@{UJFun} string)
+| pFields (f : list string)
 
 | pMethodSpec
 | pProgEq
@@ -186,12 +186,7 @@ Definition set_fold_fun (x : String.string) (f : field) (P : sasn) :=
 	(liftn pointsto) (x/V) `f `null ** P.
 *)
 Require Import Coq.Strings.String.
-Eval compute in 
-    match typeof_java_func (pFields (pcons ("hopp"%string) pnil)) with
-      | Some t => typD t
-      | None => unit
-    end.
-Eval compute in typeof_java_func (pFields pnil).
+
 Definition java_func_symD bf :=
   match bf as bf 
         return match typeof_java_func bf return Type@{Urefl} with
@@ -253,51 +248,51 @@ Set Printing Universes.
 
 Definition func_map : OneOfType.pmap :=
 	OneOfType.list_to_pmap 
-	  (java_func::
-           SymEnv.func::
-           @ilfunc typ::
-           @bilfunc typ::
-           @list_func typ::
-	   @subst_func typ::
-           @embed_func typ::
-           (natFunc:Type)::
-           (stringFunc:Type)::
-           (boolFunc:Type)::
-           @prod_func typ::
-           @eq_func typ::
-           @ap_func typ::
-           @listOp_func typ::(@nil Type)).
+	  (pcons java_func
+           (pcons SymEnv.func
+           (pcons (@ilfunc typ)
+           (pcons (@bilfunc typ)
+           (pcons (@list_func typ)
+	   (pcons (@subst_func typ)
+           (pcons (@embed_func typ)
+           (pcons (natFunc:Type)
+           (pcons (stringFunc:Type)
+           (pcons (boolFunc:Type)
+           (pcons (@prod_func typ)
+           (pcons (@eq_func typ)
+           (pcons (@ap_func typ)
+           (pcons (@listOp_func typ) (@pnil Type))))))))))))))).
 
 Definition func := OneOfType.OneOf func_map.
 
 Check @red_fold typ func.
 
-Global Instance JavaView_func : FuncView func java_func :=
-  FuncViewPMap 1 func_map eq_refl.
-Global Instance ILogicView_func : FuncView func (@ilfunc typ) :=
-  FuncViewPMap 3 func_map eq_refl.
-Global Instance BILogicView_func : FuncView func (@bilfunc typ) :=
-  FuncViewPMap 4 func_map eq_refl.
-Global Instance ListView_func : FuncView func (@list_func typ) :=
-  FuncViewPMap 5 func_map eq_refl.
-Global Instance SubstView_func : FuncView func (@subst_func typ) :=
-  FuncViewPMap 6 func_map eq_refl.
-Global Instance EmbedView_func : FuncView func (@embed_func typ) :=
-  FuncViewPMap 7 func_map eq_refl.
-Global Instance NatView_func : FuncView func natFunc :=
-  FuncViewPMap 8 func_map eq_refl.
-Global Instance StringView_func : FuncView func stringFunc :=
-  FuncViewPMap 9 func_map eq_refl.
-Global Instance BoolView_func : FuncView func boolFunc :=
-  FuncViewPMap 10 func_map eq_refl.
-Global Instance ProdView_func : FuncView func (@prod_func typ) :=
-  FuncViewPMap 11 func_map eq_refl.
-Global Instance Eq_func : FuncView func (@eq_func typ) :=
-  FuncViewPMap 12 func_map eq_refl.
-Global Instance ApplicativeView_func : FuncView func (@ap_func typ) :=
-  FuncViewPMap 13 func_map eq_refl.
-Global Instance ListOp_func : FuncView func (@listOp_func typ) :=
-  FuncViewPMap 14 func_map eq_refl.
+Global Instance JavaView_func : PartialView func java_func :=
+  PartialViewPMap 1 func_map eq_refl.
+Global Instance ILogicView_func : PartialView func (@ilfunc typ) :=
+  PartialViewPMap 3 func_map eq_refl.
+Global Instance BILogicView_func : PartialView func (@bilfunc typ) :=
+  PartialViewPMap 4 func_map eq_refl.
+Global Instance ListView_func : PartialView func (@list_func typ) :=
+  PartialViewPMap 5 func_map eq_refl.
+Global Instance SubstView_func : PartialView func (@subst_func typ) :=
+  PartialViewPMap 6 func_map eq_refl.
+Global Instance EmbedView_func : PartialView func (@embed_func typ) :=
+  PartialViewPMap 7 func_map eq_refl.
+Global Instance NatView_func : PartialView func natFunc :=
+  PartialViewPMap 8 func_map eq_refl.
+Global Instance StringView_func : PartialView func stringFunc :=
+  PartialViewPMap 9 func_map eq_refl.
+Global Instance BoolView_func : PartialView func boolFunc :=
+  PartialViewPMap 10 func_map eq_refl.
+Global Instance ProdView_func : PartialView func (@prod_func typ) :=
+  PartialViewPMap 11 func_map eq_refl.
+Global Instance Eq_func : PartialView func (@eq_func typ) :=
+  PartialViewPMap 12 func_map eq_refl.
+Global Instance ApplicativeView_func : PartialView func (@ap_func typ) :=
+  PartialViewPMap 13 func_map eq_refl.
+Global Instance ListOp_func : PartialView func (@listOp_func typ) :=
+  PartialViewPMap 14 func_map eq_refl.
 
 Section MakeJavaFunc.
 
@@ -368,7 +363,7 @@ Require Import MirrorCore.Lambda.Ptrns.
         | _ => bad f
       end.
 
-  Definition fptrnFields {T : Type} (p : Ptrns.ptrn (plist string) T) : ptrn java_func T :=
+  Definition fptrnFields {T : Type} (p : Ptrns.ptrn (list string) T) : ptrn java_func T :=
     fun f U good bad =>
       match f with
         | pFields fs => p fs U good (fun x => bad f)
@@ -548,14 +543,18 @@ Definition fs : @SymEnv.functions typ _ :=
   	 @SymEnv.F typ _ (tyArr tyVal (tyArr (tyList tyVal) tyAsn)) NodeList::nil).
 
 *)
-Set Printing All.
+
+Require Import MirrorCore.Simple.
+
+Existing Instance RelDec_from_RType.
 
   Global Instance RSym_ilfunc : RSym (@ilfunc typ) :=
 	  RSym_ilfunc ilops.
   Global Instance RSym_bilfunc : RSym (@bilfunc typ) :=
 	  RSym_bilfunc bilops.
+(*
   Global Instance RSym_embed_func : RSym (@embed_func typ) :=
-	  RSym_embed_func eops.
+	  RSym_embed_func eops.*)
 (*  Global Instance RSym_later_func : RSym (@later_func typ) :=
 	  RSym_later_func _ lops.*)
 (*
@@ -579,88 +578,38 @@ Set Printing All.
 
   Import OneOfType.
 
-  Definition RSym_sub_func (p : positive) :
-    RSym (match pmap_lookup' func_map p with
-          | _Some T => T
-          | _None => Empty_set
-          end).
+  Definition eops : embed_ops. admit. Admitted.
+
+  Global Instance RSym_func : RSym func.
   Proof.
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply (RSym_ApFunc (T := (Fun stack)))].
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    destruct p; simpl; [| | apply RSym_func; apply fs].
-    destruct p; simpl; [| | apply RSym_SubstFunc].
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSym_Empty_set.
-    induction p; simpl; intuition; apply RSym_Empty_set.
+    apply RSymOneOf.
+    repeat first [eapply RSym_All_Branch_None | 
+                  eapply RSym_All_Branch_Some |
+                  eapply RSym_All_Empty]. 
+    apply _.
+    apply RSym_func. apply fs.
+    apply _.
+    apply _.
+    apply _.
+    apply @RSym_SubstFunc with (var := string) (val := val); apply _.
+    apply _.
+    apply _.
+    apply _.
+    apply _.
+    apply _.    
+    apply _.
+    apply (RSym_embed_func).
+    apply eops.
+    apply _.  
+    Defined.
+
+  Global Instance RSymOk_func : RSymOk RSym_func.
+  apply RSymOk_OneOf.
+
+  repeat first [eapply RSymOk_All_Branch_None | 
+                eapply RSymOk_All_Branch_Some; [apply _ | |] |
+                eapply RSymOk_All_Empty]. 
   Defined.
-
-  Instance RSymOk_Empty_set : RSymOk RSym_Empty_set :=
-    {
-      sym_eqbOk a b :=
-        match a with
-        end
-
-    }.
-  
-
-  Lemma RSymOk_sub_func (p : positive) : RSymOk (RSym_sub_func p).
-  Proof.
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    destruct p; simpl; [| | apply _].
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    destruct p; simpl; [| | apply _].
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-    induction p; simpl; intuition; apply RSymOk_Empty_set.
-  Defined.
-
-  Global Instance RSym_func : RSym func := RSymOneOf func_map RSym_sub_func.
-
-  Global Instance RSymOk_func : RSymOk RSym_func := RSymOk_OneOf func_map RSym_sub_func RSymOk_sub_func.
 
   Global Instance Expr_expr : ExprI.Expr _ (expr typ func) := @Expr_expr typ func _ _ _.
   Global Instance Expr_ok : @ExprI.ExprOk typ RType_typ (expr typ func) Expr_expr := @ExprOk_expr _ _ _ _ _ _ _ _.
@@ -709,56 +658,7 @@ Definition ptrn_tyArr (T U : Type) (t : ptrn typ T) (u : ptrn typ U) : ptrn typ 
             (fun x : T => Mmap (fun y : U => (x, y)) (Mrebuild (tyArr a) (u b))) good bad
     | _ => bad e
     end.
-      
-Definition ptrn_tyProp : ptrn typ unit :=
-  fun t T good bad =>
-    match t with
-      | tyProp => good tt
-      | _ => bad t
-    end.
-
-Definition ptrn_tyAsn : ptrn typ unit :=
-  fun t T good bad =>
-    match t with
-      | tyAsn => good tt
-      | _ => bad t
-    end.
-
-Definition ptrn_tyVal : ptrn typ unit :=
-  fun t T good bad =>
-    match t with
-      | tyVal => good tt
-      | _ => bad t
-    end.
-
-Definition ptrn_tyString : ptrn typ unit :=
-  fun t T good bad =>
-    match t with
-      | tyString => good tt
-      | _ => bad t
-    end.
-
-Definition ptrn_tyStack : ptrn typ unit := 
-  fun t T good bad =>
-    match t with
-      | tyStack => good tt
-      | _ => bad t
-    end.
-
-Definition ptrn_tyPure : ptrn typ unit := 
-  fun t T good bad =>
-    match t with
-      | tyPure => good tt
-      | _ => bad t
-    end.
-
-Definition ptrn_tySasn : ptrn typ unit := 
-  fun t T good bad =>
-    match t with
-      | tySasn => good tt
-      | _ => bad t
-    end.
-
+(*
 Definition ptrnApEq {T A B : Type} (t : ptrn typ T) 
       (a : ptrn (expr typ func) A) (b : ptrn (expr typ func) B) : ptrn (expr typ func) (T * A * B) :=
   Ptrns.pmap (fun x => (fst (fst (fst x)), snd (snd (fst x)), snd x))
@@ -774,7 +674,8 @@ Definition isEq : expr typ func -> bool :=
                               (ptrnApEq ptrn_tyVal ignore ignore))) false.
 
 
-
+*)
+(*
   Lemma evalDExpr_wt (e : dexpr) :
 	  typeof_expr nil nil (evalDExpr e) = Some tyExpr.
   Proof.
@@ -801,7 +702,7 @@ Definition isEq : expr typ func -> bool :=
                        end)
                     (ptrnEmbed get ignore)))
          false.
-
+*)
 Require Import Charge.Tactics.BILNormalize.
 
 (*
