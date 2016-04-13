@@ -52,6 +52,12 @@ Require Import Charge.Tactics.Rtac.EApply.
 Require Import Charge.Tactics.Rtac.Instantiate.
 
 Require Import Coq.Arith.Peano_dec.
+Require Import MirrorCore.MTypes.BaseType.
+Require Import MirrorCore.MTypes.ProdType.
+Require Import MirrorCore.MTypes.ListType.
+Require Import MirrorCore.MTypes.ModularTypes.
+
+Require Import Java.Func.Type.
 
 Fixpoint mkStars n P Q : expr typ func :=
 	match n with
@@ -145,10 +151,51 @@ Print andA_temp_lemma.
 Definition skip_lemma : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_imp rule_skip.
 Defined.
+Print skip_lemma.
 
+Check exprD nil nil tyProp.
+
+Require Import MirrorCore.Views.StringView.
+
+Lemma test : exists t, t = 
+  exprD nil nil (tyArr tySpec (tyArr tySpec tySpec)) (Inj (fEntails tySpec)).
+simpl.
+unfold lambda_exprD.
+unfold symAs. simpl.
+simpl.
+unfold exprT.
+simpl.
+unfold OpenT.
+simpl.
+unfold ModularTypes.mtypD. simpl.
+compute.
+vm_compute.
+Eval compute in
+(@ModularTypes.tyArr typ'
+              (@ModularTypes.tyArr typ'
+                 (@ModularTypes.tyBase0 typ'
+                    (TSymOneOf.OneOfType.mkOneOfF typ_map O (xI xH) tString))
+                 (@ModularTypes.tyBase0 typ'
+                    (TSymOneOf.OneOfType.mkOneOfF typ_map O (xO (xO xH)) tVal)))
+              (@ModularTypes.tyBase0 typ'
+                 (TSymOneOf.OneOfType.mkOneOfF typ_map O (xO (xO xH)) tAsn))).
+Eval compute in typD
+(@ModularTypes.tyArr typ'
+           (@ModularTypes.tyArr typ'
+              (@ModularTypes.tyBase0 typ'
+                 (TSymOneOf.OneOfType.mkOneOfF typ_map O (xI xH) tString))
+              (@ModularTypes.tyBase0 typ'
+                 (TSymOneOf.OneOfType.mkOneOfF typ_map O (xO (xO xH)) tVal)))
+           (@ModularTypes.tyBase0 typ'
+              (TSymOneOf.OneOfType.mkOneOfF typ_map O (xO (xO xH)) tAsn))).
+Eval compute in typD ((@ModularTypes.tyBase0 typ'
+        (TSymOneOf.OneOfType.mkOneOfF typ_map O (xO (xO xH)) tSpec))).
+SearchAbout lemma.
+Check @lemmaD.
 Lemma skip_lemma_sound :
-	lemmaD (exprD'_typ0 (T:=Prop)) nil nil skip_lemma.
+  @lemmaD typ (expr typ func) RType_typ Expr_expr _ (exprD_typ0 (T:=Prop)) _ nil nil skip_lemma.
 Proof.
+  
   unfold lemmaD; simpl; intros.
   unfold AbsAppI.exprT_App, exprT_Inj, Rcast_val, Rcast in * ; simpl in *.
   apply rule_skip. apply H.

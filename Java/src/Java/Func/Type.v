@@ -39,7 +39,7 @@ Set Strict Implicit.
 
 Import OneOfType.
 
-Definition typ_map := 
+Definition typ_map :=
   list_to_pmap
     (pcons prod_typ (pcons list_typ (pcons base_typ (pcons java_typ pnil)))).
 
@@ -66,7 +66,7 @@ Proof.
 Defined.
 
 
-Definition OneOf_Branch n l r (H : OneOf (Branch (_Some n) l r)) :   
+Definition OneOf_Branch n l r (H : OneOf (Branch (_Some n) l r)) :
   n + OneOf l + OneOf r.
 Proof.
   remember (Branch (_Some n) l r).
@@ -77,16 +77,16 @@ Proof.
   exists index0; assumption.
 Defined.
 *)
-Definition typ' := OneOfType.OneOfF typ_map. 
+Definition typ' := OneOfType.OneOfF typ_map.
 (*
-Instance TSym_Empty : TSym 
+Instance TSym_Empty : TSym
 Proof.
   split; intros.
   apply OneOf_Empty in X; destruct X.
   exfalso. apply OneOf_Empty in a; destruct a.
 Defined.
 
-Instance TSym_Branch n l r 
+Instance TSym_Branch n l r
          (Hl : TSym (fun x => OneOf (l x)))
          (Hr : TSym (fun x => OneOf (r x)))
          (Hn : TSym n) :
@@ -102,22 +102,22 @@ Proof.
   destruct index0, index1; try (solve [right; intros H; inv_all; subst; inversion x]).
   + eapply @symbol_dec with (a := mkOneOf _ index0 value0) (b := mkOneOf _ index1 value1) in Hr.
     destruct Hr; [left | right]; inv_all; subst; [reflexivity|].
-    intros H. apply n1. inv_all. inversion x; subst. 
+    intros H. apply n1. inv_all. inversion x; subst.
     rewrite (uip_trans Pos.eq_dec _ _ x eq_refl) in *. reflexivity.
   + eapply @symbol_dec with (a := mkOneOf _ index0 value0) (b := mkOneOf _ index1 value1) in Hl.
     destruct Hl; [left | right]; inv_all; subst; [reflexivity|].
-    intros H. apply n1. inv_all. inversion x; subst. 
+    intros H. apply n1. inv_all. inversion x; subst.
     rewrite (uip_trans Pos.eq_dec _ _ x eq_refl) in *. reflexivity.
   + eapply @symbol_dec with (a := value0) (b := value1) in Hn.
     destruct Hn; [left | right]; subst; [reflexivity|].
-    intros H. apply n1. inv_all. inversion x; subst. 
+    intros H. apply n1. inv_all. inversion x; subst.
     rewrite (uip_trans Pos.eq_dec _ _ x eq_refl) in *. reflexivity.
 Defined.
 *)
 Definition TSymAll_typ_map : TSym_All typ_map.
-  repeat first [eapply TSym_All_Branch_None | 
-                eapply TSym_All_Branch_Some; [eapply _ | |] | 
-                eapply TSym_All_Empty]. 
+  repeat first [eapply TSym_All_Branch_None |
+                eapply TSym_All_Branch_Some; [eapply _ | |] |
+                eapply TSym_All_Empty].
 Defined.
 
 Global Instance TSym_typ' : TSym typ'.
@@ -126,51 +126,53 @@ Defined.
 
 Definition typ := mtyp typ'.
 
-Global Instance RType_typ : RType typ. 
+Global Instance RType_typ : RType typ.
 apply RType_mtyp. apply _.
 Defined.
 
-Global Instance RTypeOk_typ : RTypeOk. 
-apply RTypeOk_mtyp. 
+Global Instance RTypeOk_typ : RTypeOk.
+apply RTypeOk_mtyp.
 Defined.
 
 Global Instance TypeView_prod_typ' : PartialView (typ' 2) (prod_typ 2) :=
   PartialViewPMap_Type 1 typ_map eq_refl 2.
-  
+
 Global Instance TypeView_list_typ' : PartialView (typ' 1) (list_typ 1) :=
   PartialViewPMap_Type 2 typ_map eq_refl 1.
-  
+
 Global Instance TypeView_base_typ' : PartialView (typ' 0) (base_typ 0) :=
   PartialViewPMap_Type 3 typ_map eq_refl 0.
-  
+
 Global Instance TypeView_java_typ' : PartialView (typ' 0) (java_typ 0) :=
   PartialViewPMap_Type 4 typ_map eq_refl 0.
-  
+
 Global Instance TypeView_prod_typ : PartialView typ (prod_typ 2 * (typ * typ)).
-eapply PartialView_trans. 
+eapply PartialView_trans.
 apply TypeView_sym2.
 eapply (@PartialView_prod _ _ _ _ _ PartialView_id).
 Defined.
 
 Global Instance TypeView_list_typ : PartialView typ (list_typ 1 * typ).
-eapply PartialView_trans. 
+eapply PartialView_trans.
 apply TypeView_sym1.
-eapply (@PartialView_prod _ _ _ _ _ PartialView_id). 
+eapply (@PartialView_prod _ _ _ _ _ PartialView_id).
 Defined.
 
 Global Instance TypeView_base_typ : PartialView typ (base_typ 0).
-eapply PartialView_trans. 
+eapply PartialView_trans.
 eapply TypeView_sym0.
 apply TypeView_base_typ'.
 Defined.
 
 Global Instance TypeView_java_typ : PartialView typ (java_typ 0).
-eapply PartialView_trans. 
+eapply PartialView_trans.
 eapply TypeView_sym0.
 apply TypeView_java_typ'.
 Defined.
 
 Require Import MirrorCore.Views.TypeView.
+
+Arguments PartialViewOk_prod {_ _ _ _ _ _ _ _} _ _ : clear implicits.
 
 Definition TypeViewOk_prod_typ
 : TypeViewOk typD (fun x => (prod_typD (n:=2) (fst x)) (typD (fst (snd x))) (typD (snd (snd x))))
@@ -178,9 +180,7 @@ Definition TypeViewOk_prod_typ
 Proof.
   eapply PartialView_transOk.
   eapply TypeViewOk_sym2.
-  About PartialView_prodOk.
-  Arguments PartialViewOk_prod {_ _ _ _ _ _ _ _} _ _ : clear implicits.
-  eapply PartialView_prodOk.
+  eapply PartialViewOk_prod.
   eapply PartialViewOk_TSymOneOf with (p := 1%positive) (H := TSymAll_typ_map).
   eapply PartialViewOk_id; eapply eq_Reflexive.
   unfold type_equiv. inversion 2.
@@ -195,11 +195,8 @@ Definition TypeViewOk_list_typ
 Proof.
   eapply PartialView_transOk.
   eapply TypeViewOk_sym1.
-  About PartialView_prodOk.
-  Arguments PartialView_prodOk {_ _ _ _ _ _ _ _} _ _ : clear implicits.
-  eapply PartialView_prodOk.
+  eapply PartialViewOk_prod.
   eapply PartialViewOk_TSymOneOf with (p := 2%positive) (H := TSymAll_typ_map).
-  About PartialViewOk_id.
   eapply PartialViewOk_id; eapply eq_Reflexive.
   unfold type_equiv. inversion 2.
   etransitivity.
@@ -279,10 +276,25 @@ Proof.
   apply _.
 Defined.
 
+Check @f_view.
+
+Definition pv_elim {T U : Type} {Pv : PartialView T U} Z {PVo : PartialViewOk Pv Z} (F : T -> Type) (x : T)
+: (forall y, F (f_insert y)) ->
+  F x ->
+  F x :=
+  match f_view x as Z return f_view x = Z -> _
+  with
+  | pSome v => fun pf X _ => 
+                 match proj1 (pv_ok _ _) pf in _ = Z return F Z with
+                 | eq_refl => X v
+                 end
+  | pNone => fun _ _ X => X
+  end eq_refl.
+
 Definition ilops : @logic_ops typ RType_typ.
   refine (
       fun t =>
-        match @f_view typ (base_typ 0) TypeView_base_typ t as x 
+        match @f_view typ (base_typ 0) TypeView_base_typ t as x
               return x = @f_view typ (base_typ 0) TypeView_base_typ t -> poption (ILogic.ILogicOps (TypesI.typD t)) with
         | pSome p =>
           fun pf =>
@@ -290,9 +302,9 @@ Definition ilops : @logic_ops typ RType_typ.
             | tProp => fun pf' => pSome _
             | _ => fun _ => pNone
             end eq_refl
-        | _ => 
+        | _ =>
           fun _ =>
-            match @f_view typ (java_typ 0) TypeView_java_typ t as x 
+            match @f_view typ (java_typ 0) TypeView_java_typ t as x
                   return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (ILogic.ILogicOps (TypesI.typD t)) with
             | pSome p =>
               fun pf =>
@@ -301,26 +313,26 @@ Definition ilops : @logic_ops typ RType_typ.
                 | tSpec => fun pfSpec => pSome _
                 | _ => fun _ => pNone
                 end eq_refl
-            | pNone => 
-              fun _ => 
+            | pNone =>
+              fun _ =>
                 match t as x return t = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                | tyArr (tyArr t1 t2) t3 => 
+                | tyArr (tyArr t1 t2) t3 =>
                   fun _ =>
-                  match @f_view typ (base_typ 0) TypeView_base_typ t1 as x 
+                  match @f_view typ (base_typ 0) TypeView_base_typ t1 as x
                         return x = @f_view typ (base_typ 0) TypeView_base_typ t1 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                  | pSome p1 => 
-                    fun pft1 => 
+                  | pSome p1 =>
+                    fun pft1 =>
                       match p1 as x in base_typ 0 return p1 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                      | tString => 
+                      | tString =>
                         fun pf'' =>
-                          match @f_view typ (java_typ 0) TypeView_java_typ t2 as x 
+                          match @f_view typ (java_typ 0) TypeView_java_typ t2 as x
                                 return x = @f_view typ (java_typ 0) TypeView_java_typ t2 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                          | pSome p2 => 
-                            fun pft1 => 
+                          | pSome p2 =>
+                            fun pft1 =>
                               match p2 as x in java_typ 0 return p2 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
                               | tVal =>
                                 fun pf''' =>
-                                  match @f_view typ (base_typ 0) TypeView_base_typ t3 as x 
+                                  match @f_view typ (base_typ 0) TypeView_base_typ t3 as x
                                         return x = @f_view typ (base_typ 0) TypeView_base_typ t3 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
                                   | pSome p3 =>
                                     fun pf =>
@@ -328,14 +340,14 @@ Definition ilops : @logic_ops typ RType_typ.
                                       | tProp => fun pf' => pSome _
                                       | _ => fun _ => pNone
                                       end eq_refl
-                                  | pNone => 
-                                    fun _ =>
-                                      match @f_view typ (java_typ 0) TypeView_java_typ t as x 
-                                            return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (ILogic.ILogicOps (TypesI.typD t)) with
+                                  | pNone =>
+                                    fun pf''' =>
+                                      match @f_view typ (java_typ 0) TypeView_java_typ t3 as x
+                                            return x = @f_view typ (java_typ 0) TypeView_java_typ t3 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
                                       | pSome p3 =>
                                         fun pf =>
                                           match p3 as x in java_typ 0 return p3 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                                          | tAsn => fun _ => pSome _
+                                          | tAsn => fun pf' => pSome _
                                           | _ => fun _ => pNone
                                           end eq_refl
                                       | pNone => fun _ => pNone
@@ -359,18 +371,22 @@ Definition ilops : @logic_ops typ RType_typ.
         pose proof (asNth_eq _ _ H0); subst; simpl; apply _.
       + subst; simpl in *; forward. inversion H3; subst; inversion pf; subst.
         pose proof (asNth_eq _ _ H0); subst; simpl; apply _.
-      + subst; simpl in *; forward. 
+      + subst; simpl in *; forward.
         inversion pft1; inversion pft0; inversion H7; inversion pf; inversion H4; inversion H1;
         subst; simpl in *.
         pose proof (asNth_eq _ _ H6); pose proof (asNth_eq _ _ H0); pose proof (asNth_eq _ _ H3).
         subst; simpl. apply _.
-      + subst; simpl in *; forward. 
+      + subst; simpl in *; forward.
+        inversion pft1; inversion pft0; inversion H9; inversion pf; inversion H4; inversion H1;
+        subst; simpl in *.
+        pose proof (asNth_eq _ _ H6); pose proof (asNth_eq _ _ H0); pose proof (asNth_eq _ _ H3).
+        subst; simpl. apply _.
 Defined.
 
   Definition bilops : @bilogic_ops _ RType_typ.
   refine (
       fun t =>
-        match @f_view typ (java_typ 0) TypeView_java_typ t as x 
+        match @f_view typ (java_typ 0) TypeView_java_typ t as x
               return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (BILogic.BILOperators (TypesI.typD t)) with
         | pSome p =>
           fun pf =>
@@ -378,26 +394,26 @@ Defined.
             | tAsn => fun pfAsn => pSome _
             | _ => fun _ => pNone
             end eq_refl
-        | pNone => 
-          fun _ => 
+        | pNone =>
+          fun _ =>
             match t as x return t = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
-            | tyArr (tyArr t1 t2) t3 => 
+            | tyArr (tyArr t1 t2) t3 =>
               fun _ =>
-                match @f_view typ (base_typ 0) TypeView_base_typ t1 as x 
+                match @f_view typ (base_typ 0) TypeView_base_typ t1 as x
                       return x = @f_view typ (base_typ 0) TypeView_base_typ t1 -> poption (BILogic.BILOperators (TypesI.typD t)) with
-                | pSome p1 => 
-                  fun pft1 => 
+                | pSome p1 =>
+                  fun pft1 =>
                     match p1 as x in base_typ 0 return p1 = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
-                    | tString => 
-                      fun pf'' => 
-                        match @f_view typ (java_typ 0) TypeView_java_typ t2 as x 
+                    | tString =>
+                      fun pf'' =>
+                        match @f_view typ (java_typ 0) TypeView_java_typ t2 as x
                               return x = @f_view typ (java_typ 0) TypeView_java_typ t2 -> poption (BILogic.BILOperators (TypesI.typD t)) with
-                        | pSome p2 => 
-                          fun pft1 => 
+                        | pSome p2 =>
+                          fun pft1 =>
                             match p2 as x in java_typ 0 return p2 = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
                             | tVal =>
-                              fun pf''' => 
-                                match @f_view typ (java_typ 0) TypeView_java_typ t as x 
+                              fun pf''' =>
+                                match @f_view typ (java_typ 0) TypeView_java_typ t as x
                                       return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (BILogic.BILOperators (TypesI.typD t)) with
                                 | pSome p3 =>
                                   fun pf =>
@@ -406,17 +422,17 @@ Defined.
                                     | _ => fun _ => pNone
                                     end eq_refl
                                 | pNone => fun _ => pNone
-                                end eq_refl 
+                                end eq_refl
                             | _ => fun _ => pNone
-                            end eq_refl 
+                            end eq_refl
                         | _ => fun _ => pNone
-                        end eq_refl 
+                        end eq_refl
                     | _ => fun _ => pNone
-                    end eq_refl 
+                    end eq_refl
                 | pNone => fun _ => pNone
-                end eq_refl 
+                end eq_refl
             | _ => fun _ => pNone
-            end eq_refl 
+            end eq_refl
         end eq_refl).
   + subst; simpl in *; forward; inversion H1; inversion pf; subst.
     pose proof (asNth_eq _ _ H0); subst; simpl; apply _.
@@ -433,7 +449,7 @@ Definition eops : @embed_ops _ RType_typ :=
       | tyPure, tySasn => Some _
       | tyProp, tyAsn => Some _
       | _ , _ => None
-    end. 
+    end.
 *)
 (*
 Definition lops : @later_ops _ RType_typ :=
@@ -554,7 +570,7 @@ Instance SemiEqDecTyp_edt : SemiEqDecTyp typ := {
     semi_eq_dec_typ := edt
   }.
 
-Definition edtOk : 
+Definition edtOk :
   forall t a b,
     match edt t a b with
       | Some true => a = b
@@ -566,7 +582,7 @@ Proof.
   destruct t; simpl in *; try apply I.
   consider (a ?[ eq ] b); intuition congruence.
   destruct a, b; simpl.
-  forward. inv_all; subst. 
+  forward. inv_all; subst.
   specialize (IHt1 t t3); specialize (IHt2 t0 t4).
   destruct b0, b1; rewrite H in IHt1; rewrite H0 in IHt2; simpl; intuition congruence.
   consider (a ?[ eq ] b); intuition congruence.

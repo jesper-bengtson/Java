@@ -244,11 +244,19 @@ Ltac reify_imp e :=
              [[ (fun (y : @mk_dvar_map _ _ _ _ term_table elem_ctor) => True) ]]
              [[ e ]].
 
+
+(*
 Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
   intros Pr C v fields.
 Set Printing Universes.
-
+Set Printing All.
+(*
   reify_imp (typeof C v).
+*)
+reify_imp C.
+Print mkString.
+Print fString.
+Print fString.
 (*
   reify_imp (field_lookup).
   reify_imp (field_lookup Pr C fields).
@@ -309,7 +317,7 @@ Set Printing Universes.
   exact I.
 
 Defined.
-
+*)
 Ltac reify_aux e n :=
   let k fs e :=
       pose e as n in
