@@ -137,7 +137,7 @@ Section ListOpFuncInst.
 End ListOpFuncInst.
 
 Section MakeListOp.
-  Context {typ func : Type} {FV : FuncView func (listOp_func typ)}.
+  Context {typ func : Type} {FV : PartialView func (listOp_func typ)}.
 
   Definition fLength t := f_insert (pLength t).
   Definition fNoDup t := f_insert (pNoDup t).
@@ -411,7 +411,7 @@ End MakeListOp.
 
 Section PtrnListOp.
   Context {typ func : Type} {RType_typ : RType typ}.
-  Context {FV : FuncView func (listOp_func typ)}.
+  Context {FV : PartialView func (listOp_func typ)}.
 
 (* Putting this in the previous sectioun caused universe inconsistencies
   when calling '@mkLength typ func' in JavaFunc (with typ and func instantiated) *)
@@ -449,10 +449,10 @@ End PtrnListOp.
 
 Section Tactics.
   Context {typ func : Type}.
-  Context {FV_listOp : FuncView func (listOp_func typ)}.
-  Context {FV_list : FuncView func (list_func typ)}.
-  Context {FV_nat : FuncView func natFunc}.
-  Context {FV_prod : FuncView func (prod_func typ)}.
+  Context {FV_listOp : PartialView func (listOp_func typ)}.
+  Context {FV_list : PartialView func (list_func typ)}.
+  Context {FV_nat : PartialView func natFunc}.
+  Context {FV_prod : PartialView func (prod_func typ)}.
   Context {RType_typ : RType typ} {RSym_func : RSym func}.
   Context {RTypeOk_typ : @RTypeOk _ RType_typ}.
   Context {RSymOk_func : RSymOk RSym_func}.

@@ -191,7 +191,7 @@ Eval compute in
       | Some t => typD t
       | None => unit
     end.
-
+Eval compute in typeof_java_func (pFields pnil).
 Definition java_func_symD bf :=
   match bf as bf 
         return match typeof_java_func bf return Type@{Urefl} with

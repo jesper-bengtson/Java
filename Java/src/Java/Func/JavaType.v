@@ -291,3 +291,12 @@ Section RelDec_java_type.
   Qed.
   
 End RelDec_java_type.
+
+Section TSym_java_type.
+
+  Global Instance TSym_java_typ : TSym java_typ := {
+    symbolD n := java_typD (n := n);
+    symbol_dec n := java_typ_dec (n := n)    
+  }.
+
+End TSym_java_type.

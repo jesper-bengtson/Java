@@ -8,7 +8,6 @@ Require Import Coq.Bool.Bool.
 Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Data.String.
 Require Import ExtLib.Data.Z.
-Require Import ExtLib.Data.PList.
 Require Import ExtLib.Tactics.Consider.
 
 Require Import ChargeCore.Open.Stack.
@@ -290,8 +289,8 @@ Fixpoint modifies (c: cmd) :=
   | carralloc x _  
   | calloc x _     
   | cdcall x _ _ _ 
-  | cscall x _ _ _ => pcons x pnil
-  |  _             => pnil
+  | cscall x _ _ _ => x::nil
+  |  _             => nil
   end.
 
 Notation " x 'A=' e "  := (cassign x e) (at level 60, no associativity) : cmd_scope.

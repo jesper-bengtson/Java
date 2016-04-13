@@ -22,8 +22,6 @@ Require Import Java.Logic.HeapArr.
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
 
-Require Import ExtLib.Data.PList.
-
 Import SepAlgNotations.
 
 Set Implicit Arguments.
@@ -278,7 +276,7 @@ Require Import Compare_dec.
       (Sfresh_h : forall f, ~ pfun_in h ((n, C), f))
       (Sfields  : field_lookup P C fields)
       (Sh0      : sa_mul h
-        (fold_right (fun f h' => pfun_update h' ((n, C), f) (pnull : val)) fields heap_ptr_unit) h0)
+        (fold_right (fun f h' => pfun_update h' ((n, C), f) (pnull : val)) heap_ptr_unit fields) h0)
       (Ss0      : s0 = stack_add x (vptr (n, C)) s),
       alloc_sem x C P 1 s (h, h') (Some (s0, (h0, h'))).
   Program Definition alloc_cmd x C := Build_semCmd (alloc_sem x C) _ _.
@@ -340,10 +338,10 @@ Require Import Compare_dec.
 *)
   Admitted.
 
-  Fixpoint create_stack (ps : plist Lang.var) (vs : list val) : stack :=
+  Fixpoint create_stack (ps : list Lang.var) (vs : list val) : stack :=
     match ps, vs with
-      | pnil, nil => stack_empty Lang.var val
-      | pcons p ps, v :: vs =>
+      | nil, nil => stack_empty Lang.var val
+      | cons p ps, v :: vs =>
         stack_add p v (create_stack ps vs)
       | _, _ => stack_empty Lang.var val
     end.
@@ -355,16 +353,16 @@ Require Import Compare_dec.
       call_sem rvar C m es c sc P 1 s h None
   | call_failC : forall (P : Program) ps rexpr (s : stack) h n
       (HLookup : method_lookup P (C s) m (Build_Method ps c rexpr))
-      (HLen    : length _ ps = List.length es)
+      (HLen    : length ps = List.length es)
       (HFail   : sc P n (create_stack ps (eval_exprs s es)) h None),
       call_sem rvar C m es c sc P (S n) s h None
   | call_failL : forall (P : Program) ps rexpr s h
       (HLookup : method_lookup P (C s) m (Build_Method ps c rexpr))
-      (HLen    : length _ ps <> List.length es),
+      (HLen    : length ps <> List.length es),
       call_sem rvar C m es c sc P 1 s h None
   | call_ok    : forall (P : Program) ps rexpr (s sr : stack) h hr n
       (HLookup : method_lookup P (C s) m (Build_Method ps c rexpr))
-      (HLen    : length _ ps = List.length es)
+      (HLen    : length ps = List.length es)
       (HSem    : sc P n (create_stack ps (eval_exprs s es)) h (Some (sr, hr))),
       call_sem rvar C m es c sc P (S n) s h
         (Some (stack_add rvar (eval rexpr sr) s, hr)).
@@ -423,7 +421,7 @@ Require Import Compare_dec.
     forall sc, semantics c sc -> not_modifies sc x.
 
   Lemma modifies_syn_sem c x :
-     ~ pIn x (modifies c) -> c_not_modifies c x.
+     ~ In x (modifies c) -> c_not_modifies c x.
   Proof.
     induction c; simpl in *; intros HNM; intros sc HSem; inversion_clear HSem.
     + intros P s s0 h h0 n HAsgn;
@@ -455,8 +453,8 @@ Require Import Compare_dec.
         apply assume_inv in H7; destruct H7; subst.
         eapply IHc; eassumption.
       * apply IHkleene_sem; assumption.
-    + intros P s s0 h h0 n HWr; simpl in *; inversion HWr; subst; reflexivity.
-    + intros P s s0 h h0 n HRd; simpl in *;
+    + intros P s' s0 h h0 n HWr; simpl in *; inversion HWr; subst; reflexivity.
+    + intros P s' s0 h h0 n HRd; simpl in *;
       inversion HRd; subst; rewrite stack_lookup_add2; trivial;
       intuition congruence.
     + intros P s s0 h h0 n Hrd; simpl in *.
@@ -467,10 +465,10 @@ Require Import Compare_dec.
     + intros P s s0 h h0 n HCl; simpl in *;
       inversion HCl; subst; rewrite stack_lookup_add2; trivial;
       intuition congruence.
-    + intros P s s0 h h0 n HCl; simpl in *;
+    + intros P s' s0 h h0 n HCl; simpl in *;
       inversion HCl; subst; rewrite stack_lookup_add2; trivial;
       intuition congruence.
-    + intros P s s0 h h0 n HCl; simpl in *;
+    + intros P s' s0 h h0 n HCl; simpl in *;
       inversion HCl; subst; rewrite stack_lookup_add2; trivial;
       intuition congruence.
     + intros P s s0 h h0 n HAs; inversion HAs; subst; reflexivity.
@@ -517,14 +515,14 @@ Require Import RelationClasses Setoid.
 
 Open Scope open_scope.
 
-  Definition method_spec C m (ps : plist Lang.var) (rn : Lang.var) (P Q : sasn) := (
-    pNoDup (pcons rn ps) /\\
-    Exists ps' : (PList.plist Lang.var), Exists c : cmd, Exists re : dexpr,
+  Definition method_spec C m (ps : list Lang.var) (rn : Lang.var) (P Q : sasn) := (
+    NoDup (cons rn ps) /\\
+    Exists ps' : (list Lang.var), Exists c : cmd, Exists re : dexpr,
       [prog] (fun X : Program => method_lookup X C m (Build_Method ps' c re)
-        /\ length _ ps = length _ ps' /\
-        (forall x, pIn x ps' -> ~ PList.pIn x (modifies c)))
-      //\\ {[ P //! zip ps (fmap_plist var_expr ps') ]}
-         c {[ Q //! zip (pcons rn ps) (pcons (eval re) (fmap_plist var_expr ps'))]}
+        /\ length ps = length ps' /\
+        (forall x, In x ps' -> ~ In x (modifies c))) (*
+      //\\ {[ P //! zip ps (map var_expr ps') ]}
+         c {[ Q //! zip (cons rn ps) (cons (eval re) (map var_expr ps'))]}*)
     ).
 
   Notation " C ':.:' m |-> ps {{ P }}-{{ r , Q }} " :=
@@ -620,9 +618,9 @@ Section StructuralRules.
   Proof.
     eapply roc; eassumption || reflexivity.
   Qed.
-  
-  Lemma rule_frame_ax_list P Q R c (xs: plist Lang.var)
-    (HMod : forall x, ~ pIn x xs -> c_not_modifies c x) :
+  (*
+  Lemma rule_frame_ax_list P Q R c (xs: list Lang.var)
+    (HMod : forall x, ~ In x xs -> c_not_modifies c x) :
     {[ P ]} c {[ Q ]} |--
     {[ P ** R ]} c {[ Q ** Exists vs, apply_subst R (subst_fresh vs xs) ]}.
   Proof.
@@ -667,5 +665,6 @@ Section StructuralRules.
     eapply roc_pre; [apply existentialise_var with (x0 := x)|].
     rewrite <- exists_into_precond2. apply lforallR; intro y. apply H.
   Qed.
+*)
 *)
 End StructuralRules.
