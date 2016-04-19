@@ -134,7 +134,7 @@ Reify Pattern patterns_java_typ += (!! Program) => tyProg.
 Reify Pattern patterns_java_typ += (!! Lang.stack) => tyStack.
 Reify Pattern patterns_java_typ += (!! @Stack.stack Lang.var val) => tyStack.
 Reify Pattern patterns_java_typ += (!! cmd) => tyCmd.
-Reify Pattern patterns_java_typ += (!! dexpr) => tyExpr.
+Reify Pattern patterns_java_typ += (!! dexpr) => tyDExpr.
 Reify Pattern patterns_java_typ += (!! (@Open.expr Lang.var val)) => tyExpr.
 Reify Pattern patterns_java_typ += (!! @Subst.subst (String.string) val) => tySubst.
 
@@ -149,7 +149,7 @@ Reify Pattern patterns_java += (RHasType nat (?0)) => (fun (n : id nat) => mkNat
 Reify Pattern patterns_java += (RHasType cmd (?0)) => (fun (c : id cmd) => Inj (typ := typ) (fCmd c)).
 Reify Pattern patterns_java += (RHasType dexpr (?0)) => (fun (e : id dexpr) => Inj (typ := typ) (fDExpr e)).
 Reify Pattern patterns_java += (RHasType Program (?0)) => (fun (P : id Program) => (Inj (typ := typ) (fProg P))).
-Reify Pattern patterns_java += (RHasType (list field) (?0)) => (fun (fs : id (list field)) => Inj (typ := typ) (fFields fs)).
+Reify Pattern patterns_java += (RHasType (list field) (?0)) => (fun (fs : id (list field)) => Inj (typ := typ) (fFields fs)). 
 Reify Pattern patterns_java += (RHasType class (?0)) => (fun (c : id class) => mkString (typ := typ) (func := func) c).
 
 Reify Pattern patterns_java += (RHasType (@list dexpr) (?0)) => (fun (es : id (@list dexpr)) => mkExprList es).
@@ -245,19 +245,9 @@ Ltac reify_imp e :=
              [[ e ]].
 
 
-(*
 Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
   intros Pr C v fields.
-Set Printing Universes.
-Set Printing All.
-(*
   reify_imp (typeof C v).
-*)
-reify_imp C.
-Print mkString.
-Print fString.
-Print fString.
-(*
   reify_imp (field_lookup).
   reify_imp (field_lookup Pr C fields).
 
@@ -291,11 +281,11 @@ Print fString.
 
   reify_imp (forall x : nat, x = x).
   reify_imp (exists x : nat, x = x).
-(*
+
   reify_imp (@subst1 Lang.var val _).
   reify_imp (cseq cskip cskip).
 
-  reify_imp (@map nat nat).*)
+  reify_imp (@map nat nat).
   reify_imp (ILogic.lentails True True).
 
   reify_imp ((True -> False) -> True).
@@ -307,17 +297,17 @@ Print fString.
 
   reify_imp (stack_get (A := Lang.var) (val := val)).
   reify_imp (@stack_get Lang.var val x).
-(* GREGORY: The next commented out command throws an exception
+
   reify_imp (stack_get (val := val) x).
-*)
+
   reify_imp (x = x).
 
   reify_imp (@ltrue sasn _).
-*)
+
   exact I.
 
 Defined.
-*)
+
 Ltac reify_aux e n :=
   let k fs e :=
       pose e as n in

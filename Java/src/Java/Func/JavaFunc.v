@@ -578,8 +578,6 @@ Existing Instance RelDec_from_RType.
 
   Import OneOfType.
 
-  Definition eops : embed_ops. admit. Admitted.
-
   Global Instance RSym_func : RSym func.
   Proof.
     apply RSymOneOf.

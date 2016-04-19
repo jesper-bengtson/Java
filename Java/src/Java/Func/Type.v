@@ -23,6 +23,9 @@ Require Import ChargeCore.Open.Subst.
 Require Import ChargeCore.Logics.ILInsts.
 Require Import ChargeCore.Logics.BILInsts.
 Require Import ChargeCore.Logics.ILogic.
+Require Import ChargeCore.Logics.BILogic.
+Require Import ChargeCore.Logics.ILEmbed.
+
 Require Import ChargeCore.Logics.Later.
 
 Require Import Java.Logic.AssertionLogic.
@@ -275,190 +278,153 @@ Proof.
   simpl.
   apply _.
 Defined.
-
+About pv_ok.
 Check @f_view.
-
-Definition pv_elim {T U : Type} {Pv : PartialView T U} Z {PVo : PartialViewOk Pv Z} (F : T -> Type) (x : T)
+Check proj1.
+Definition pv_elim {T U : Type} {Pv : PartialView T U} {Z} {PVo : PartialViewOk Pv Z} (F : T -> Type) (x : T)
 : (forall y, F (f_insert y)) ->
-  F x ->
+  (unit -> F x) ->
   F x :=
   match f_view x as Z return f_view x = Z -> _
   with
   | pSome v => fun pf X _ => 
-                 match proj1 (pv_ok _ _) pf in _ = Z return F Z with
+                 match (match pv_ok _ _ with | conj A _ => A end) pf in _ = Z return F Z with
                  | eq_refl => X v
                  end
-  | pNone => fun _ _ X => X
+  | pNone => fun _ _ X => X tt
   end eq_refl.
 
-Definition ilops : @logic_ops typ RType_typ.
-  refine (
-      fun t =>
-        match @f_view typ (base_typ 0) TypeView_base_typ t as x
-              return x = @f_view typ (base_typ 0) TypeView_base_typ t -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-        | pSome p =>
-          fun pf =>
-            match p as x in base_typ 0 return p = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-            | tProp => fun pf' => pSome _
-            | _ => fun _ => pNone
-            end eq_refl
-        | _ =>
-          fun _ =>
-            match @f_view typ (java_typ 0) TypeView_java_typ t as x
-                  return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-            | pSome p =>
-              fun pf =>
-                match p as x in java_typ 0 return p = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                | tAsn => fun pfAsn => pSome _
-                | tSpec => fun pfSpec => pSome _
-                | _ => fun _ => pNone
-                end eq_refl
-            | pNone =>
-              fun _ =>
-                match t as x return t = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                | tyArr (tyArr t1 t2) t3 =>
-                  fun _ =>
-                  match @f_view typ (base_typ 0) TypeView_base_typ t1 as x
-                        return x = @f_view typ (base_typ 0) TypeView_base_typ t1 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                  | pSome p1 =>
-                    fun pft1 =>
-                      match p1 as x in base_typ 0 return p1 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                      | tString =>
-                        fun pf'' =>
-                          match @f_view typ (java_typ 0) TypeView_java_typ t2 as x
-                                return x = @f_view typ (java_typ 0) TypeView_java_typ t2 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                          | pSome p2 =>
-                            fun pft1 =>
-                              match p2 as x in java_typ 0 return p2 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                              | tVal =>
-                                fun pf''' =>
-                                  match @f_view typ (base_typ 0) TypeView_base_typ t3 as x
-                                        return x = @f_view typ (base_typ 0) TypeView_base_typ t3 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                                  | pSome p3 =>
-                                    fun pf =>
-                                      match p3 as x in base_typ 0 return p3 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                                      | tProp => fun pf' => pSome _
-                                      | _ => fun _ => pNone
-                                      end eq_refl
-                                  | pNone =>
-                                    fun pf''' =>
-                                      match @f_view typ (java_typ 0) TypeView_java_typ t3 as x
-                                            return x = @f_view typ (java_typ 0) TypeView_java_typ t3 -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                                      | pSome p3 =>
-                                        fun pf =>
-                                          match p3 as x in java_typ 0 return p3 = x -> poption (ILogic.ILogicOps (TypesI.typD t)) with
-                                          | tAsn => fun pf' => pSome _
-                                          | _ => fun _ => pNone
-                                          end eq_refl
-                                      | pNone => fun _ => pNone
-                                      end eq_refl
-                                  end eq_refl
-                              | _ => fun _ => pNone
-                              end eq_refl
-                          | pNone => fun _ => pNone
-                          end eq_refl
-                      | _ => fun _ => pNone
-                      end eq_refl
-                  | pNone => fun _ => pNone
-                  end eq_refl
-                | _ => fun _ => pNone
-                end eq_refl
-            end eq_refl
-        end eq_refl).
-      + subst; simpl in *; forward; inversion H1; subst; inversion pf; subst.
-        pose proof (asNth_eq _ _ H0); subst; simpl; apply _.
-      + subst; simpl in *; forward. inversion H3; subst; inversion pf; subst.
-        pose proof (asNth_eq _ _ H0); subst; simpl; apply _.
-      + subst; simpl in *; forward. inversion H3; subst; inversion pf; subst.
-        pose proof (asNth_eq _ _ H0); subst; simpl; apply _.
-      + subst; simpl in *; forward.
-        inversion pft1; inversion pft0; inversion H7; inversion pf; inversion H4; inversion H1;
-        subst; simpl in *.
-        pose proof (asNth_eq _ _ H6); pose proof (asNth_eq _ _ H0); pose proof (asNth_eq _ _ H3).
-        subst; simpl. apply _.
-      + subst; simpl in *; forward.
-        inversion pft1; inversion pft0; inversion H9; inversion pf; inversion H4; inversion H1;
-        subst; simpl in *.
-        pose proof (asNth_eq _ _ H6); pose proof (asNth_eq _ _ H0); pose proof (asNth_eq _ _ H3).
-        subst; simpl. apply _.
-Defined.
 
-  Definition bilops : @bilogic_ops _ RType_typ.
-  refine (
-      fun t =>
-        match @f_view typ (java_typ 0) TypeView_java_typ t as x
-              return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (BILogic.BILOperators (TypesI.typD t)) with
-        | pSome p =>
-          fun pf =>
-            match p as x in java_typ 0 return p = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
-            | tAsn => fun pfAsn => pSome _
-            | _ => fun _ => pNone
-            end eq_refl
-        | pNone =>
-          fun _ =>
-            match t as x return t = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
-            | tyArr (tyArr t1 t2) t3 =>
-              fun _ =>
-                match @f_view typ (base_typ 0) TypeView_base_typ t1 as x
-                      return x = @f_view typ (base_typ 0) TypeView_base_typ t1 -> poption (BILogic.BILOperators (TypesI.typD t)) with
-                | pSome p1 =>
-                  fun pft1 =>
-                    match p1 as x in base_typ 0 return p1 = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
-                    | tString =>
-                      fun pf'' =>
-                        match @f_view typ (java_typ 0) TypeView_java_typ t2 as x
-                              return x = @f_view typ (java_typ 0) TypeView_java_typ t2 -> poption (BILogic.BILOperators (TypesI.typD t)) with
-                        | pSome p2 =>
-                          fun pft1 =>
-                            match p2 as x in java_typ 0 return p2 = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
-                            | tVal =>
-                              fun pf''' =>
-                                match @f_view typ (java_typ 0) TypeView_java_typ t as x
-                                      return x = @f_view typ (java_typ 0) TypeView_java_typ t -> poption (BILogic.BILOperators (TypesI.typD t)) with
-                                | pSome p3 =>
-                                  fun pf =>
-                                    match p3 as x in java_typ 0 return p3 = x -> poption (BILogic.BILOperators (TypesI.typD t)) with
-                                    | tAsn => fun _ => pSome _
-                                    | _ => fun _ => pNone
-                                    end eq_refl
-                                | pNone => fun _ => pNone
-                                end eq_refl
-                            | _ => fun _ => pNone
-                            end eq_refl
-                        | _ => fun _ => pNone
-                        end eq_refl
-                    | _ => fun _ => pNone
-                    end eq_refl
-                | pNone => fun _ => pNone
-                end eq_refl
-            | _ => fun _ => pNone
-            end eq_refl
-        end eq_refl).
-  + subst; simpl in *; forward; inversion H1; inversion pf; subst.
-    pose proof (asNth_eq _ _ H0); subst; simpl; apply _.
-  + subst; simpl in *; forward; inversion H1; inversion pf; subst.
-Defined.
 
-(*
-Definition eops : @embed_ops _ RType_typ :=
-  fun t u =>
-    match t as t , u as u
-          return option
-                   (ILEmbed.EmbedOp (TypesI.typD t) (TypesI.typD u))
-    with
-      | tyPure, tySasn => Some _
-      | tyProp, tyAsn => Some _
-      | _ , _ => None
-    end.
+
+Check TypeViewOk_base_typ.
+Check TypeView_base_typ.
+
+Arguments pv_elim {_ _ _ _ _} _ _ {_} _.
+
+(*                           match jt as x 
+                                 in java_typ 0 
+                                 return
+                                        poption (ILogic.ILogicOps (TypesI.typD (f_insert x))) with
+                             | tAsn => pSome _
+                             | _ => pNone
+                           end) pNone)).
 *)
-(*
-Definition lops : @later_ops _ RType_typ :=
+
+Check prop_match.
+Existing Instance should_not_be_necessary.
+Definition ilops : @logic_ops typ RType_typ :=
   fun t =>
-    match t return option (ILLOperators (TypesI.typD t)) with
-	  | tySpec => Some should_also_not_be_necessary
-	  | _ => None
-    end.
-*)
+    prop_match 
+      (FVOk := TypeViewOk_base_typ)
+      (fun x => poption (ILogicOps (typD x))) t
+      (pSome _)
+      (fun _ => 
+         asn_match 
+           (FVOk := TypeViewOk_java_typ) 
+           (fun x => poption (ILogicOps (typD x))) t 
+           (pSome _)
+           (fun _ => 
+              spec_match 
+                (FVOk := TypeViewOk_java_typ) 
+                (fun x => poption (ILogicOps (typD x))) t 
+                (pSome _)
+                (fun _ => 
+                   match t with
+                   | tyArr (tyArr t1 t2) t3 => 
+                     (string_match 
+                        (FVOk := TypeViewOk_base_typ)
+                        (fun x => poption (ILogicOps ((typD x -> typD t2) -> typD t3))) t1
+                        (val_match
+                           (FVOk := TypeViewOk_java_typ)
+                           (fun x => poption (ILogicOps ((string -> typD x) -> typD t3))) t2
+                           (prop_match 
+                              (FVOk := TypeViewOk_base_typ)
+                              (fun x => poption (ILogicOps (stack -> typD x))) t3
+                              (pSome _)
+                              (fun _ => 
+                                 asn_match 
+                                   (FVOk := TypeViewOk_java_typ) 
+                                   (fun x => poption (ILogicOps (stack -> typD x))) t3 
+                                   (pSome _)
+                                   (fun _ => pNone)))
+                           (fun _ => pNone))
+                        (fun _ => pNone))
+                   | _ => pNone
+                   end))).
+
+Definition bilops : @bilogic_ops typ RType_typ :=
+  fun t =>
+    asn_match 
+      (FVOk := TypeViewOk_java_typ) 
+      (fun x => poption (BILOperators (typD x))) t 
+      (pSome _)
+      (fun _ => 
+         match t with
+         | tyArr (tyArr t1 t2) t3 =>
+           (string_match 
+              (FVOk := TypeViewOk_base_typ)
+              (fun x => poption (BILOperators ((typD x -> typD t2) -> typD t3))) t1
+              (val_match
+                 (FVOk := TypeViewOk_java_typ)
+                 (fun x => poption (BILOperators ((string -> typD x) -> typD t3))) t2
+                 (asn_match 
+                    (FVOk := TypeViewOk_java_typ) 
+                    (fun x => poption (BILOperators (stack -> typD x))) t3 
+                    (pSome _)
+                    (fun _ => pNone))
+                 (fun _ => pNone))
+              (fun _ => pNone))
+         | _ => pNone
+         end).
+
+Definition eops : @embed_ops typ RType_typ :=
+  fun t u =>
+    prop_match 
+      (FVOk := TypeViewOk_base_typ) 
+      (fun x => option (EmbedOp (typD x) (typD u))) t 
+      (asn_match 
+         (FVOk := TypeViewOk_java_typ) 
+         (fun x => option (EmbedOp Prop (typD x))) u
+         (Some _)
+         (fun _ => None))
+      (fun _ => 
+         match t, u with
+         | tyArr (tyArr t1 t2) t3, tyArr (tyArr u1 u2) u3 =>
+           (string_match 
+              (FVOk := TypeViewOk_base_typ)
+              (fun x => option (EmbedOp ((typD x -> typD t2) -> typD t3) 
+                                        ((typD u1 -> typD u2) -> typD u3))) t1
+              (val_match
+                 (FVOk := TypeViewOk_java_typ)
+                 (fun x => option (EmbedOp ((string -> typD x) -> typD t3) 
+                                           ((typD u1 -> typD u2) -> typD u3))) t2
+                 (prop_match 
+                    (FVOk := TypeViewOk_base_typ) 
+                    (fun x => option (EmbedOp (stack -> typD x)
+                                              ((typD u1 -> typD u2) -> typD u3))) t3
+                    (string_match 
+                       (FVOk := TypeViewOk_base_typ)
+                       (fun x => option (EmbedOp (stack -> Prop)
+                                                 ((typD x -> typD u2) -> typD u3))) u1
+                       (val_match
+                          (FVOk := TypeViewOk_java_typ)
+                          (fun x => option (EmbedOp (stack -> Prop)
+                                                    ((string -> typD x) -> typD u3))) u2
+                          (asn_match 
+                             (FVOk := TypeViewOk_java_typ) 
+                             (fun x => option (EmbedOp (stack -> Prop)
+                                                       (stack -> typD x))) u3
+                             (Some _)
+                             (fun _ => None))
+                          (fun _ => None))
+                       (fun _ => None))
+                    (fun _ => None))
+                 (fun _ => None))
+              (fun _ => None))
+         | _, _ => None
+         end).
+
 (*
 Definition ilp : il_pointwise :=
   fun t =>
