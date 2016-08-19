@@ -30,13 +30,13 @@ Require Import MirrorCore.syms.SymEnv.
 Require Import MirrorCore.syms.SymSum.
 Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.Subst.FMapSubst.
-Require Import MirrorCore.Views.ListView.
-Require Import MirrorCore.Views.ProdView.
-Require Import MirrorCore.Views.EqView.
-Require Import MirrorCore.Views.ApplicativeView.
-Require Import MirrorCore.Views.NatView.
-Require Import MirrorCore.Views.BoolView.
-Require Import MirrorCore.Views.StringView.
+Require Import MirrorCore.Lib.ListView.
+Require Import MirrorCore.Lib.ProdView.
+Require Import MirrorCore.Lib.EqView.
+Require Import MirrorCore.Lib.ApplicativeView.
+Require Import MirrorCore.Lib.NatView.
+Require Import MirrorCore.Lib.BoolView.
+Require Import MirrorCore.Lib.StringView.
 
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.

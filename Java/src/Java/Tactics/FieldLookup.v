@@ -4,7 +4,7 @@ Require Import MirrorCore.Lambda.ExprUnify_simul.
 Require Import MirrorCore.Lambda.Ptrns.
 Require Import MirrorCore.Views.Ptrns.
 Require Import MirrorCore.Views.FuncView.
-Require Import MirrorCore.Views.StringView.
+Require Import MirrorCore.Lib.StringView.
 
 Require Import Java.Func.JavaFunc.
 Require Import Java.Func.JavaType.

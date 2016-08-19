@@ -10,9 +10,9 @@ Require Import MirrorCore.Lambda.RedAll.
 Require Import MirrorCore.Lambda.AppN.
 Require Import MirrorCore.Views.Ptrns.
 Require Import MirrorCore.Views.FuncView.
-Require Import MirrorCore.Views.NatView.
-Require Import MirrorCore.Views.ProdView.
-Require Import MirrorCore.Views.ListView.
+Require Import MirrorCore.Lib.NatView.
+Require Import MirrorCore.Lib.ProdView.
+Require Import MirrorCore.Lib.ListView.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -567,7 +567,7 @@ Require Import MirrorCore.Lambda.ExprCore.
          Fail) lst.
 
   Definition solve_in : rtac typ (expr typ func) :=
-    fun _ _ _ _ _ s e =>
+    fun _ s e =>
       run_ptrn (pmap (fun t_x_xs =>
                            let '(_, x, xs) := t_x_xs in
                            solve_in_aux x xs s)
@@ -585,7 +585,7 @@ Require Import MirrorCore.Lambda.ExprCore.
        Fail) lst.
 
   Definition solve_notin : rtac typ (expr typ func) :=
-    fun _ _ _ _ _ s e =>
+    fun _ s e =>
       run_ptrn (pmap (fun t_x_xs =>
                            let '(_, x, xs) := t_x_xs in
                            solve_in_aux x xs s)
@@ -602,7 +602,7 @@ Require Import MirrorCore.Lambda.ExprCore.
          Fail) lst.
 
   Definition solve_nodup : rtac typ (expr typ func) :=
-    fun _ _ _ _ _ s e =>
+    fun _ s e =>
       run_ptrn (pmap (fun t_xs =>
                            let '(_, xs) := t_xs in
                            solve_nodup_aux xs s)
