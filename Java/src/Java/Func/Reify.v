@@ -51,16 +51,23 @@ Local Instance Applicative_Fun A : Applicative (Fun A) :=
 Reify Declare Patterns const_for_cmd += ((RHasType cmd ?0) => (fun (c : id cmd) => mkCmd [c] : expr typ func)).
 *)
 
-Axiom t : Type.
-Reify Declare Patterns t_pat : t.
+(* Axiom t : Type. *)
+(* Reify Declare Patterns t_pat : t. *)
 
+(* Reify Declare Syntax t_cmd := (@Patterns.CPatterns t t_pat). *)
 
-
-Reify Declare Syntax t_cmd := (@Patterns.CPatterns t t_pat).
-
+Check CPatternTr.
+Print RBranch.
+Check CPattern.
+Print action_pattern.
 
 Reify Declare Syntax reify_imp_typ :=
-  	(@Patterns.CPatterns typ patterns_java_typ).
+  (@Patterns.CFix _
+      (@Patterns.CFirst_ _
+         ((@Patterns.CPatterns typ patterns_java_typ) ::
+          (@CPattern _ (_ :: _ :: nil)
+                     (@RImpl (RGet 0 RIgnore) (RGet 1 RIgnore))
+                     (fun (a b : function (CRec 0)) => tyArr a b)) :: nil))).
 
 Reify Declare Typed Table term_table : BinNums.positive => typ.
 
@@ -70,12 +77,13 @@ Import OneOfType.
 Let Ext (x : SymEnv.func) := @ExprCore.Inj typ func (Into (ts := func_map) 2 eq_refl x).
 
 Reify Declare Syntax reify_imp :=
-   (@Patterns.CFirst _
-  		      ((Patterns.CVar (@ExprCore.Var typ func)) ::
-                         (Patterns.CPatterns patterns_java) ::
-                         (Patterns.CApp (@ExprCore.App typ func)) ::
-    	                 (Patterns.CAbs reify_imp_typ (@ExprCore.Abs typ func)) ::
-    	                 (Patterns.CMap Ext (Patterns.CTypedTable reify_imp_typ term_table) :: nil))).
+  @Patterns.CFix (expr typ func)
+    (@Patterns.CFirst_ _
+       ((Patterns.CVar (@ExprCore.Var typ func)) ::
+        (Patterns.CPatterns patterns_java) ::
+        (Patterns.CApp (Patterns.CRec 0) (Patterns.CRec 0) (@ExprCore.App typ func)) ::
+	(Patterns.CAbs (CCall reify_imp_typ) (CRec 0) (@ExprCore.Abs typ func)) ::
+	(Patterns.CMap Ext (Patterns.CTypedTable reify_imp_typ term_table) :: nil))).
 
 Notation "'ap_eq' '[' x ',' y ']'" :=
 	 (ap (T := Fun Lang.stack) (ap (T := Fun Lang.stack) (pure (T := Fun Lang.stack) (@eq val)) x) y).
@@ -106,7 +114,9 @@ Local Notation "'?' n" := (@RGet n RIgnore) (only parsing, at level 25).
 Local Notation "'?!' n" := (@RGet n RConst) (only parsing, at level 25).
 Local Notation "'#'" := RIgnore (only parsing, at level 0).
 
-Reify Pattern patterns_java_typ += (@RImpl (?0) (?1)) => (fun (a b : function reify_imp_typ) => tyArr a b).
+
+(* Reify Pattern patterns_java_typ += (@RImpl (RGet 0 RIgnore) (RGet 1 RIgnore)) => *)
+(*     (fun (a b : function reify_imp_typ) => tyArr a b). *)
 
 Reify Pattern patterns_java_typ += (!! asn)  => tyAsn.
 Reify Pattern patterns_java_typ += (!! sasn) => tySasn.
@@ -114,13 +124,19 @@ Reify Pattern patterns_java_typ += (!! (@vlogic Lang.var val)) => tyPure.
 Reify Pattern patterns_java_typ += (!! Prop) => tyProp.
 Reify Pattern patterns_java_typ += (!! spec) => tySpec.
 
-Reify Pattern patterns_java_typ += (!! @prod @ ?0 @ ?1) => (fun (x y : function reify_imp_typ) => tyProd x y).
+(** TODO(jebe): Are these defined somewhere? *)
+Axiom tyProd : typ -> typ -> typ.
+Axiom tyList : typ -> typ.
+
+Reify Pattern patterns_java_typ += (!! @prod @ ?0 @ ?1) =>
+   (fun (x y : function (CCall reify_imp_typ)) => tyProd x y).
 Reify Pattern patterns_java_typ += (!! (@list String.string)) => tyStringList.
 Reify Pattern patterns_java_typ += (!! (@list field)) => tyFields.
 Reify Pattern patterns_java_typ += (!! (@list (@Open.expr (Lang.var) val))) => tyStringList.
 Reify Pattern patterns_java_typ += (!! (@list (Lang.var * @Open.expr (Lang.var) val))) => tySubstList.
 Reify Pattern patterns_java_typ += (!! (@substlist Lang.var val)) => tySubstList.
-Reify Pattern patterns_java_typ += (!! @list @ ?0) => (fun x : function reify_imp_typ => tyList x).
+Reify Pattern patterns_java_typ += (!! @list @ ?0) =>
+   (fun x : function (CCall reify_imp_typ) => tyList x).
 Reify Pattern patterns_java_typ += (!! nat) => tyNat.
 Reify Pattern patterns_java_typ += (!! val) => tyVal.
 Reify Pattern patterns_java_typ += (!! bool) => tyBool.
@@ -138,7 +154,9 @@ Reify Pattern patterns_java_typ += (!! dexpr) => tyDExpr.
 Reify Pattern patterns_java_typ += (!! (@Open.expr Lang.var val)) => tyExpr.
 Reify Pattern patterns_java_typ += (!! @Subst.subst (String.string) val) => tySubst.
 
-Reify Pattern patterns_java_typ += (!! Fun @ ?0 @ ?1) => (fun (a b : function reify_imp_typ) => tyArr a b).
+(** TODO(gmalecha): This should be moved up *)
+Reify Pattern patterns_java_typ += (!! Fun @ ?0 @ ?1) =>
+  (fun (a b : function (CCall reify_imp_typ)) => tyArr a b).
 
 Reify Pattern patterns_java += (RHasType String.string (?0)) => (fun (s : id String.string) => mkString (func := func) (typ := typ) s).
 Reify Pattern patterns_java += (RHasType field (?0)) => (fun (f : id field) => mkString (typ := typ) (func := func) f).
@@ -154,24 +172,29 @@ Reify Pattern patterns_java += (RHasType class (?0)) => (fun (c : id class) => m
 
 Reify Pattern patterns_java += (RHasType (@list dexpr) (?0)) => (fun (es : id (@list dexpr)) => mkExprList es).
 Reify Pattern patterns_java += (RHasType (@list String.string) (?0)) => (fun (vs : id (@list String.string)) => Inj (typ := typ) (fFields vs)).
-Reify Pattern patterns_java += (!! (@eq) @ ?0) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fEq (func := func) x)).
+Reify Pattern patterns_java += (!! (@eq) @ ?0) =>
+  (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fEq (func := func) x)).
 
 (** Intuitionistic Operators **)
-Reify Pattern patterns_java += (!! @ILogic.lentails @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fEntails x)).
-Reify Pattern patterns_java += (!! @ILogic.ltrue @ ?0 @ #) => (fun (x : function reify_imp_typ) => mkTrue (func := func) x).
-Reify Pattern patterns_java += (!! @ILogic.lfalse @ ?0 @ #) => (fun (x : function reify_imp_typ) => mkFalse (func := func) x).
+Reify Pattern patterns_java += (!! @ILogic.lentails @ ?0 @ #) =>
+  (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fEntails x)).
+Reify Pattern patterns_java += (!! @ILogic.ltrue @ ?0 @ #) =>
+  (fun (x : function (CCall reify_imp_typ)) => mkTrue (func := func) x).
+Reify Pattern patterns_java += (!! @ILogic.lfalse @ ?0 @ #) =>
+  (fun (x : function (CCall reify_imp_typ)) => mkFalse (func := func) x).
 
-Reify Pattern patterns_java += (!! @ILogic.land @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fAnd (func := func) x)).
-Reify Pattern patterns_java += (!! @ILogic.lor @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fOr (func := func) x)).
-Reify Pattern patterns_java += (!! @ILogic.limpl @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fImpl (func := func) x)).
+Reify Pattern patterns_java += (!! @ILogic.land @ ?0 @ #) =>
+  (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fAnd (func := func) x)).
+Reify Pattern patterns_java += (!! @ILogic.lor @ ?0 @ #) => (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fOr (func := func) x)).
+Reify Pattern patterns_java += (!! @ILogic.limpl @ ?0 @ #) => (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fImpl (func := func) x)).
 
-Reify Pattern patterns_java += (!! @ILogic.lexists @ ?0 @ # @ ?1) => (fun (x y : function reify_imp_typ) => Inj (typ := typ) (fExists (func := func) y x)).
+Reify Pattern patterns_java += (!! @ILogic.lexists @ ?0 @ # @ ?1) => (fun (x y : function (CCall reify_imp_typ)) => Inj (typ := typ) (fExists (func := func) y x)).
 
-Reify Pattern patterns_java += (!! @ILogic.lforall @ ?0 @ # @ ?1) => (fun (x y : function reify_imp_typ) => Inj (typ := typ) (fForall (func := func) y x)).
+Reify Pattern patterns_java += (!! @ILogic.lforall @ ?0 @ # @ ?1) => (fun (x y : function (CCall reify_imp_typ)) => Inj (typ := typ) (fForall (func := func) y x)).
 (** Embedding Operators **)
-Reify Pattern patterns_java += (!! @ILEmbed.embed @ ?0 @ ?1 @ #) => (fun (x y : function reify_imp_typ) => Inj (typ := typ) (fEmbed (func := func) x y)).
+Reify Pattern patterns_java += (!! @ILEmbed.embed @ ?0 @ ?1 @ #) => (fun (x y : function (CCall reify_imp_typ)) => Inj (typ := typ) (fEmbed (func := func) x y)).
 
-Reify Pattern patterns_java += (!! @pair @ ?0 @ ?1) => (fun (x y : function reify_imp_typ) => Inj (typ := typ) (fPair (func := func) x y)).
+Reify Pattern patterns_java += (!! @pair @ ?0 @ ?1) => (fun (x y : function (CCall reify_imp_typ)) => Inj (typ := typ) (fPair (func := func) x y)).
 
 (** Special cases for Coq's primitives **)
 Reify Pattern patterns_java += (!! True) => (mkTrue (func := func) tyProp).
@@ -180,20 +203,25 @@ Reify Pattern patterns_java += (!! and) => (Inj (typ := typ) (fAnd (func := func
 
 Reify Pattern patterns_java += (!! or) => (Inj (typ := typ) (fOr (func := func) tyProp)).
 
-Reify Pattern patterns_java += (!! ex @ ?0) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fExists (func := func) x tyProp)).
+Reify Pattern patterns_java += (!! ex @ ?0) => (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fExists (func := func) x tyProp)).
 
-Reify Pattern patterns_java += (RPi (?0) (?1)) => (fun (x : function reify_imp_typ) (y : function reify_imp) =>
-                                                   ExprCore.App (Inj (fForall (func := func) x tyProp)) (ExprCore.Abs x y)).
-
-Reify Pattern patterns_java += (RImpl (?0) (?1)) => (fun (x y : function reify_imp) =>
+(** TODO(gmalecha): These next two definitions have universe problems. *)
+(*
+Reify Pattern patterns_java += (RPi (?0) (?1)) =>
+  (fun (x : function (CCall reify_imp_typ)) (y : function (CCall reify_imp)) =>
+     ExprCore.App (Inj (fForall (func := func) x tyProp)) (ExprCore.Abs x y)).
+*)
+(*
+Reify Pattern patterns_java += (RImpl (?0) (?1)) => (fun (x y : function (CCall reify_imp)) =>
 	ExprCore.App (ExprCore.App (Inj (fImpl (func := func) tyProp)) x) y).
+*)
 
 (** Separation Logic Operators **)
-Reify Pattern patterns_java += (!! @BILogic.sepSP @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fStar (func := func) x)).
-Reify Pattern patterns_java += (!! @BILogic.wandSP @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fWand (func := func) x)).
-Reify Pattern patterns_java += (!! @BILogic.empSP @ ?0 @ #) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fEmp (func := func) x)).
+Reify Pattern patterns_java += (!! @BILogic.sepSP @ ?0 @ #) => (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fStar (func := func) x)).
+Reify Pattern patterns_java += (!! @BILogic.wandSP @ ?0 @ #) => (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fWand (func := func) x)).
+Reify Pattern patterns_java += (!! @BILogic.empSP @ ?0 @ #) => (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fEmp (func := func) x)).
 (*
-Reify Pattern patterns_java += (!! @Later.illater @ ?0 @ #) => (fun (x : function reify_imp_typ) => (fLater (func := func) x)).
+Reify Pattern patterns_java += (!! @Later.illater @ ?0 @ #) => (fun (x : function (CCall reify_imp_typ)) => (fLater (func := func) x)).
 *)
 
 Reify Pattern patterns_java += (!! method_spec) => (fMethodSpec).
@@ -209,7 +237,7 @@ Reify Pattern patterns_java += (!!m_body) => (Inj (typ := typ) fMethodBody).
 Reify Pattern patterns_java += (!!m_params) => (Inj (typ := typ) fMethodArgs).
 
 Reify Pattern patterns_java += (!! eval @ (RHasType dexpr (?0))) => (fun e : id dexpr => evalDExpr e).
-Reify Pattern patterns_java += (!! @stack_get @?0 @ ?1) => (fun _ _ : function reify_imp_typ =>
+Reify Pattern patterns_java += (!! @stack_get @?0 @ ?1) => (fun _ _ : function (CCall reify_imp_typ) =>
                                                               Inj (typ := typ) (fStackGet (typ := typ) (func := func))).
 Reify Pattern patterns_java += (!! stack_add (val := val)) => (Inj (typ := typ) (fStackSet (typ := typ) (func := func))).
 
@@ -220,19 +248,19 @@ Reify Pattern patterns_java += (!! typeof) => (Inj (typ := typ) fTypeOf).
 Reify Pattern patterns_java += (!! (@substl_trunc Lang.var val _)) => (Inj (typ := typ) (fTruncSubst (func := func) (typ := typ))).
 Reify Pattern patterns_java += (!! (@substl Lang.var val _)) => (Inj (typ := typ) (fSubst (func := func) (typ := typ))).
 
-Reify Pattern patterns_java += (!! @nil @ ?0) => (fun (x : function reify_imp_typ) => (Inj (typ := typ) (fNil (func := func) x))).
-Reify Pattern patterns_java += (!! @cons @ ?0) => (fun (x : function reify_imp_typ) => (Inj (typ := typ) (fCons (func := func) x))).
-Reify Pattern patterns_java += (!! @length @ ?0) => (fun (x : function reify_imp_typ) => (Inj (typ := typ) (fLength (func := func) x))).
-Reify Pattern patterns_java += (!! @combine @ ?0 @ ?1) => (fun (x y : function reify_imp_typ) => (Inj (typ := typ) (fCombine (func := func) x y))).
-Reify Pattern patterns_java += (!! @map @ ?0 @ ?1) => (fun (x y : function reify_imp_typ) => (Inj (typ := typ) (fMap (func := func) x y))).
-Reify Pattern patterns_java += (!! @fold_right @ ?0 @ ?1) => (fun (x y : function reify_imp_typ) => (Inj (typ := typ) (fFold (func := func) x y))).
+Reify Pattern patterns_java += (!! @nil @ ?0) => (fun (x : function (CCall reify_imp_typ)) => (Inj (typ := typ) (fNil (func := func) x))).
+Reify Pattern patterns_java += (!! @cons @ ?0) => (fun (x : function (CCall reify_imp_typ)) => (Inj (typ := typ) (fCons (func := func) x))).
+Reify Pattern patterns_java += (!! @length @ ?0) => (fun (x : function (CCall reify_imp_typ)) => (Inj (typ := typ) (fLength (func := func) x))).
+Reify Pattern patterns_java += (!! @combine @ ?0 @ ?1) => (fun (x y : function (CCall reify_imp_typ)) => (Inj (typ := typ) (fCombine (func := func) x y))).
+Reify Pattern patterns_java += (!! @map @ ?0 @ ?1) => (fun (x y : function (CCall reify_imp_typ)) => (Inj (typ := typ) (fMap (func := func) x y))).
+Reify Pattern patterns_java += (!! @fold_right @ ?0 @ ?1) => (fun (x y : function (CCall reify_imp_typ)) => (Inj (typ := typ) (fFold (func := func) x y))).
 
-Reify Pattern patterns_java += (!! (@apply_subst Lang.var val) @ ?0) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fApplySubst (func := func) x)).
+Reify Pattern patterns_java += (!! (@apply_subst Lang.var val) @ ?0) => (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fApplySubst (func := func) x)).
 Reify Pattern patterns_java += (!! @subst1 Lang.var val _) => (Inj (typ := typ) (fSingleSubst (func := func))).
 Reify Pattern patterns_java += (!! @field_lookup) => (Inj (typ := typ) fFieldLookup).
 (** Applicative **)
-Reify Pattern patterns_java += (!! @Applicative.ap @ !! (Fun Lang.stack) @ # @ ?0 @ ?1) => (fun (x y : function reify_imp_typ) => Inj (typ := typ) (fAp (func := func) x y)).
-Reify Pattern patterns_java += (!! @Applicative.pure @ !! (Fun Lang.stack) @ # @ ?0) => (fun (x : function reify_imp_typ) => Inj (typ := typ) (fPure (func := func) x)).
+Reify Pattern patterns_java += (!! @Applicative.ap @ !! (Fun Lang.stack) @ # @ ?0 @ ?1) => (fun (x y : function (CCall reify_imp_typ)) => Inj (typ := typ) (fAp (func := func) x y)).
+Reify Pattern patterns_java += (!! @Applicative.pure @ !! (Fun Lang.stack) @ # @ ?0) => (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fPure (func := func) x)).
 
 Let elem_ctor : forall x : typ, typD x -> @SymEnv.function _ _ :=
   @SymEnv.F _ _.
