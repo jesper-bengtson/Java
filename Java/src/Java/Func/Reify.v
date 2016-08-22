@@ -124,10 +124,6 @@ Reify Pattern patterns_java_typ += (!! (@vlogic Lang.var val)) => tyPure.
 Reify Pattern patterns_java_typ += (!! Prop) => tyProp.
 Reify Pattern patterns_java_typ += (!! spec) => tySpec.
 
-(** TODO(jebe): Are these defined somewhere? *)
-Axiom tyProd : typ -> typ -> typ.
-Axiom tyList : typ -> typ.
-
 Reify Pattern patterns_java_typ += (!! @prod @ ?0 @ ?1) =>
    (fun (x y : function (CCall reify_imp_typ)) => tyProd x y).
 Reify Pattern patterns_java_typ += (!! (@list String.string)) => tyStringList.
