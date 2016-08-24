@@ -56,11 +56,6 @@ Reify Declare Patterns const_for_cmd += ((RHasType cmd ?0) => (fun (c : id cmd) 
 
 (* Reify Declare Syntax t_cmd := (@Patterns.CPatterns t t_pat). *)
 
-Check CPatternTr.
-Print RBranch.
-Check CPattern.
-Print action_pattern.
-
 Reify Declare Syntax reify_imp_typ :=
   (@Patterns.CFix _
       (@Patterns.CFirst_ _
@@ -114,7 +109,12 @@ Local Notation "'?' n" := (@RGet n RIgnore) (only parsing, at level 25).
 Local Notation "'?!' n" := (@RGet n RConst) (only parsing, at level 25).
 Local Notation "'#'" := RIgnore (only parsing, at level 0).
 
+Reify Pattern patterns_java += (RPi (?0) (?1)) =>
+  (fun (x : function (CCall reify_imp_typ)) (y : function (CCall reify_imp)) =>
+     ExprCore.App (Inj (fForall (func := func) x tyProp)) (ExprCore.Abs x y)).
 
+
+(* This is now embedded inside the reification system. *)
 (* Reify Pattern patterns_java_typ += (@RImpl (RGet 0 RIgnore) (RGet 1 RIgnore)) => *)
 (*     (fun (a b : function reify_imp_typ) => tyArr a b). *)
 
@@ -201,16 +201,12 @@ Reify Pattern patterns_java += (!! or) => (Inj (typ := typ) (fOr (func := func) 
 
 Reify Pattern patterns_java += (!! ex @ ?0) => (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fExists (func := func) x tyProp)).
 
-(** TODO(gmalecha): These next two definitions have universe problems. *)
-(*
 Reify Pattern patterns_java += (RPi (?0) (?1)) =>
   (fun (x : function (CCall reify_imp_typ)) (y : function (CCall reify_imp)) =>
      ExprCore.App (Inj (fForall (func := func) x tyProp)) (ExprCore.Abs x y)).
-*)
-(*
+
 Reify Pattern patterns_java += (RImpl (?0) (?1)) => (fun (x y : function (CCall reify_imp)) =>
 	ExprCore.App (ExprCore.App (Inj (fImpl (func := func) tyProp)) x) y).
-*)
 
 (** Separation Logic Operators **)
 Reify Pattern patterns_java += (!! @BILogic.sepSP @ ?0 @ #) => (fun (x : function (CCall reify_imp_typ)) => Inj (typ := typ) (fStar (func := func) x)).
