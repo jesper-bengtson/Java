@@ -120,25 +120,25 @@ Section DepMatch_java_typ.
   Context {typ : Type}.
   Context {RType_typ : RType typ}.
   Context {FV : PartialView typ (java_typ 0)}.
-  Context {FVOk : TypeViewOk typD (java_typD (n := 0)) FV}. 
+  Context {FVOk : TypeViewOk typD (java_typD (n := 0)) FV}.
 
   Definition val_match (F : typ -> Type) (x : typ) :
     F (f_insert tVal) -> (unit -> F x) -> F x :=
     match f_view x as Z return f_view x = Z -> F (f_insert tVal) -> (unit -> F x) -> F x
     with
-    | pSome v => 
-      match v as y in java_typ 0 return f_view x = pSome y -> 
-                                        F (f_insert tVal) -> 
+    | pSome v =>
+      match v as y in java_typ 0 return f_view x = pSome y ->
+                                        F (f_insert tVal) ->
                                         (unit -> F x) -> F x with
-      | tVal => 
+      | tVal =>
         fun pf X _ =>
-          match (match @pv_ok _ _ _ _ FVOk x tVal with | conj A _ => A end) pf 
-                in _ = Z 
+          match (match @pv_ok _ _ _ _ FVOk x tVal with | conj A _ => A end) pf
+                in _ = Z
                 return F Z with
           | eq_refl => X
           end
       | _ => fun _ _ X => X tt
-      end 
+      end
     | pNone => fun _ _ X => X tt
     end eq_refl.
 
@@ -146,19 +146,19 @@ Section DepMatch_java_typ.
     F (f_insert tAsn) -> (unit -> F x) -> F x :=
     match f_view x as Z return f_view x = Z -> F (f_insert tAsn) -> (unit -> F x) -> F x
     with
-    | pSome v => 
-      match v as y in java_typ 0 return f_view x = pSome y -> 
-                                        F (f_insert tAsn) -> 
+    | pSome v =>
+      match v as y in java_typ 0 return f_view x = pSome y ->
+                                        F (f_insert tAsn) ->
                                         (unit -> F x) -> F x with
-      | tAsn => 
+      | tAsn =>
         fun pf X _ =>
-          match (match @pv_ok _ _ _ _ FVOk x tAsn with | conj A _ => A end) pf 
-                in _ = Z 
+          match (match @pv_ok _ _ _ _ FVOk x tAsn with | conj A _ => A end) pf
+                in _ = Z
                 return F Z with
           | eq_refl => X
           end
       | _ => fun _ _ X => X tt
-      end 
+      end
     | pNone => fun _ _ X => X tt
     end eq_refl.
 
@@ -166,19 +166,19 @@ Section DepMatch_java_typ.
     F (f_insert tSpec) -> (unit -> F x) -> F x :=
     match f_view x as Z return f_view x = Z -> F (f_insert tSpec) -> (unit -> F x) -> F x
     with
-    | pSome v => 
-      match v as y in java_typ 0 return f_view x = pSome y -> 
-                                        F (f_insert tSpec) -> 
+    | pSome v =>
+      match v as y in java_typ 0 return f_view x = pSome y ->
+                                        F (f_insert tSpec) ->
                                         (unit -> F x) -> F x with
-      | tSpec => 
+      | tSpec =>
         fun pf X _ =>
-          match (match @pv_ok _ _ _ _ FVOk x tSpec with | conj A _ => A end) pf 
-                in _ = Z 
+          match (match @pv_ok _ _ _ _ FVOk x tSpec with | conj A _ => A end) pf
+                in _ = Z
                 return F Z with
           | eq_refl => X
           end
       | _ => fun _ _ X => X tt
-      end 
+      end
     | pNone => fun _ _ X => X tt
     end eq_refl.
 
@@ -253,12 +253,12 @@ Section FuncView_java_type.
         | _ => bad f
       end.
 
-  Global Instance ptrn_tyVal_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+  Global Instance ptrn_tyVal_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
     ptrn_ok (ptrn_tyVal p).
   Proof.
     red; intros.
     unfold ptrn_tyVal.
-    unfold Succeeds; unfold Fails. 
+    unfold Succeeds; unfold Fails.
     remember (f_view x) as o; destruct o as [j|]; [destruct j|];
     try (right; unfold Fails; reflexivity); destruct (Hok tt).
     { left. destruct H as [y H]. exists y. revert H. compute; intros.
@@ -266,12 +266,12 @@ Section FuncView_java_type.
     { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
   Qed.
 
-  Global Instance ptrn_tySpec_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+  Global Instance ptrn_tySpec_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
     ptrn_ok (ptrn_tySpec p).
   Proof.
     red; intros.
     unfold ptrn_tySpec.
-    unfold Succeeds; unfold Fails. 
+    unfold Succeeds; unfold Fails.
     remember (f_view x) as o; destruct o as [j|]; [destruct j|];
     try (right; unfold Fails; reflexivity); destruct (Hok tt).
     { left. destruct H as [y H]. exists y. revert H. compute; intros.
@@ -279,12 +279,12 @@ Section FuncView_java_type.
     { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
   Qed.
 
-  Global Instance ptrn_tyAsn_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+  Global Instance ptrn_tyAsn_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
     ptrn_ok (ptrn_tyAsn p).
   Proof.
     red; intros.
     unfold ptrn_tyAsn.
-    unfold Succeeds; unfold Fails. 
+    unfold Succeeds; unfold Fails.
     remember (f_view x) as o; destruct o as [j|]; [destruct j|];
     try (right; unfold Fails; reflexivity); destruct (Hok tt).
     { left. destruct H as [y H]. exists y. revert H. compute; intros.
@@ -292,12 +292,12 @@ Section FuncView_java_type.
     { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
   Qed.
 
-  Global Instance ptrn_tyProg_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+  Global Instance ptrn_tyProg_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
     ptrn_ok (ptrn_tyProg p).
   Proof.
     red; intros.
     unfold ptrn_tyProg.
-    unfold Succeeds; unfold Fails. 
+    unfold Succeeds; unfold Fails.
     remember (f_view x) as o; destruct o as [j|]; [destruct j|];
     try (right; unfold Fails; reflexivity); destruct (Hok tt).
     { left. destruct H as [y H]. exists y. revert H. compute; intros.
@@ -305,12 +305,12 @@ Section FuncView_java_type.
     { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
   Qed.
 
-  Global Instance ptrn_tyMethod_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+  Global Instance ptrn_tyMethod_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
     ptrn_ok (ptrn_tyMethod p).
   Proof.
     red; intros.
     unfold ptrn_tyMethod.
-    unfold Succeeds; unfold Fails. 
+    unfold Succeeds; unfold Fails.
     remember (f_view x) as o; destruct o as [j|]; [destruct j|];
     try (right; unfold Fails; reflexivity); destruct (Hok tt).
     { left. destruct H as [y H]. exists y. revert H. compute; intros.
@@ -318,12 +318,12 @@ Section FuncView_java_type.
     { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
   Qed.
 
-  Global Instance ptrn_tyCmd_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+  Global Instance ptrn_tyCmd_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
     ptrn_ok (ptrn_tyCmd p).
   Proof.
     red; intros.
     unfold ptrn_tyCmd.
-    unfold Succeeds; unfold Fails. 
+    unfold Succeeds; unfold Fails.
     remember (f_view x) as o; destruct o as [j|]; [destruct j|];
     try (right; unfold Fails; reflexivity); destruct (Hok tt).
     { left. destruct H as [y H]. exists y. revert H. compute; intros.
@@ -331,12 +331,12 @@ Section FuncView_java_type.
     { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
   Qed.
 
-  Global Instance ptrn_tyDExpr_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+  Global Instance ptrn_tyDExpr_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
     ptrn_ok (ptrn_tyDExpr p).
   Proof.
     red; intros.
     unfold ptrn_tyDExpr.
-    unfold Succeeds; unfold Fails. 
+    unfold Succeeds; unfold Fails.
     remember (f_view x) as o; destruct o as [j|]; [destruct j|];
     try (right; unfold Fails; reflexivity); destruct (Hok tt).
     { left. destruct H as [y H]. exists y. revert H. compute; intros.
@@ -344,12 +344,12 @@ Section FuncView_java_type.
     { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
   Qed.
 
-  Global Instance ptrn_tySubst_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} : 
+  Global Instance ptrn_tySubst_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
     ptrn_ok (ptrn_tySubst p).
   Proof.
     red; intros.
     unfold ptrn_tySubst.
-    unfold Succeeds; unfold Fails. 
+    unfold Succeeds; unfold Fails.
     remember (f_view x) as o; destruct o as [j|]; [destruct j|];
     try (right; unfold Fails; reflexivity); destruct (Hok tt).
     { left. destruct H as [y H]. exists y. revert H. compute; intros.
@@ -376,14 +376,14 @@ Section RelDec_java_type.
     remember (java_typ_dec x0 y).
     destruct s; subst; intuition.
   Qed.
-  
+
 End RelDec_java_type.
 
 Section TSym_java_type.
 
   Global Instance TSym_java_typ : TSym java_typ := {
     symbolD n := java_typD (n := n);
-    symbol_dec n := java_typ_dec (n := n)    
+    symbol_dec n := java_typ_dec (n := n)
   }.
 
 End TSym_java_type.
