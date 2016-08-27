@@ -21,6 +21,25 @@ Set Strict Implicit.
 
 Universe U.
 
+Lemma nat_strong_ind n (P : nat -> Prop)
+      (HBase : P 0)
+      (HStep : forall m, (forall n, n < m -> P n) -> P m) :
+      P n.
+Proof.
+  induction n; [apply HBase|].
+  assert (forall m, m <= n -> P m).
+  
+  apply HStep; intros. apply H. 
+  Require Import Omega.
+  omega.
+  apply H.
+  induction n; [apply HBase|].
+  apply HStep. intros.
+ 
+  destruct n0. apply HBase.
+  
+  
+
 Inductive java_typ : nat -> Type@{U} :=
 | tVal : java_typ 0
 | tSpec : java_typ 0
