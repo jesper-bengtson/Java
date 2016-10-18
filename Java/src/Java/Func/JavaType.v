@@ -21,25 +21,6 @@ Set Strict Implicit.
 
 Universe U.
 
-Lemma nat_strong_ind n (P : nat -> Prop)
-      (HBase : P 0)
-      (HStep : forall m, (forall n, n < m -> P n) -> P m) :
-      P n.
-Proof.
-  induction n; [apply HBase|].
-  assert (forall m, m <= n -> P m).
-  
-  apply HStep; intros. apply H. 
-  Require Import Omega.
-  omega.
-  apply H.
-  induction n; [apply HBase|].
-  apply HStep. intros.
- 
-  destruct n0. apply HBase.
-  
-  
-
 Inductive java_typ : nat -> Type@{U} :=
 | tVal : java_typ 0
 | tSpec : java_typ 0
@@ -47,8 +28,7 @@ Inductive java_typ : nat -> Type@{U} :=
 | tProg : java_typ 0
 | tMethod : java_typ 0
 | tCmd : java_typ 0
-| tExpr : java_typ 0
-| tSubst : java_typ 0.
+| tDExpr : java_typ 0.
 
 Definition java_typ_dec {n} (a : java_typ n) : forall b, {a = b} + {a <> b}.
   refine(
@@ -89,16 +69,10 @@ Definition java_typ_dec {n} (a : java_typ n) : forall b, {a = b} + {a <> b}.
         | tCmd => left eq_refl
         | _ => right (fun pf => _)
         end
-    | tExpr =>
+    | tDExpr =>
       fun b =>
-        match b as b in java_typ 0 return {tExpr = b} + {tExpr <> b} with
-        | tExpr => left eq_refl
-        | _ => right (fun pf => _)
-        end
-    | tSubst =>
-      fun b =>
-        match b as b in java_typ 0 return {tSubst = b} + {tSubst <> b} with
-        | tSubst => left eq_refl
+        match b as b in java_typ 0 return {tDExpr = b} + {tDExpr <> b} with
+        | tDExpr => left eq_refl
         | _ => right (fun pf => _)
         end
     end);  clear -pf; inversion pf.
@@ -113,7 +87,6 @@ Definition java_typD {n} (t : java_typ n) : type_for_arity n :=
   | tMethod => Method
   | tCmd => cmd
   | tExpr => dexpr
-  | tSubst => @subst var val
   end.
 
 Section DepMatch_java_typ.
@@ -194,168 +167,126 @@ Section FuncView_java_type.
   Definition tyProg := f_insert tProg.
   Definition tyMethod := f_insert tMethod.
   Definition tyCmd := f_insert tCmd.
-  Definition tyDExpr := f_insert tExpr.
-  Definition tySubst := f_insert tSubst.
+  Definition tyDExpr := f_insert tDExpr.
 
-  Definition ptrn_tyVal {T} (p : ptrn unit T) : ptrn typ T :=
+  Definition fptrn_tyVal : ptrn (java_typ 0) unit :=
     fun f U good bad =>
-      match f_view f with
-        | pSome tVal => p tt U good (fun _ => bad f)
+      match f with
+        | tVal => good tt
         | _ => bad f
       end.
 
-  Definition ptrn_tySpec {T} (p : ptrn unit T) : ptrn typ T :=
+  Definition fptrn_tySpec : ptrn (java_typ 0) unit :=
     fun f U good bad =>
-      match f_view f with
-        | pSome tSpec => p tt U good (fun _ => bad f)
+      match f with
+        | tSpec => good tt
         | _ => bad f
       end.
 
-  Definition ptrn_tyAsn {T} (p : ptrn unit T) : ptrn typ T :=
+  Definition fptrn_tyAsn : ptrn (java_typ 0) unit :=
     fun f U good bad =>
-      match f_view f with
-        | pSome tAsn => p tt U good (fun _ => bad f)
+      match f with
+        | tAsn => good tt
         | _ => bad f
       end.
 
-  Definition ptrn_tyProg {T} (p : ptrn unit T) : ptrn typ T :=
+  Definition fptrn_tyProg : ptrn (java_typ 0) unit :=
     fun f U good bad =>
-      match f_view f with
-        | pSome tProg => p tt U good (fun _ => bad f)
+      match f with
+        | tProg => good tt
         | _ => bad f
       end.
 
-  Definition ptrn_tyMethod {T} (p : ptrn unit T) : ptrn typ T :=
+  Definition fptrn_tyMethod : ptrn (java_typ 0) unit :=
     fun f U good bad =>
-      match f_view f with
-        | pSome tMethod => p tt U good (fun _ => bad f)
+      match f with
+        | tMethod => good tt
         | _ => bad f
       end.
 
-  Definition ptrn_tyCmd {T} (p : ptrn unit T) : ptrn typ T :=
+  Definition fptrn_tyDExpr : ptrn (java_typ 0) unit :=
     fun f U good bad =>
-      match f_view f with
-        | pSome tCmd => p tt U good (fun _ => bad f)
+      match f with
+        | tDExpr => good tt
         | _ => bad f
       end.
 
-  Definition ptrn_tyDExpr {T} (p : ptrn unit T) : ptrn typ T :=
+  Definition fptrn_tyCmd : ptrn (java_typ 0) unit :=
     fun f U good bad =>
-      match f_view f with
-        | pSome tExpr => p tt U good (fun _ => bad f)
+      match f with
+        | tCmd => good tt
         | _ => bad f
       end.
 
-  Definition ptrn_tySubst {T} (p : ptrn unit T) : ptrn typ T :=
-    fun f U good bad =>
-      match f_view f with
-        | pSome tSubst => p tt U good (fun _ => bad f)
-        | _ => bad f
-      end.
-
-  Global Instance ptrn_tyVal_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
-    ptrn_ok (ptrn_tyVal p).
+  Global Instance ptrn_tyVal_ok : ptrn_ok fptrn_tyVal.
   Proof.
     red; intros.
-    unfold ptrn_tyVal.
+    unfold fptrn_tyVal.
     unfold Succeeds; unfold Fails.
-    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
-    try (right; unfold Fails; reflexivity); destruct (Hok tt).
-    { left. destruct H as [y H]. exists y. revert H. compute; intros.
-      rewrite H. reflexivity. }
-    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+    destruct x; [left; exists tt; reflexivity|..]; right; reflexivity.
   Qed.
 
-  Global Instance ptrn_tySpec_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
-    ptrn_ok (ptrn_tySpec p).
+  Global Instance ptrn_tySpec_ok : ptrn_ok fptrn_tySpec.
   Proof.
     red; intros.
-    unfold ptrn_tySpec.
+    unfold fptrn_tySpec.
     unfold Succeeds; unfold Fails.
-    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
-    try (right; unfold Fails; reflexivity); destruct (Hok tt).
-    { left. destruct H as [y H]. exists y. revert H. compute; intros.
-      rewrite H. reflexivity. }
-    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+    destruct x; try (right; reflexivity).
+    left; exists tt; reflexivity.
   Qed.
 
-  Global Instance ptrn_tyAsn_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
-    ptrn_ok (ptrn_tyAsn p).
+  Global Instance ptrn_tyAsn_ok : ptrn_ok fptrn_tyAsn.
   Proof.
     red; intros.
-    unfold ptrn_tyAsn.
+    unfold fptrn_tyAsn.
     unfold Succeeds; unfold Fails.
-    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
-    try (right; unfold Fails; reflexivity); destruct (Hok tt).
-    { left. destruct H as [y H]. exists y. revert H. compute; intros.
-      rewrite H. reflexivity. }
-    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+    destruct x; try (right; reflexivity).
+    left; exists tt; reflexivity.
   Qed.
 
-  Global Instance ptrn_tyProg_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
-    ptrn_ok (ptrn_tyProg p).
+  Global Instance ptrn_tyProg_ok : ptrn_ok fptrn_tyProg.
   Proof.
     red; intros.
-    unfold ptrn_tyProg.
+    unfold fptrn_tyProg.
     unfold Succeeds; unfold Fails.
-    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
-    try (right; unfold Fails; reflexivity); destruct (Hok tt).
-    { left. destruct H as [y H]. exists y. revert H. compute; intros.
-      rewrite H. reflexivity. }
-    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+    destruct x; try (right; reflexivity).
+    left; exists tt; reflexivity.
   Qed.
 
-  Global Instance ptrn_tyMethod_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
-    ptrn_ok (ptrn_tyMethod p).
+  Global Instance ptrn_tyMethod_ok : ptrn_ok fptrn_tyMethod.
   Proof.
     red; intros.
-    unfold ptrn_tyMethod.
+    unfold fptrn_tyMethod.
     unfold Succeeds; unfold Fails.
-    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
-    try (right; unfold Fails; reflexivity); destruct (Hok tt).
-    { left. destruct H as [y H]. exists y. revert H. compute; intros.
-      rewrite H. reflexivity. }
-    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+    destruct x; try (right; reflexivity).
+    left; exists tt; reflexivity.
   Qed.
 
-  Global Instance ptrn_tyCmd_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
-    ptrn_ok (ptrn_tyCmd p).
+  Global Instance ptrn_tyCmd_ok : ptrn_ok fptrn_tyCmd.
   Proof.
     red; intros.
-    unfold ptrn_tyCmd.
+    unfold fptrn_tyCmd.
     unfold Succeeds; unfold Fails.
-    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
-    try (right; unfold Fails; reflexivity); destruct (Hok tt).
-    { left. destruct H as [y H]. exists y. revert H. compute; intros.
-      rewrite H. reflexivity. }
-    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+    destruct x; try (right; reflexivity).
+    left; exists tt; reflexivity.
   Qed.
 
-  Global Instance ptrn_tyDExpr_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
-    ptrn_ok (ptrn_tyDExpr p).
+  Global Instance ptrn_tyDExpr_ok : ptrn_ok fptrn_tyDExpr.
   Proof.
     red; intros.
-    unfold ptrn_tyDExpr.
+    unfold fptrn_tyDExpr.
     unfold Succeeds; unfold Fails.
-    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
-    try (right; unfold Fails; reflexivity); destruct (Hok tt).
-    { left. destruct H as [y H]. exists y. revert H. compute; intros.
-      rewrite H. reflexivity. }
-    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
+    destruct x; try (right; reflexivity).
+    left; exists tt; reflexivity.
   Qed.
 
-  Global Instance ptrn_tySubst_ok {T} (p : ptrn unit T) {Hok : ptrn_ok p} :
-    ptrn_ok (ptrn_tySubst p).
-  Proof.
-    red; intros.
-    unfold ptrn_tySubst.
-    unfold Succeeds; unfold Fails.
-    remember (f_view x) as o; destruct o as [j|]; [destruct j|];
-    try (right; unfold Fails; reflexivity); destruct (Hok tt).
-    { left. destruct H as [y H]. exists y. revert H. compute; intros.
-      rewrite H. reflexivity. }
-    { right; unfold Fails in *; intros; simpl; rewrite H; reflexivity. }
-  Qed.
+  Definition ptrn_tyVal : ptrn typ unit := ptrn_view FV fptrn_tyVal.
+  Definition ptrn_tySpec : ptrn typ unit := ptrn_view FV fptrn_tySpec.
+  Definition ptrn_tyAsn : ptrn typ unit := ptrn_view FV fptrn_tyAsn.
+  Definition ptrn_tyProg : ptrn typ unit := ptrn_view FV fptrn_tyProg.
+  Definition ptrn_tyMethod : ptrn typ unit := ptrn_view FV fptrn_tyMethod.
+  Definition ptrn_tyCmd : ptrn typ unit := ptrn_view FV fptrn_tyCmd.
+  Definition ptrn_tyDExpr : ptrn typ unit := ptrn_view FV fptrn_tyDExpr.
 
 End FuncView_java_type.
 
@@ -387,3 +318,37 @@ Section TSym_java_type.
   }.
 
 End TSym_java_type.
+
+Require Import MirrorCore.Reify.ReifyClass.
+
+Section ReifyJavaType.
+  Context {typ : Type} {FV : PartialView typ (java_typ 0)}.
+
+  Definition reify_tyVal : Command typ :=
+    CPattern (ls := nil) (RExact val) tyVal.
+
+  Definition reify_tySpec : Command typ :=
+    CPattern (ls := nil) (RExact spec) tySpec.
+
+  Definition reify_tyAsn : Command typ :=
+    CPattern (ls := nil) (RExact asn) tyAsn.
+
+  Definition reify_tyProg : Command typ :=
+    CPattern (ls := nil) (RExact Program) tyProg.
+
+  Definition reify_tyMethod : Command typ :=
+    CPattern (ls := nil) (RExact Method) tyMethod.
+
+  Definition reify_tyCmd : Command typ :=
+    CPattern (ls := nil) (RExact cmd) tyCmd.
+
+  Definition reify_tyDExpr : Command typ :=
+    CPattern (ls := nil) (RExact dexpr) tyDExpr.
+
+    Definition reify_java_typ : Command typ :=
+      CFirst (reify_tyVal :: reify_tySpec :: reify_tyAsn :: reify_tyProg ::
+              reify_tyMethod :: reify_tyCmd :: reify_tyDExpr :: nil).
+
+End ReifyJavaType.
+
+Arguments reify_java_typ _ {_}.

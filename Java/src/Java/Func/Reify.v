@@ -1,4 +1,5 @@
 Require Import MirrorCore.Reify.Reify.
+Require Import MirrorCore.Reify.ReifyView.
 Require Import MirrorCore.Lambda.Expr.
 Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.Lib.ListView.
@@ -13,7 +14,6 @@ Require Import MirrorCore.MTypes.ModularTypes.
 Require Import MirrorCore.MTypes.BaseType.
 Require Import MirrorCore.MTypes.ListType.
 Require Import MirrorCore.MTypes.ProdType.
-Require Import Java.Func.ListOpView.
 
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
@@ -38,6 +38,47 @@ Require Import ChargeCore.Logics.Later.
 
 Require Import ExtLib.Structures.Applicative.
 
+Global Instance Reify_typ : Reify typ := 
+  Reify_typ typ (reify_base_typ typ ::
+                 reify_list_typ typ :: 
+                 reify_prod_typ typ :: 
+                 reify_subst_typ typ String.string val :: 
+                 reify_java_typ typ :: nil).
+
+Require Import MirrorCore.Lib.NatView.
+
+Reify Declare Syntax patterns_java_expr := 
+  reify_func typ func (reify_nat typ func :: nil).
+
+
+Reify Declare Syntax patterns_java_typ := reify_scheme typ.
+
+
+
+Ltac reify trm :=
+  let t := fresh "t" in
+  let k e := pose e as t
+  in
+  reify_expr patterns_java_typ k [[ True ]] [[ trm ]]; cbv beta iota in t.
+
+Goal True.
+  reify nat.
+  reify bool.
+  reify String.string.
+  reify (list bool).
+  reify (list (list (list (spec * list ((stack String.string val -> asn)))))).
+  unfold typ2, Typ2_tyArr, Typ2_Fun, typ0, Typ0_tyString, Typ0_tyVal, Typ0_sym in t3.
+  Set Printing All.
+  unfold tyArr in t3.
+  Check tyBase0.
+  Print tyBase0.
+
+  cbv beta iota in t.
+  red in t.
+  unfold f_insert in t.
+  simpl in t.
+  unfold action_pattern in a.
+  simpl in *.
 Reify Declare Patterns patterns_java_typ : typ.
 
 Reify Declare Patterns patterns_java : (ExprCore.expr typ func).
@@ -265,8 +306,10 @@ Ltac reify_imp e :=
              [[ e ]].
 
 
-Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
-  intros Pr C v fields.
+Context {fs : Environment}.
+
+Goal (forall (Pr : Program) (C : class) (v : val) (x f : String.string) (fields : list field) (ex : @Open.expr Lang.var val), True).
+  intros Pr C v x f fields ex.
   reify_imp (typeof C v).
   reify_imp (field_lookup).
   reify_imp (field_lookup Pr C fields).
@@ -310,17 +353,18 @@ Goal (forall (Pr : Program) (C : class) (v : val) (fields : list field), True).
 
   reify_imp ((True -> False) -> True).
   reify_imp (forall P Q, P /\ Q).
+
   reify_imp (forall P : sasn, ILogic.lentails ILogic.ltrue P).
   reify_imp (forall (G : spec) (P Q : sasn), ILogic.lentails G (triple P Q cskip)).
   generalize (String.EmptyString : String.string).
-  intro x.
+  intro y.
 
   reify_imp (stack_get (A := Lang.var) (val := val)).
-  reify_imp (@stack_get Lang.var val x).
+  reify_imp (@stack_get Lang.var val y).
 
-  reify_imp (stack_get (val := val) x).
+  reify_imp (stack_get (val := val) y).
 
-  reify_imp (x = x).
+  reify_imp (y = y).
 
   reify_imp (@ltrue sasn _).
 

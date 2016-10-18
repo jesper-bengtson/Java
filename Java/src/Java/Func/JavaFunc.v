@@ -269,6 +269,8 @@ Check @red_fold typ func.
 
 Global Instance JavaView_func : PartialView func java_func :=
   PartialViewPMap 1 func_map eq_refl.
+Global Instance TableView_func : PartialView func SymEnv.func :=
+  PartialViewPMap 2 func_map eq_refl.
 Global Instance ILogicView_func : PartialView func (@ilfunc typ) :=
   PartialViewPMap 3 func_map eq_refl.
 Global Instance BILogicView_func : PartialView func (@bilfunc typ) :=
@@ -595,7 +597,7 @@ Existing Instance RelDec_from_RType.
     apply _.
     apply _.
     apply _.    
-    apply _.
+    apply (@RSym_ApFunc typ RType_typ _ (Fun stack) _ _ _).
     apply (RSym_embed_func).
     apply eops.
     apply _.  
@@ -689,18 +691,27 @@ Definition isEq : expr typ func -> bool :=
     + simpl; rewrite IHe1, IHe2; reflexivity.
     + simpl; rewrite IHe1, IHe2; reflexivity.
   Qed.
+*)
+Check ptrn_tyVal.
+Definition ptrn_tyStack := ptrn_tyArr ptrn_tyString ptrn_tyVal.
+Definition ptrn_tyPure := ptrn_tyArr ptrn_tyStack ptrn_tyProp.
+Definition ptrn_tySasn := ptrn_tyArr ptrn_tyStack ptrn_tyAsn.
 
   Definition is_pure : expr typ func -> bool :=
     run_ptrn
-         (por (Ptrns.pmap (fun _ => true) (por (ptrnTrue ignore) (ptrnFalse ignore)))
-              (Ptrns.pmap (fun x =>
-                       match x with
-                       | (tyPure, tySasn, tt) => true
-                       | _ => false
-                       end)
-                    (ptrnEmbed get ignore)))
+      (por (Ptrns.pmap (fun _ => true) 
+                       (por (ptrnTrue ignore) (ptrnFalse ignore)))
+           (Ptrns.pmap (fun _ => true)
+                       (ptrnEmbed (ptrnPair ptrn_tyPure ptrn_tySasn) ignore)))
+(*
+           (Ptrns.pmap (fun x =>
+                          match x with
+                          | (tyPure, tySasn, tt) => true
+                          | _ => false
+                          end)
+                       (ptrnEmbed get ignore)))*)
          false.
-*)
+
 Require Import Charge.Tactics.BILNormalize.
 
 (*

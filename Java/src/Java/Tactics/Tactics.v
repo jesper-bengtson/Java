@@ -6,21 +6,24 @@ Require Import MirrorCore.RTac.RTac.
 Require Import MirrorCore.Subst.FMapSubst.
 Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.Views.FuncView.
+Require Import MirrorCore.Views.View.
 
 Require Import Java.Func.JavaFunc.
-Require Import Java.Func.JavaType.
+Require Import Java.Func.Type.
 
 Require Import Charge.Views.ILogicView.
 Require Import Charge.Views.BILogicView.
 Require Import Charge.Views.EmbedView.
 Require Import Charge.Views.SubstView.
 (*Require Import Charge.ModularFunc.LaterFunc.*)
-Require Import MirrorCore.Views.NatView.
-Require Import MirrorCore.Views.StringView.
-Require Import MirrorCore.Views.BoolView.
-Require Import MirrorCore.Views.ListView.
+Require Import MirrorCore.Lib.NatView.
+Require Import MirrorCore.Lib.StringView.
+Require Import MirrorCore.Lib.BoolView.
+Require Import MirrorCore.Lib.ListView.
+Require Import MirrorCore.Lib.ProdView.
+Require Import MirrorCore.Lambda.ExprDsimul.
+Require Import MirrorCore.MTypes.BaseType.
 Require Import Java.Func.ListOpView.
-Require Import MirrorCore.Views.ProdView.
 
 Require Import ChargeCore.Open.Stack.
 Require Import ChargeCore.Open.Subst.
@@ -43,9 +46,11 @@ Require Import Coq.PArith.BinPos.
 Section Tactics.
   Context {fs : Environment}.
 
-Definition exprD_Prop (uvar_env var_env : env) (e : expr typ func) :=
-  match exprD uvar_env var_env e tyProp with
-    | Some e' => e' 
+Program Definition exprD_Prop (uvar_env var_env : env) (e : expr typ func) :=
+  let (tus, us) := split_env uvar_env in
+  let (tvs, vs) := split_env var_env in
+  match @exprD typ _ (expr typ func) _ tus tvs tyProp e with
+    | Some e' => e' us vs
     | None => True
   end.
 
@@ -62,9 +67,9 @@ Definition goalD_aux tus tvs goal (us : HList.hlist typD tus) (vs : HList.hlist 
     | Some e => Some (e us vs)
     | None => None
   end.
-  
+Check runOnGoals.
 Definition run_tac tac goal :=
-  runOnGoals tac nil nil 0 0 (ctx:=CTop nil nil) 
+  runOnGoals tac (CTop nil nil) 
     (ctx_empty (typ := typ) (expr := expr typ func)) goal.
 
 Lemma run_rtac_More tac s goal e
@@ -82,6 +87,7 @@ Proof.
   assert (WellFormed_ctx_subst (TopSubst (expr typ func) nil (@nil typ))) as H2 by constructor.
   specialize (Hsound H1 H2).
   destruct Hsound as [ Hwfs [ Hwfg Hsound ] ].
+(*
   unfold Ctx.propD, exprD'_typ0 in Hsound.
   simpl in Hsound. unfold exprD_Prop, exprD; simpl.
   forward; inv_all; subst.
@@ -92,7 +98,7 @@ Proof.
   unfold pctxD in H0; inv_all; subst.
   apply H5.
   unfold goalD_Prop in He'. simpl in He'. forward; inv_all; subst.
-  Unshelve. repeat decide equality. admit.
+  Unshelve. repeat decide equality. admit.*)
 Admitted.
 
 Lemma run_rtac_Solved tac s e
@@ -107,28 +113,28 @@ Proof.
   specialize (Hsound _ _ _ _ Hres H1 H2).
   destruct Hsound as [Hwfs Hsound].
   simpl in Hsound.
+(*
   unfold Ctx.propD, exprD'_typ0 in Hsound.
   unfold exprD_Prop.
   simpl in Hsound. unfold exprD. simpl. forward.
   destruct Hsound. 
   SearchAbout pctxD.
   inversion Hwfs; subst. simpl in H8. inv_all; subst.
-  admit.
+  admit.*)
 Admitted.
 
 End Tactics.
 
-Definition my_exprD' := @exprD' typ RType_typ (expr typ func).
+Definition my_exprD' := @exprD typ RType_typ (expr typ func).
 
 Ltac cbv_denote :=
   cbv [
       goalD_aux
         
 	(* ExprD' *)
-        exprD' symAs  typeof_sym typeof_expr type_cast type_cast_typ
-        exprD'_simul func_simul
+        exprD symAs  typeof_sym typeof_expr type_cast
+        lambda_exprD_simul func_simul
         Expr.Expr_expr
-        ExprDsimul.ExprDenote.exprD'
         (* RSym *)
         
         SymSum.RSym_sum Rcast Relim Rsym eq_sym symD(* RSym_env*)
@@ -316,7 +322,7 @@ Ltac cbv_denote :=
         ApplicativeView.mkPure ApplicativeView.mkAp
           
         ApplicativeView.RSym_ApFunc ApplicativeView.ap_func_symD
-        
+       
         ApplicativeView.pureR ApplicativeView.apR
         
         ApplicativeView.typeof_ap_func
@@ -341,25 +347,37 @@ Ltac cbv_denote :=
 	
         
         (* JavaType *)
-         
+        
+        JavaType.tyVal JavaType.tySpec JavaType.tyAsn
+        JavaType.tyProg JavaType.tyMethod JavaType.tyCmd
+        JavaType.tyDExpr JavaType.tySubst
+
+        JavaType.fptrn_tyVal JavaType.fptrn_tySpec JavaType.fptrn_tyAsn
+        JavaType.fptrn_tyProg JavaType.fptrn_tyMethod JavaType.fptrn_tyCmd
+        JavaType.fptrn_tyDExpr JavaType.fptrn_tySubst
+
+        JavaType.ptrn_tyVal JavaType.ptrn_tySpec JavaType.ptrn_tyAsn
+        JavaType.ptrn_tyProg JavaType.ptrn_tyMethod JavaType.ptrn_tyCmd
+        JavaType.ptrn_tyDExpr JavaType.ptrn_tySubst
+ (*
         Typ2_Fun Typ0_Prop RType_typ typD Typ0_string Typ0_bool
         Typ0_val Typ0_nat Typ0_term Typ1_list Typ2_prod
         should_not_be_necessary should_also_not_be_necessary
         
         JavaType.bilops JavaType.ilops
         JavaType.eops (*JavaType.lops*)
-        
+*)        
         (*   JavaType.typD *)
 	(* JavaFunc *)
         
         
-        JavaFunc.RSym_ilfunc JavaFunc.RSym_bilfunc JavaFunc.RSym_embed_func
+        JavaFunc.RSym_ilfunc JavaFunc.RSym_bilfunc (*JavaFunc.RSym_embed_func*)
         ilops (*is_pure*) func func_map RSym_JavaFunc typeof_java_func java_func_eq
         java_func_symD RelDec_java_func typeof_ilfunc
-        list_to_pmap list_to_pmap_aux
+        OneOfType.list_to_pmap OneOfType.list_to_pmap_aux
         JavaFunc.Expr_expr
         mkPointstoVar
-        JavaFunc.RSym_sub_func
+(*        JavaFunc.RSym_sub_func*)
         JavaFunc.RSym_func JavaFunc.java_env
         JavaFunc.fVal JavaFunc.fFields
         JavaFunc.fProg JavaFunc.fCmd JavaFunc.fDExpr JavaFunc.fFields
@@ -372,7 +390,7 @@ Ltac cbv_denote :=
         
         (* OTHER *)
         
-        goalD Ctx.propD propD exprD'_typ0 exprD split_env
+        goalD Ctx.propD propD exprD_typ0 exprD split_env
         
         amap_substD
         substD
@@ -393,7 +411,7 @@ Ltac cbv_denote :=
         Quant._exists
         goalD_Prop
           
-        FuncView.f_insert
+        View.f_insert
         SumN.pmap_lookup'
         (* FMapPositive *)
         FMapPositive.pmap_here

@@ -5,7 +5,7 @@
 -I ../../mirror-core/src
 -Q ../../ChargeCore/ChargeCore/bin/ChargeCore ChargeCore
 -Q ../../Charge/Charge!/bin/Charge Charge
--arg -type-in-type
+
 KOPITIAM_0 = "SourceLoadPath src"
 KOPITIAM_1 = "DefaultOutput bin"
 KOPITIAM_2 = "AbstractLoadPath dk.itu.sdg.kopitiam/lp/coq/8.4"

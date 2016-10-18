@@ -18,6 +18,7 @@ Require Import MirrorCore.Lambda.Red.
 Require Import MirrorCore.Lambda.AppN.
 Require Import MirrorCore.Lambda.RedAll.
 Require Import MirrorCore.Lambda.ExprVariables.
+Require Import MirrorCore.Lambda.Rtac.
 Require Import Charge.Views.ILogicView.
 (*
 Require Import Charge.Tactics.OrderedCanceller.
@@ -44,6 +45,7 @@ Require Import Charge.Tactics.Open.Subst.
 
 Require Import Java.Language.Lang.
 Require Import Java.Language.Program.
+Require Import Java.Tactics.Tactics.
 
 Require Import Charge.Tactics.Rtac.Apply.
 Require Import Charge.Tactics.Rtac.Cancellation.
@@ -195,7 +197,7 @@ Defined.
 Require Import ExtLib.Tactics.
 
 Lemma if_lemma_sound e c1 c2 :
-	lemmaD (exprD'_typ0 (T:=Prop)) nil nil (if_lemma e c1 c2).
+	lemmaD (exprD_typ0 (T:=Prop)) nil nil (if_lemma e c1 c2).
 Proof.
   unfold lemmaD; simpl; intros.
   unfold lemmaD'; simpl.
@@ -231,8 +233,11 @@ Proof.
 Defined.
 
 Lemma write_lemma_sound x f e :
-	lemmaD (exprD'_typ0 (T:=Prop)) nil nil (write_lemma x f e).
+	lemmaD (exprD_typ0 (T:=Prop)) nil nil (write_lemma x f e).
 Proof.
+  unfold lemmaD; simpl; intros.
+  unfold lemmaD'; simpl; intros.
+  repeat (unfold AbsAppI.exprT_App; simpl in *).
   admit.
 Admitted.
 
@@ -245,8 +250,10 @@ Proof.
 Defined.
 
 Definition assign_lemma_sound x e :
-  lemmaD (exprD'_typ0 (T := Prop)) nil nil (assign_lemma x e).
+  lemmaD (exprD_typ0 (T := Prop)) nil nil (assign_lemma x e).
 Proof.
+  unfold lemmaD; simpl; intros.
+  unfold lemmaD'; simpl; intros.
   admit.
 Admitted.
 
@@ -262,9 +269,10 @@ Example test_alloc_lemma x C : test_lemma (alloc_lemma x C). Admitted.
 *)
 
 Definition allog_lemma_sound (x : var) (C : class) :
-  lemmaD (exprD'_typ0 (T := Prop)) nil nil (alloc_lemma x C).
+  lemmaD (exprD_typ0 (T := Prop)) nil nil (alloc_lemma x C).
 Proof.
-  simpl.
+  unfold lemmaD, lemmaD'; simpl in *.
+  admit.
 Admitted.
 
 Definition pull_exists_lemma : lemma typ (expr typ func) (expr typ func).
@@ -453,8 +461,10 @@ Proof.
 Qed.
 *)
 Locate rw_fail.
+Check SIMPLIFY.
+Check SIMPL.
 
-Definition BETA := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all (fun _ => @apps typ func)).
+Definition BETA := SIMPL true (red_beta (fun _ => @apps typ func)).
 
 Lemma BETA_sound : rtac_sound BETA.
 Proof.
@@ -486,8 +496,8 @@ Require Import Charge.Views.SubstView.
 Definition THEN (r1 r2 : rtac typ (expr typ func)) :=
   THEN (THEN (THEN (INSTANTIATE typ func) (runOnGoals r1)) (runOnGoals (INSTANTIATE typ func))) (runOnGoals r2).
 Definition substTac (_ : list (option (expr typ func))) (e : expr typ func) (args : list (expr typ func)) := red_subst (apps e args).
-Definition SUBST := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all substTac).
-Print SUBST.
+Definition SUBST := SIMPL true (red_beta substTac).
+
 Definition EQSUBST := THEN (THEN (TRY (EAPPLY andA_temp_lemma)) (EAPPLY eq_to_subst_lemma)) SUBST.
 
 (*
@@ -575,15 +585,15 @@ Definition solve_entailment (rw : rewriter (typ := typ) (func := func)) : rtac t
 *)
 
 
-Require Import Java.Tactics.FieldLookup.
 (*
+Require Import Java.Tactics.FieldLookup.
 Require Import Charge.Tactics.Open.Subst.
 Require Import Charge.Tactics.Lists.Fold.
 *)
 
 Require Import Java.Func.ListOpView.
 
-Definition FOLD := SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all (fun x e args => red_fold (apps e args))).
+Definition FOLD := SIMPL true (red_beta (fun x e args => red_fold (apps e args))).
 
 (*
 Definition solve_alloc rw : rtac typ (expr typ func) :=
@@ -610,7 +620,7 @@ Check @red_fold_ptrn typ func.
 
 Require Import 
 *)
-
+(*
 Require Import MirrorCore.Views.Ptrns.
 Require Import MirrorCore.Views.FuncView.
 Require Import MirrorCore.Views.StringView.
@@ -640,6 +650,7 @@ Check @ptrn_view.
                    get)) Fail.
 
 Require Import MirrorCore.Views.ListView.
+
 Definition fields_to_list (e : expr typ func) : expr typ func :=
   run_ptrn (inj (pmap 
                       (fun lst => 
@@ -647,7 +658,7 @@ Definition fields_to_list (e : expr typ func) : expr typ func :=
                       (ptrn_view _ (fptrnFields get)))) e e.
 Definition FIELDS_TO_LIST := 
   SIMPLIFY (typ := typ) (fun _ _ _ _ => beta_all (fun x e args => fields_to_list (apps e args))).
-
+*)
 Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 	match c with
 (*	    | cskip => simStep rw (THEN (EAPPLY skip_lemma) (solve_entailment rw))
@@ -661,14 +672,14 @@ Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 		| cwrite x f e => simStep rw (THEN (EAPPLY (write_lemma x f e)) (solve_entailment rw))*)
                 | cskip => THEN (EAPPLY skip_lemma) solve_entailment
 		| cread x y f => THEN (EAPPLY (read_lemma x y f)) solve_entailment
-                | calloc x C => (*THEN' (EAPPLY (alloc_lemma x C))
+(*                | calloc x C => (*THEN' (EAPPLY (alloc_lemma x C))
                                       (ON_EACH (solve_entailment ::
                                                 FIELD_LOOKUP ::
                                                 THEN FOLD solve_entailment :: nil))*)
                   THEN' (EAPPLY (alloc_lemma x C)) 
                         (ON_EACH (CANCELLATION typ func tySpec (fun _ => false)
                                  ::THEN (INSTANTIATE typ func) FIELD_LOOKUP::
-                                 THEN (THEN FIELDS_TO_LIST FOLD) SUBST::nil))
+                                 THEN (THEN FIELDS_TO_LIST FOLD) SUBST::nil))*)
                   (*      (ON_EACH (solve_entailment :: IDTAC :: IDTAC :: nil))*)
                 | cwrite x f e => THEN (EAPPLY (write_lemma x f e)) solve_entailment
 (*		| cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
@@ -687,16 +698,15 @@ Definition ptrnCmd {T : Type}
            (p : ptrn cmd T) : ptrn (expr typ func) T :=
   inj (ptrn_view _ (fptrnCmd p)).
 
+Require Import MirrorCore.Views.FuncView.
+Check rtac typ (expr typ func).
+Print rtac.
 Definition symE : rtac typ (expr typ func) :=
-  fun tus tvs n m ctx s e =>
-    run_ptrn      
-         (pmap (fun t_l_r => let '(t, _, (_, _, c)) := t_l_r in
-                             if t ?[ eq ] tySpec then
-                               tripleE c
-                             else
-                               FAIL)
-                             (ptrnEntails get get (ptrnTriple get get (ptrnCmd get))))
-         FAIL e tus tvs n m ctx s e.
+  fun c cs e =>
+    run_ptrn
+      (pmap (fun t_l_r => let '(_, _, (_, _, c)) := t_l_r in tripleE c)
+            (ptrnEntails ptrn_tySpec ignore (ptrnTriple ignore ignore (ptrnCmd get))))
+      FAIL e c cs e.
 
 Definition runTac :=
    (THEN' (THEN (THEN (REPEAT 1000 (INTRO typ func)) symE)
@@ -707,8 +717,8 @@ Proof.
   admit.
 Admitted.
 
-Require Import MirrorCore.Views.ApplicativeView.
-Require Import MirrorCore.Views.StringView.
+Require Import MirrorCore.Lib.ApplicativeView.
+Require Import MirrorCore.Lib.StringView.
 
 Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr typ func :=
    mkAp (func := func) tyVal tyAsn
@@ -748,11 +758,11 @@ Admitted.
 (*
 Require Import Java.Tactics.Tactics.
 *)
+Check runOnGoals.
 Definition run_tac tac goal :=
-  runOnGoals tac nil nil 0 0 (ctx := (CTop nil nil))
+  runOnGoals tac (CTop nil nil)
     (ctx_empty (typ := typ) (expr := expr typ func)) goal.
 
-Require Import Java.Tactics.Tactics.
 Ltac run_rtac reify term_table tac_sound :=
   lazymatch type of tac_sound with
     | rtac_sound ?tac =>
@@ -813,7 +823,7 @@ Proof.
   admit.
 Admitted.
 
-Check mkCons.
+
 (*
 Lemma test_alloc : prog_eq ListProg |-- triple ltrue lfalse (calloc "x" "NodeC").
 Proof.
@@ -865,7 +875,7 @@ Proof.
   run_rtac reify_imp term_table myTac_sound.
 Qed.
 
-Lemma test_skip_lemma3 : testSkip 200.
+Lemma test_skip_lemma3 : testSkip 10.
 Proof.
   unfold testSkip; simpl.
   Time run_rtac reify_imp term_table runTac_sound.
@@ -1046,7 +1056,7 @@ Ltac run_rtac2 reify term_table tac_sound :=
 
 Ltac charge2 := run_rtac2 reify_imp term_table runTac_sound; intros.
 
-Lemma test_swap2 : mkSwap 2.
+Lemma test_swap2 : mkSwap 20.
 Proof.
   unfold mkSwap, mkSwapPre, mkSwapPost, mkSwapProg, mkSwapPostAux, mkRead, mkWrite, mkWriteAux.
   Opaque pure.

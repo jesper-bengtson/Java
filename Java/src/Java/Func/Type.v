@@ -278,9 +278,7 @@ Proof.
   simpl.
   apply _.
 Defined.
-About pv_ok.
-Check @f_view.
-Check proj1.
+
 Definition pv_elim {T U : Type} {Pv : PartialView T U} {Z} {PVo : PartialViewOk Pv Z} (F : T -> Type) (x : T)
 : (forall y, F (f_insert y)) ->
   (unit -> F x) ->
@@ -313,38 +311,40 @@ Arguments pv_elim {_ _ _ _ _} _ _ {_} _.
 
 Check prop_match.
 Existing Instance should_not_be_necessary.
+
+Definition prop_match := prop_match (FVOk := TypeViewOk_base_typ).
+Definition asn_match := asn_match (FVOk := TypeViewOk_java_typ).
+Definition spec_match := spec_match (FVOk := TypeViewOk_java_typ).
+Definition string_match := string_match (FVOk := TypeViewOk_base_typ).
+Definition val_match := val_match (FVOk := TypeViewOk_java_typ).
+
+
+
 Definition ilops : @logic_ops typ RType_typ :=
   fun t =>
     prop_match 
-      (FVOk := TypeViewOk_base_typ)
       (fun x => poption (ILogicOps (typD x))) t
       (pSome _)
       (fun _ => 
          asn_match 
-           (FVOk := TypeViewOk_java_typ) 
            (fun x => poption (ILogicOps (typD x))) t 
            (pSome _)
            (fun _ => 
               spec_match 
-                (FVOk := TypeViewOk_java_typ) 
                 (fun x => poption (ILogicOps (typD x))) t 
                 (pSome _)
                 (fun _ => 
                    match t with
                    | tyArr (tyArr t1 t2) t3 => 
                      (string_match 
-                        (FVOk := TypeViewOk_base_typ)
                         (fun x => poption (ILogicOps ((typD x -> typD t2) -> typD t3))) t1
                         (val_match
-                           (FVOk := TypeViewOk_java_typ)
                            (fun x => poption (ILogicOps ((string -> typD x) -> typD t3))) t2
                            (prop_match 
-                              (FVOk := TypeViewOk_base_typ)
                               (fun x => poption (ILogicOps (stack -> typD x))) t3
                               (pSome _)
                               (fun _ => 
                                  asn_match 
-                                   (FVOk := TypeViewOk_java_typ) 
                                    (fun x => poption (ILogicOps (stack -> typD x))) t3 
                                    (pSome _)
                                    (fun _ => pNone)))
@@ -352,24 +352,20 @@ Definition ilops : @logic_ops typ RType_typ :=
                         (fun _ => pNone))
                    | _ => pNone
                    end))).
-
+Check string_match.
 Definition bilops : @bilogic_ops typ RType_typ :=
   fun t =>
     asn_match 
-      (FVOk := TypeViewOk_java_typ) 
       (fun x => poption (BILOperators (typD x))) t 
       (pSome _)
       (fun _ => 
          match t with
          | tyArr (tyArr t1 t2) t3 =>
            (string_match 
-              (FVOk := TypeViewOk_base_typ)
               (fun x => poption (BILOperators ((typD x -> typD t2) -> typD t3))) t1
               (val_match
-                 (FVOk := TypeViewOk_java_typ)
                  (fun x => poption (BILOperators ((string -> typD x) -> typD t3))) t2
                  (asn_match 
-                    (FVOk := TypeViewOk_java_typ) 
                     (fun x => poption (BILOperators (stack -> typD x))) t3 
                     (pSome _)
                     (fun _ => pNone))
@@ -381,10 +377,8 @@ Definition bilops : @bilogic_ops typ RType_typ :=
 Definition eops : @embed_ops typ RType_typ :=
   fun t u =>
     prop_match 
-      (FVOk := TypeViewOk_base_typ) 
       (fun x => option (EmbedOp (typD x) (typD u))) t 
       (asn_match 
-         (FVOk := TypeViewOk_java_typ) 
          (fun x => option (EmbedOp Prop (typD x))) u
          (Some _)
          (fun _ => None))
@@ -392,27 +386,21 @@ Definition eops : @embed_ops typ RType_typ :=
          match t, u with
          | tyArr (tyArr t1 t2) t3, tyArr (tyArr u1 u2) u3 =>
            (string_match 
-              (FVOk := TypeViewOk_base_typ)
               (fun x => option (EmbedOp ((typD x -> typD t2) -> typD t3) 
                                         ((typD u1 -> typD u2) -> typD u3))) t1
               (val_match
-                 (FVOk := TypeViewOk_java_typ)
                  (fun x => option (EmbedOp ((string -> typD x) -> typD t3) 
                                            ((typD u1 -> typD u2) -> typD u3))) t2
                  (prop_match 
-                    (FVOk := TypeViewOk_base_typ) 
                     (fun x => option (EmbedOp (stack -> typD x)
                                               ((typD u1 -> typD u2) -> typD u3))) t3
                     (string_match 
-                       (FVOk := TypeViewOk_base_typ)
                        (fun x => option (EmbedOp (stack -> Prop)
                                                  ((typD x -> typD u2) -> typD u3))) u1
                        (val_match
-                          (FVOk := TypeViewOk_java_typ)
                           (fun x => option (EmbedOp (stack -> Prop)
                                                     ((string -> typD x) -> typD u3))) u2
                           (asn_match 
-                             (FVOk := TypeViewOk_java_typ) 
                              (fun x => option (EmbedOp (stack -> Prop)
                                                        (stack -> typD x))) u3
                              (Some _)
