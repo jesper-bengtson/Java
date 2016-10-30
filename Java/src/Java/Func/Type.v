@@ -6,15 +6,14 @@ Require Import ExtLib.Tactics.
 Require Import ExtLib.Data.Eq.UIP_trans.
 
 Require Import MirrorCore.TypesI.
-Require Import MirrorCore.MTypes.ModularTypes.
-Require Import MirrorCore.MTypes.ListType.
-Require Import MirrorCore.MTypes.ProdType.
-Require Import MirrorCore.MTypes.BaseType.
-Require Import MirrorCore.MTypes.TSymOneOf.
+Require Import MirrorCore.CTypes.CoreTypes.
+Require Import MirrorCore.CTypes.ListType.
+Require Import MirrorCore.CTypes.ProdType.
+Require Import MirrorCore.CTypes.BaseType.
+Require Import MirrorCore.CTypes.TSymOneOf.
 Require Import MirrorCore.Views.FuncView.
 Require Import MirrorCore.Views.View.
 Require Import MirrorCore.Views.ViewSumN.
-Require Import MirrorCore.MTypes.ListType.
 
 Require Import Charge.Views.ILogicView.
 Require Import Charge.Views.BILogicView.
@@ -127,14 +126,14 @@ Global Instance TSym_typ' : TSym typ'.
   apply TSymOneOf. apply TSymAll_typ_map.
 Defined.
 
-Definition typ := mtyp typ'.
+Definition typ : Set := ctyp typ'.
 
 Global Instance RType_typ : RType typ.
-apply RType_mtyp. apply _.
+apply RType_ctyp. apply _.
 Defined.
 
 Global Instance RTypeOk_typ : RTypeOk.
-apply RTypeOk_mtyp.
+apply RTypeOk_ctyp.
 Defined.
 
 Global Instance TypeView_prod_typ' : PartialView (typ' 2) (prod_typ 2) :=
@@ -249,7 +248,7 @@ Global Instance Typ0Ok_tyNat : Typ0Ok Typ0_tyNat := Typ0Ok_sym tyNat.
 Global Instance Typ0_tyString : Typ0 RType_typ string := Typ0_sym tyString.
 Global Instance Typ0Ok_tyString : Typ0Ok Typ0_tyString := Typ0Ok_sym tyString.
 
-Global Instance Typ0_tyVal : Typ0 RType_typ val := Typ0_sym tyVal.
+Global Instance Typ0_tyVal : Typ0 RType_typ val := Typ0_sym (ts:=TSym_typ') (@tyVal _ _).
 Global Instance Typ0Ok_tyVal : Typ0Ok Typ0_tyVal := Typ0Ok_sym tyVal.
 
 Global Instance Typ0_tyBool : Typ0 RType_typ bool := Typ0_sym tyBool.

@@ -19,7 +19,7 @@ Set Strict Implicit.
 Set Maximal Implicit Insertion.
 Set Printing Universes.
 
-Inductive listOp_func (typ : Type) :=
+Inductive listOp_func (typ : Set) : Set :=
 | pLength : typ -> listOp_func typ
 | pNoDup : typ -> listOp_func typ
 | pIn : typ -> listOp_func typ
@@ -28,8 +28,8 @@ Inductive listOp_func (typ : Type) :=
 | pCombine : typ -> typ -> listOp_func typ.
 
 Section ListOpFuncInst.
-  Context {typ : Type} {RType_typ : RType typ}.
-  Context {func : Type}.
+  Context {typ : Set} {RType_typ : RType typ}.
+  Context {func : Set}.
   Context {Heq : RelDec (@eq typ)} {HC : RelDec_Correct Heq}.
 
   Context {Typ2_tyArr : Typ2 _ RFun}.
@@ -137,7 +137,7 @@ Section ListOpFuncInst.
 End ListOpFuncInst.
 
 Section MakeListOp.
-  Context {typ func : Type} {FV : PartialView func (listOp_func typ)}.
+  Context {typ func : Set} {FV : PartialView func (listOp_func typ)}.
 
   Definition fLength t := f_insert (pLength t).
   Definition fNoDup t := f_insert (pNoDup t).
@@ -410,15 +410,16 @@ Section MakeListOp.
 End MakeListOp.
 
 Section PtrnListOp.
-  Context {typ func : Type} {RType_typ : RType typ}.
+  Context {typ func : Set} {RType_typ : RType typ}.
   Context {FV : PartialView func (listOp_func typ)}.
 
 (* Putting this in the previous sectioun caused universe inconsistencies
   when calling '@mkLength typ func' in JavaFunc (with typ and func instantiated) *)
 
-  Definition ptrnLength {T A : Type}
-             (p : ptrn typ T) (a : ptrn (expr typ func) A) : ptrn (expr typ func) (T * A) :=
-    app (inj (ptrn_view _ (fptrnLength p))) a.
+  Definition ptrnLength@{V R L} {T A : Type@{V}}
+             (p : ptrn@{Set V R L} typ T) (a : ptrn@{Set V R L} (expr typ func) A)
+  : ptrn (expr typ func) (T * A) :=
+    app (inj (ptrn_view FV (fptrnLength p))) a.
 
   Definition ptrnNoDup {T A : Type}
              (p : ptrn typ T) (a : ptrn (expr typ func) A) : ptrn (expr typ func) (T * A) :=
@@ -448,7 +449,7 @@ Section PtrnListOp.
 End PtrnListOp.
 
 Section Tactics.
-  Context {typ func : Type}.
+  Context {typ func : Set}.
   Context {FV_listOp : PartialView func (listOp_func typ)}.
   Context {FV_list : PartialView func (list_func typ)}.
   Context {FV_nat : PartialView func natFunc}.
@@ -609,20 +610,21 @@ Require Import MirrorCore.Lambda.ExprCore.
                         (ptrnNoDup ignore get)) Fail e.
 
   Local Ltac solve_ok :=
-    repeat first [ simple eapply ptrn_ok_pmap
-                 | simple eapply ptrn_ok_app
-                 | simple eapply ptrn_ok_inj
-                 | simple eapply ptrn_view_ok
-                 | simple eapply ptrn_ok_ignore
-                 | simple eapply ptrn_ok_get
-                 | simple eapply fptrnLength_ok
-                 | simple eapply fptrnMap_ok
-                 | simple eapply fptrnFold_ok ].
+    repeat first [ eapply fptrnLength_ok
+                 | eapply fptrnMap_ok
+                 | eapply fptrnFold_ok
+                 | eapply ptrn_ok_pmap
+                 | eapply ptrn_ok_app
+                 | eapply ptrn_ok_inj
+                 | eapply ptrn_view_ok
+                 | eapply ptrn_ok_ignore
+                 | eapply ptrn_ok_get ].
 
 
   Local Instance ptrn_ok_red_length_ptrn : ptrn_ok red_length_ptrn.
   unfold red_length_ptrn, ptrnLength.
   solve_ok.
+  Unshelve. solve_ok.
   Defined.
 
   Definition red_length := run_ptrn_id red_length_ptrn.

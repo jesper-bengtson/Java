@@ -12,16 +12,16 @@ Unset Strict Implicit.
 
 Section RelDecNoDup.
   Require Import Coq.Bool.Bool.
-  
-  Context {A : Type} {RelDec_A : RelDec (@eq A)} 
+
+  Context {A : Type} {RelDec_A : RelDec (@eq A)}
 	  {RelDec_Correct_A : RelDec_Correct RelDec_A}.
-  
-  Fixpoint inb (x : A) (lst : list A) := 
+
+  Fixpoint inb (x : A) (lst : list A) :=
     match lst with
     | nil => false
     | l::ls => if x ?[ eq ] l then true else inb x ls
     end.
-	  
+
   Lemma inb_sound (x : A) (lst : list A) (H : inb x lst = true) : In x lst.
   Proof.
     induction lst; simpl in *; try congruence.
@@ -29,20 +29,20 @@ Section RelDecNoDup.
     + left; reflexivity.
     + right; apply IHlst; assumption.
   Qed.
-  
+
   Lemma inb_complete (x : A) (lst : list A) (H : In x lst) : inb x lst = true.
   Proof.
     induction lst; simpl in *; try intuition congruence.
     consider (x ?[ eq ] a); intros; destruct H as [H | H]; try congruence.
     apply IHlst; assumption.
   Qed.
-  
+
   Fixpoint nodup (lst : list A) : bool :=
     match lst with
     | nil => true
     | l :: ls => (negb (inb l ls) && nodup ls)%bool
     end.
-  
+
   Lemma nodup_sound (lst : list A) (H : nodup lst = true) : NoDup lst.
   Proof.
     induction lst.
@@ -52,7 +52,7 @@ Section RelDecNoDup.
       * intro H. apply inb_complete in H. intuition congruence.
       * apply IHlst; assumption.
   Qed.
-	  	
+
   Lemma nodup_complete (lst : list A) (H : NoDup lst) : nodup lst = true.
   Proof.
     induction lst.
@@ -61,10 +61,10 @@ Section RelDecNoDup.
       * apply eq_true_not_negb. intros H; apply H2. apply inb_sound; assumption.
       * apply IHlst; assumption.
   Qed.
-  
+
 End RelDecNoDup.
 
-Record Method := {
+Record Method : Set := {
   m_params: list var;
   m_body: cmd;
   m_ret: dexpr
@@ -84,7 +84,7 @@ Proof.
 	consider (m_ret0 ?[ eq ] m_ret1); simpl; intuition congruence.
 Qed.
 
-Record Class := {
+Record Class : Set := {
   c_fields  : list field;
   c_methods : list (string * Method)
 }.
@@ -102,7 +102,7 @@ Proof.
 		 simpl; try intuition congruence.
 Qed.
 
-Record Program := {
+Record Program : Set := {
   p_classes: list (string * Class)
 }.
 
@@ -136,7 +136,7 @@ Fixpoint class_lookup_aux C (lst : list (string * Class)) :=
 
 Definition class_lookup C P := class_lookup_aux C (p_classes P).
 
-Lemma split_Prop {A B C : Type} (lst : list (A * B)) (P : list A -> list B -> C) : 
+Lemma split_Prop {A B C : Type} (lst : list (A * B)) (P : list A -> list B -> C) :
 	(let (a, b) := split lst in P a b) =
 	P (fst (split lst)) (snd (split lst)).
 Proof.
@@ -156,8 +156,8 @@ Section Pwf.
   	exists Crec, In (C, Crec) (p_classes Prog) /\
   		fields = c_fields Crec.
 
-  Lemma field_lookup_function C f f' 
-  	(H1 : field_lookup C f) (H2 : field_lookup C f') : f = f'. 
+  Lemma field_lookup_function C f f'
+  	(H1 : field_lookup C f) (H2 : field_lookup C f') : f = f'.
   Proof.
     unfold field_lookup in *.
     destruct H1 as [m [H11 H12]]; destruct H2 as [n [H21 H22]].
@@ -336,7 +336,7 @@ Polymorphic Instance RelDec_Class : RelDec (@eq Class) := {
 
 Instance RelDec_Correct_Class : RelDec_Correct RelDec_Class.
 Proof.
-  split; intros; destruct x, y; simpl; unfold rel_dec_Class; simpl. 
+  split; intros; destruct x, y; simpl; unfold rel_dec_Class; simpl.
   consider (c_fields0 ?[ eq ] c_fields1);
     consider (c_methods0 ?[ eq ] c_methods1); intros; subst;
 		 simpl; try intuition congruence.
@@ -382,12 +382,12 @@ Fixpoint method_lookup_aux m (lst : plist (ppair string Method)) :=
   end.
 
 Definition method_lookup' C M P :=
-  match class_lookup C P with 
+  match class_lookup C P with
     | Some Crec => method_lookup_aux M (c_methods Crec)
     | None => None
   end.
 
-Polymorphic Lemma split_Prop {A B C : Type} (lst : plist (ppair A B)) (P : plist A -> plist B -> C) : 
+Polymorphic Lemma split_Prop {A B C : Type} (lst : plist (ppair A B)) (P : plist A -> plist B -> C) :
 	(let (a, b) := split lst in P a b) =
 	P (fst (split lst)) (snd (split lst)).
 Proof.
@@ -407,8 +407,8 @@ Section Pwf.
   	exists Crec, pIn (pprod C Crec) (p_classes Prog) /\
   		fields = c_fields Crec.
 
-  Polymorphic Lemma field_lookup_function C f f' 
-  	(H1 : field_lookup C f) (H2 : field_lookup C f') : f = f'. 
+  Polymorphic Lemma field_lookup_function C f f'
+  	(H1 : field_lookup C f) (H2 : field_lookup C f') : f = f'.
   Proof.
     unfold field_lookup in *.
     destruct H1 as [m [H11 H12]]; destruct H2 as [n [H21 H22]].
@@ -416,7 +416,7 @@ Section Pwf.
     assert (m = n); [|subst; reflexivity].
     rewrite split_Prop in Valid.
     induction (p_classes Prog); simpl in *; try intuition congruence.
-    destruct t; simpl in *.    
+    destruct t; simpl in *.
     rewrite split_Prop in Valid.
     simpl in *.
     repeat rewrite Bool.andb_true_iff in Valid.

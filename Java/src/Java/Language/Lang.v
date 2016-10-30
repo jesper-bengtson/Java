@@ -16,10 +16,10 @@ Require Import ChargeCore.Open.Open.
 Require Import ChargeCore.Open.OpenILogic.
 Require Import ChargeCore.Open.Subst.
 
-Definition class : Type := String.string.
-Definition var : Type := String.string.
-Definition ptr : Type := (nat * class)%type.
-Definition arrptr : Type:= nat.
+Definition class : Set := String.string.
+Definition var : Set := String.string.
+Definition ptr : Set := (nat * class)%type.
+Definition arrptr : Set := nat.
 
 Instance RelDec_ptr : RelDec (@eq ptr) := {
 	rel_dec p1 p2 :=
@@ -35,7 +35,7 @@ Proof.
   consider (c ?[ eq ] c0); intros; subst; simpl; try intuition congruence.
 Defined.
 
-Inductive val : Type :=
+Inductive val : Set :=
 | vint :> Z -> val
 | vbool :> bool -> val
 | vptr :> ptr -> val
@@ -55,7 +55,7 @@ Instance RelDec_val : RelDec (@eq val) := {
 }.
 
 Instance RelDec_Correct_val : RelDec_Correct RelDec_val.
-Proof.	
+Proof.
   split; intros; destruct x, y; simpl; try intuition congruence.
   + consider (z ?[ eq ] z0); intros; subst; intuition congruence.
   + consider (b ?[ eq ] b0); intros; subst; intuition congruence.
@@ -74,7 +74,7 @@ Canonical Structure Val.
 
 Definition stack := stack var val.
 
-Inductive dexpr : Type :=
+Inductive dexpr : Set :=
 | E_val   : val -> dexpr
 | E_var   : var -> dexpr
 | E_plus  : dexpr -> dexpr -> dexpr
@@ -87,20 +87,20 @@ Inductive dexpr : Type :=
 | E_eq    : dexpr -> dexpr -> dexpr.
 
 Fixpoint beq_dexpr e1' e2' :=
-	match e1', e2' with
-	  | E_val v1, E_val v2 => v1 ?[ eq ] v2
-	  | E_var x, E_var y => x ?[ eq ] y
-	  | E_plus e1 e2, E_plus e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
-	  | E_minus e1 e2, E_minus e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
-	  | E_times e1 e2, E_times e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
-	  | E_and e1 e2, E_and e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
-	  | E_or e1 e2, E_or e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
-	  | E_not e1, E_not e2 => beq_dexpr e1 e2
-	  | E_lt e1 e2, E_lt e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
-	  | E_eq e1 e2, E_eq e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
-	  | _, _ => false
-	end.
-	
+  match e1', e2' with
+  | E_val v1, E_val v2 => v1 ?[ eq ] v2
+  | E_var x, E_var y => x ?[ eq ] y
+  | E_plus e1 e2, E_plus e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+  | E_minus e1 e2, E_minus e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+  | E_times e1 e2, E_times e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+  | E_and e1 e2, E_and e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+  | E_or e1 e2, E_or e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+  | E_not e1, E_not e2 => beq_dexpr e1 e2
+  | E_lt e1 e2, E_lt e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+  | E_eq e1 e2, E_eq e3 e4 => beq_dexpr e1 e3 && beq_dexpr e2 e4
+  | _, _ => false
+  end.
+
 Instance RelDec_dexpr : RelDec (@eq dexpr) := {
   rel_dec := beq_dexpr
 }.
@@ -137,7 +137,7 @@ Definition val_to_int (v : val) : Z :=
   end.
 
 Definition val_to_bool (v : val) : bool :=
-  match v with 
+  match v with
     | vbool b => b
     | _ => false
   end.
@@ -186,7 +186,7 @@ Program Definition eval e : expr := fun s => eval_aux s e.
 
 Definition vlogic_eval (e : dexpr) : vlogic := fun s => eval e s = true.
 (*
-`eq ( eval e) (`true). 
+`eq ( eval e) (`true).
 *)
 (*fun s => eval e s = true.*)
 
@@ -214,7 +214,7 @@ Inductive cmd :=
 .
 (* Possible bug in Coq when c1 and c2 matches in the cases *)
 Fixpoint beq_cmd cmd1 cmd2 :=
-	match cmd1, cmd2 with 
+	match cmd1, cmd2 with
 	    | cassign v1 e1, cassign v2 e2 => v1 ?[ eq ] v2 && e1 ?[ eq ] e2
 		| cskip, cskip => true
 		| cseq c1 c2, cseq c3 c4 => beq_cmd c1 c3 && beq_cmd c2 c4
@@ -226,8 +226,8 @@ Fixpoint beq_cmd cmd1 cmd2 :=
 		| carrwrite v1 es1 e1, carrwrite v2 es2 e2 => v1 ?[ eq ] v2 && es1 ?[ eq ] es2 && e1 ?[ eq ] e2
 		| calloc v1 c1, calloc v2 c2 => v1 ?[ eq ] v2 && c1 ?[ eq ] c2
 		| carralloc v1 d1, carralloc v2 d2 => v1 ?[ eq ] v2 && d1 ?[ eq ] d2
-		| cdcall v1 v2 m1 es1, cdcall v3 v4 m2 es2 => v1 ?[ eq ] v3 && v2 ?[ eq ] v4 && m1 ?[ eq ] m2 && es1 ?[ eq ] es2 
-		| cscall v1 c1 m1 es1, cscall v2 c2 m2 es2 => v1 ?[ eq ] v2 && c1 ?[ eq ] c2 && m1 ?[ eq ] m2 && es1 ?[ eq ] es2 
+		| cdcall v1 v2 m1 es1, cdcall v3 v4 m2 es2 => v1 ?[ eq ] v3 && v2 ?[ eq ] v4 && m1 ?[ eq ] m2 && es1 ?[ eq ] es2
+		| cscall v1 c1 m1 es1, cscall v2 c2 m2 es2 => v1 ?[ eq ] v2 && c1 ?[ eq ] c2 && m1 ?[ eq ] m2 && es1 ?[ eq ] es2
 		| cassert e1, cassert e2 => e1 ?[ eq ] e2
 		| _, _ => false
     end.
@@ -252,44 +252,44 @@ Proof.
 	  rewrite andb_true_iff, IHc.
 	  consider (d ?[ eq ] d0); intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v0); consider (s ?[ eq ] s0); consider (d ?[ eq ] d0); 
+	  consider (v ?[ eq ] v0); consider (s ?[ eq ] s0); consider (d ?[ eq ] d0);
 	    simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (s ?[ eq ] s0); 
+	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (s ?[ eq ] s0);
 	    simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (l ?[ eq ] l0); 
+	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (l ?[ eq ] l0);
 	    simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v0); consider (l ?[ eq ] l0); consider (d ?[ eq ] d0); 
+	  consider (v ?[ eq ] v0); consider (l ?[ eq ] l0); consider (d ?[ eq ] d0);
 	    simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
 	  consider (v ?[ eq ] v0); consider (d ?[ eq ] d0); simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
 	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (s ?[ eq ] s0); 
+	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (s ?[ eq ] s0);
 	    consider (l ?[ eq ] l0); simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); consider (s ?[ eq ] s0); 
+	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); consider (s ?[ eq ] s0);
 	    consider (l ?[ eq ] l0); simpl; try intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
 	  consider (d ?[ eq ] d0); try intuition congruence.
 Qed.
-	  
-	
+
+
 (* The set of stack variables potentially modified by a command *)
 Fixpoint modifies (c: cmd) :=
   match c with
   | cseq c1 c2     => app (modifies c1) (modifies c2)
   | cif _ c1 c2    => app (modifies c1) (modifies c2)
   | cwhile _ c     => modifies c
-  | cassign x _    
-  | cread x _ _    
-  | carrread x _ _ 
-  | carralloc x _  
-  | calloc x _     
-  | cdcall x _ _ _ 
+  | cassign x _
+  | cread x _ _
+  | carrread x _ _
+  | carralloc x _
+  | calloc x _
+  | cdcall x _ _ _
   | cscall x _ _ _ => x::nil
   |  _             => nil
   end.
@@ -308,4 +308,3 @@ Notation "'While' e 'Do' c" := (cwhile e c) (at level 65) : cmd_scope.
 
 Arguments Scope cscall [ _ _ _ list_scope ].
 Arguments Scope cdcall [ _ _ _ list_scope ].
-

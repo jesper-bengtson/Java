@@ -10,10 +10,10 @@ Require Import MirrorCore.Lib.NatView.
 Require Import MirrorCore.Lib.BoolView.
 Require Import MirrorCore.Lib.StringView.
 Require Import MirrorCore.Lib.ProdView.
-Require Import MirrorCore.MTypes.ModularTypes.
-Require Import MirrorCore.MTypes.BaseType.
-Require Import MirrorCore.MTypes.ListType.
-Require Import MirrorCore.MTypes.ProdType.
+Require Import MirrorCore.CTypes.CoreTypes.
+Require Import MirrorCore.CTypes.BaseType.
+Require Import MirrorCore.CTypes.ListType.
+Require Import MirrorCore.CTypes.ProdType.
 
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
@@ -38,16 +38,34 @@ Require Import ChargeCore.Logics.Later.
 
 Require Import ExtLib.Structures.Applicative.
 
-Global Instance Reify_typ : Reify typ := 
+Set Printing Universes.
+About MirrorCore.Reify.ReifyClass.Reify.
+Print MirrorCore.Reify.Patterns.
+Print Coq.Init.Datatypes.
+Print MirrorCore.Lambda.RewriteRelations.
+
+Global Instance Reify_typ : Reify typ :=
   Reify_typ typ (reify_base_typ typ ::
-                 reify_list_typ typ :: 
-                 reify_prod_typ typ :: 
-                 reify_subst_typ typ String.string val :: 
+                 reify_list_typ typ ::
+                 reify_prod_typ typ ::
+                 reify_subst_typ typ String.string val ::
                  reify_java_typ typ :: nil).
 
 Require Import MirrorCore.Lib.NatView.
 
-Reify Declare Syntax patterns_java_expr := 
+Print Universes.
+Set Printing Universes.
+About OneOfType.
+Print func.
+Print MirrorCore.Reify.Patterns.
+Print Coq.Init.Datatypes.
+About list.
+
+Print Reify_typ.
+About reify_func.
+About typ.
+
+Reify Declare Syntax patterns_java_expr :=
   reify_func typ func (reify_nat typ func :: nil).
 
 
@@ -204,7 +222,7 @@ Reify Pattern patterns_java += (RHasType nat (?0)) => (fun (n : id nat) => mkNat
 Reify Pattern patterns_java += (RHasType cmd (?0)) => (fun (c : id cmd) => Inj (typ := typ) (fCmd c)).
 Reify Pattern patterns_java += (RHasType dexpr (?0)) => (fun (e : id dexpr) => Inj (typ := typ) (fDExpr e)).
 Reify Pattern patterns_java += (RHasType Program (?0)) => (fun (P : id Program) => (Inj (typ := typ) (fProg P))).
-Reify Pattern patterns_java += (RHasType (list field) (?0)) => (fun (fs : id (list field)) => Inj (typ := typ) (fFields fs)). 
+Reify Pattern patterns_java += (RHasType (list field) (?0)) => (fun (fs : id (list field)) => Inj (typ := typ) (fFields fs)).
 Reify Pattern patterns_java += (RHasType class (?0)) => (fun (c : id class) => mkString (typ := typ) (func := func) c).
 
 Reify Pattern patterns_java += (RHasType (@list dexpr) (?0)) => (fun (es : id (@list dexpr)) => mkExprList es).

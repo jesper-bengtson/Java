@@ -17,10 +17,10 @@ Require Import Charge.Views.EmbedView.
 Require Import Java.Func.ListOpView.
 
 Require Import MirrorCore.TypesI.
-Require Import MirrorCore.MTypes.ModularTypes.
-Require Import MirrorCore.MTypes.ListType.
-Require Import MirrorCore.MTypes.ProdType.
-Require Import MirrorCore.MTypes.BaseType.
+Require Import MirrorCore.CTypes.CoreTypes.
+Require Import MirrorCore.CTypes.ListType.
+Require Import MirrorCore.CTypes.ProdType.
+Require Import MirrorCore.CTypes.BaseType.
 Require Import MirrorCore.SymI.
 Require Import MirrorCore.Lemma.
 Require Import MirrorCore.Lambda.Expr.
@@ -54,7 +54,7 @@ Set Strict Implicit.
 
 Universe UJFun.
 
-Inductive java_func :=
+Inductive java_func : Set :=
 | pProg (p : Program)
 | pMethod (m : Method)
 | pVal (v : val)
@@ -101,11 +101,11 @@ Definition typeof_java_func bf :=
   | pExpr _ => Some tyDExpr
   | pFields _ => Some (tyList tyString)
 
-  | pMethodSpec => 
-    Some (tyArr tyString 
-  	        (tyArr tyString 
+  | pMethodSpec =>
+    Some (tyArr tyString
+  	        (tyArr tyString
   	               (tyArr tyStringList
-		              (tyArr tyString 
+		              (tyArr tyString
 		                     (tyArr tySasn (tyArr tySasn tySpec))))))
   | pProgEq => Some (tyArr tyProg tySpec)
   | pTriple => Some (tyArr tySasn (tyArr tySasn (tyArr tyCmd tySpec)))
@@ -188,7 +188,7 @@ Definition set_fold_fun (x : String.string) (f : field) (P : sasn) :=
 Require Import Coq.Strings.String.
 
 Definition java_func_symD bf :=
-  match bf as bf 
+  match bf as bf
         return match typeof_java_func bf return Type@{Urefl} with
 	       | Some t => typD t
 	       | None => unit
@@ -247,7 +247,7 @@ Qed.
 Set Printing Universes.
 
 Definition func_map : OneOfType.pmap :=
-	OneOfType.list_to_pmap 
+	OneOfType.list_to_pmap
 	  (pcons java_func
            (pcons SymEnv.func
            (pcons (@ilfunc typ)
@@ -255,13 +255,13 @@ Definition func_map : OneOfType.pmap :=
            (pcons (@list_func typ)
 	   (pcons (@subst_func typ)
            (pcons (@embed_func typ)
-           (pcons (natFunc:Type)
-           (pcons (stringFunc:Type)
-           (pcons (boolFunc:Type)
+           (pcons (natFunc)
+           (pcons (stringFunc)
+           (pcons (boolFunc)
            (pcons (@prod_func typ)
            (pcons (@eq_func typ)
            (pcons (@ap_func typ)
-           (pcons (@listOp_func typ) (@pnil Type))))))))))))))).
+           (pcons (@listOp_func typ) (@pnil Set))))))))))))))).
 
 Definition func := OneOfType.OneOf func_map.
 
@@ -487,16 +487,20 @@ Require Import MirrorCore.Lambda.Ptrns.
   Definition fptrnFieldLookup : ptrn java_func unit :=
     fun f U good bad =>
       match f with
-        | pFieldLookup => good tt
-        | _ => bad f
+      | pFieldLookup => good tt
+      | _ => bad f
       end.
 
-  Definition ptrnTriple {A B C : Type}
-             (a : ptrn (expr typ func) A)
-             (b : ptrn (expr typ func) B)
-             (c : ptrn (expr typ func) C) : ptrn (expr typ func) (A * B * C) :=
-    pmap (fun a_b_c => let '(_, a, b, c) := a_b_c in (a, b, c))
-         (app (app (app (inj (ptrn_view _ fptrnTriple)) a) b) c).
+  Definition ptrnTriple@{V R L} {A B C : Type@{V} }
+             (a : ptrn@{Set V R L} (expr typ func) A)
+             (b : ptrn@{Set V R L} (expr typ func) B)
+             (c : ptrn@{Set V R L} (expr typ func) C)
+  : ptrn@{Set V R L} (expr typ func) (A * B * C) :=
+    pmap@{Set V V R L} (fun a_b_c : prod (prod (prod unit A) B) C =>
+                          match a_b_c return A * B * C with
+                          | (((_,a),b),c) => (a,b,c)
+                          end)
+         (app@{V R L} (app@{V R L} (app@{V R L} (inj@{V R L} (ptrn_view@{Set V R L} JavaView_func fptrnTriple)) a) b) c).
 
   Definition mkTriple P c Q : expr typ func := App (App (App (Inj fTriple) P) Q) c.
   Definition mkFieldLookup P C f : expr typ func := App (App (App (Inj fFieldLookup) P) C) f.
@@ -515,7 +519,7 @@ Require Import MirrorCore.Lambda.Ptrns.
     (fold_right (fun (e : dexpr) (acc : expr typ func) =>
 		   mkCons tyExpr (Inj (fDExpr e)) acc) (mkNil tyExpr) es).
 
-Fixpoint evalDExpr (e : dexpr) : expr typ func :=
+  Fixpoint evalDExpr (e : dexpr) : expr typ func :=
     match e with
     | E_val v => mkPure tyVal (Inj (fVal v))
     | E_var x => App (Inj fStackGet) (mkString x)
@@ -583,32 +587,39 @@ Existing Instance RelDec_from_RType.
   Global Instance RSym_func : RSym func.
   Proof.
     apply RSymOneOf.
-    repeat first [eapply RSym_All_Branch_None | 
+    repeat first [eapply RSym_All_Branch_None |
                   eapply RSym_All_Branch_Some |
-                  eapply RSym_All_Empty]. 
+                  eapply RSym_All_Empty].
     apply _.
     apply RSym_func. apply fs.
     apply _.
     apply _.
     apply _.
-    apply @RSym_SubstFunc with (var := string) (val := val); apply _.
+    apply @RSym_SubstFunc@{Urefl Urefl Urefl} with (var := string) (val := val); try apply _.
+    exact {| Stack.null := nothing |}.
     apply _.
     apply _.
     apply _.
     apply _.
-    apply _.    
-    apply (@RSym_ApFunc typ RType_typ _ (Fun stack) _ _ _).
+    apply _.
+    Set Printing Universes.
+    refine (@RSym_ApFunc typ RType_typ _ (Fun stack) _ _ _).
+    fail.
+    Print stack.
+    Print java_typ.
+    SearchAbout stack.
+    
     apply (RSym_embed_func).
     apply eops.
-    apply _.  
+    apply _.
     Defined.
 
   Global Instance RSymOk_func : RSymOk RSym_func.
   apply RSymOk_OneOf.
 
-  repeat first [eapply RSymOk_All_Branch_None | 
+  repeat first [eapply RSymOk_All_Branch_None |
                 eapply RSymOk_All_Branch_Some; [apply _ | |] |
-                eapply RSymOk_All_Empty]. 
+                eapply RSymOk_All_Empty].
   Defined.
 
   Global Instance Expr_expr : ExprI.Expr _ (expr typ func) := @Expr_expr typ func _ _ _.
@@ -644,7 +655,7 @@ Check SubstI.SubstOk.
   Qed.
 *)
 
-Definition ptrnPair {A B T U : Type} (t : ptrn A T) (u : ptrn B U) : 
+Definition ptrnPair {A B T U : Type} (t : ptrn A T) (u : ptrn B U) :
   ptrn (A * B) (T * U) :=
   fun e C good bad =>
     Mbind (Mrebuild (fun x : A => (x, snd e)) (t (fst e)))
@@ -653,13 +664,13 @@ Definition ptrnPair {A B T U : Type} (t : ptrn A T) (u : ptrn B U) :
 Definition ptrn_tyArr (T U : Type) (t : ptrn typ T) (u : ptrn typ U) : ptrn typ (T * U) :=
   fun e A good bad =>
     match e with
-    | tyArr a b => 
+    | tyArr a b =>
       Mbind (Mrebuild (fun x : typ => tyArr x b) (t a))
             (fun x : T => Mmap (fun y : U => (x, y)) (Mrebuild (tyArr a) (u b))) good bad
     | _ => bad e
     end.
 (*
-Definition ptrnApEq {T A B : Type} (t : ptrn typ T) 
+Definition ptrnApEq {T A B : Type} (t : ptrn typ T)
       (a : ptrn (expr typ func) A) (b : ptrn (expr typ func) B) : ptrn (expr typ func) (T * A * B) :=
   Ptrns.pmap (fun x => (fst (fst (fst x)), snd (snd (fst x)), snd x))
              (ptrnAp (ptrnPair t ptrn_tyProp)
@@ -669,8 +680,8 @@ Definition ptrnApEq {T A B : Type} (t : ptrn typ T)
 
 Definition isEq : expr typ func -> bool :=
   run_ptrn
-       (Ptrns.pmap (fun _ => true) 
-                   (ptrnEmbed (ptrnPair ptrn_tyPure ptrn_tySasn) 
+       (Ptrns.pmap (fun _ => true)
+                   (ptrnEmbed (ptrnPair ptrn_tyPure ptrn_tySasn)
                               (ptrnApEq ptrn_tyVal ignore ignore))) false.
 
 
@@ -699,7 +710,7 @@ Definition ptrn_tySasn := ptrn_tyArr ptrn_tyStack ptrn_tyAsn.
 
   Definition is_pure : expr typ func -> bool :=
     run_ptrn
-      (por (Ptrns.pmap (fun _ => true) 
+      (por (Ptrns.pmap (fun _ => true)
                        (por (ptrnTrue ignore) (ptrnFalse ignore)))
            (Ptrns.pmap (fun _ => true)
                        (ptrnEmbed (ptrnPair ptrn_tyPure ptrn_tySasn) ignore)))
@@ -716,8 +727,8 @@ Require Import Charge.Tactics.BILNormalize.
 
 (*
   Definition is_equality : expr typ func -> bool :=
-    run_tptrn 
-      (pdefault 
+    run_tptrn
+      (pdefault
          (ptrnEmbed get get
          false)).
 *)

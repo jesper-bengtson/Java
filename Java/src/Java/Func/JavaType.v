@@ -4,7 +4,7 @@ Require Import ExtLib.Data.POption.
 Require Import ExtLib.Tactics.
 
 Require Import MirrorCore.TypesI.
-Require Import MirrorCore.MTypes.ModularTypes.
+Require Import MirrorCore.CTypes.CoreTypes.
 Require Import MirrorCore.Views.FuncView.
 Require Import MirrorCore.Views.Ptrns.
 Require Import MirrorCore.Views.TypeView.
@@ -19,9 +19,7 @@ Require Import Java.Language.Program.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Universe U.
-
-Inductive java_typ : nat -> Type@{U} :=
+Inductive java_typ : nat -> Set :=
 | tVal : java_typ 0
 | tSpec : java_typ 0
 | tAsn : java_typ 0
@@ -90,7 +88,7 @@ Definition java_typD {n} (t : java_typ n) : type_for_arity n :=
   end.
 
 Section DepMatch_java_typ.
-  Context {typ : Type}.
+  Context {typ : Set}.
   Context {RType_typ : RType typ}.
   Context {FV : PartialView typ (java_typ 0)}.
   Context {FVOk : TypeViewOk typD (java_typD (n := 0)) FV}.
@@ -158,7 +156,7 @@ Section DepMatch_java_typ.
 End DepMatch_java_typ.
 
 Section FuncView_java_type.
-  Context {typ : Type}.
+  Context {typ : Set}.
   Context {FV : PartialView typ (java_typ 0)}.
 
   Definition tyVal := f_insert tVal.
@@ -322,10 +320,10 @@ End TSym_java_type.
 Require Import MirrorCore.Reify.ReifyClass.
 
 Section ReifyJavaType.
-  Context {typ : Type} {FV : PartialView typ (java_typ 0)}.
+  Context {typ : Set} {FV : PartialView typ (java_typ 0)}.
 
   Definition reify_tyVal : Command typ :=
-    CPattern (ls := nil) (RExact val) tyVal.
+    CPattern (ls := nil) (RExact val) (@tyVal typ _).
 
   Definition reify_tySpec : Command typ :=
     CPattern (ls := nil) (RExact spec) tySpec.
