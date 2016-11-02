@@ -602,17 +602,13 @@ Existing Instance RelDec_from_RType.
     apply _.
     apply _.
     apply _.
-    Set Printing Universes.
     refine (@RSym_ApFunc typ RType_typ _ (Fun stack) _ _ _).
-    fail.
-    Print stack.
-    Print java_typ.
-    SearchAbout stack.
-    
+    eapply Typ2_App. eapply Typ2_Fun. unfold stack. unfold Stack.stack.
+    eapply (Typ1_App (G:=RFun Lang.var) (X:=val)).
     apply (RSym_embed_func).
     apply eops.
     apply _.
-    Defined.
+  Defined.
 
   Global Instance RSymOk_func : RSymOk RSym_func.
   apply RSymOk_OneOf.
