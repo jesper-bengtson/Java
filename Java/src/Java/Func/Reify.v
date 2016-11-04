@@ -44,32 +44,24 @@ Print MirrorCore.Reify.Patterns.
 Print Coq.Init.Datatypes.
 Print MirrorCore.Lambda.RewriteRelations.
 
+About reify_subst_typ.
+
 Global Instance Reify_typ : Reify typ :=
   Reify_typ typ (reify_base_typ typ ::
                  reify_list_typ typ ::
                  reify_prod_typ typ ::
-                 reify_subst_typ typ String.string val ::
+                 reify_subst_typ typ _ String.string val ::
                  reify_java_typ typ :: nil).
 
 Require Import MirrorCore.Lib.NatView.
 
-Print Universes.
 Set Printing Universes.
-About OneOfType.
-Print func.
-Print MirrorCore.Reify.Patterns.
-Print Coq.Init.Datatypes.
-About list.
-
-Print Reify_typ.
-About reify_func.
-About typ.
 
 Reify Declare Syntax patterns_java_expr :=
   reify_func typ func (reify_nat typ func :: nil).
 
 
-Reify Declare Syntax patterns_java_typ := reify_scheme typ.
+Reify Declare Syntax patterns_java_typ := reify_scheme@{Set} typ.
 
 
 
@@ -86,17 +78,8 @@ Goal True.
   reify (list bool).
   reify (list (list (list (spec * list ((stack String.string val -> asn)))))).
   unfold typ2, Typ2_tyArr, Typ2_Fun, typ0, Typ0_tyString, Typ0_tyVal, Typ0_sym in t3.
-  Set Printing All.
-  unfold tyArr in t3.
-  Check tyBase0.
-  Print tyBase0.
+Abort.
 
-  cbv beta iota in t.
-  red in t.
-  unfold f_insert in t.
-  simpl in t.
-  unfold action_pattern in a.
-  simpl in *.
 Reify Declare Patterns patterns_java_typ : typ.
 
 Reify Declare Patterns patterns_java : (ExprCore.expr typ func).
