@@ -14,7 +14,6 @@ Require Import Charge.Views.ILogicView.
 Require Import Charge.Views.BILogicView.
 Require Import Charge.Views.SubstView.
 Require Import Charge.Views.EmbedView.
-Require Import Java.Func.ListOpView.
 
 Require Import MirrorCore.TypesI.
 Require Import MirrorCore.CTypes.CoreTypes.
@@ -31,6 +30,7 @@ Require Import MirrorCore.syms.SymSum.
 Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.Subst.FMapSubst.
 Require Import MirrorCore.Lib.ListView.
+Require Import MirrorCore.Lib.ListOpView.
 Require Import MirrorCore.Lib.ProdView.
 Require Import MirrorCore.Lib.EqView.
 Require Import MirrorCore.Lib.ApplicativeView.
@@ -265,35 +265,33 @@ Definition func_map : OneOfType.pmap :=
 
 Definition func := OneOfType.OneOf func_map.
 
-Check @red_fold typ func.
-
-Global Instance JavaView_func : PartialView func java_func :=
+Global Instance JavaView_func : PartialView@{Set} func java_func :=
   PartialViewPMap 1 func_map eq_refl.
-Global Instance TableView_func : PartialView func SymEnv.func :=
+Global Instance TableView_func : PartialView@{Set} func SymEnv.func :=
   PartialViewPMap 2 func_map eq_refl.
-Global Instance ILogicView_func : PartialView func (@ilfunc typ) :=
+Global Instance ILogicView_func : PartialView@{Set} func (@ilfunc typ) :=
   PartialViewPMap 3 func_map eq_refl.
-Global Instance BILogicView_func : PartialView func (@bilfunc typ) :=
+Global Instance BILogicView_func : PartialView@{Set} func (@bilfunc typ) :=
   PartialViewPMap 4 func_map eq_refl.
-Global Instance ListView_func : PartialView func (@list_func typ) :=
+Global Instance ListView_func : PartialView@{Set} func (@list_func typ) :=
   PartialViewPMap 5 func_map eq_refl.
-Global Instance SubstView_func : PartialView func (@subst_func typ) :=
+Global Instance SubstView_func : PartialView@{Set} func (@subst_func typ) :=
   PartialViewPMap 6 func_map eq_refl.
-Global Instance EmbedView_func : PartialView func (@embed_func typ) :=
+Global Instance EmbedView_func : PartialView@{Set} func (@embed_func typ) :=
   PartialViewPMap 7 func_map eq_refl.
-Global Instance NatView_func : PartialView func natFunc :=
+Global Instance NatView_func : PartialView@{Set} func natFunc :=
   PartialViewPMap 8 func_map eq_refl.
-Global Instance StringView_func : PartialView func stringFunc :=
+Global Instance StringView_func : PartialView@{Set} func stringFunc :=
   PartialViewPMap 9 func_map eq_refl.
-Global Instance BoolView_func : PartialView func boolFunc :=
+Global Instance BoolView_func : PartialView@{Set} func boolFunc :=
   PartialViewPMap 10 func_map eq_refl.
-Global Instance ProdView_func : PartialView func (@prod_func typ) :=
+Global Instance ProdView_func : PartialView@{Set} func (@prod_func typ) :=
   PartialViewPMap 11 func_map eq_refl.
-Global Instance Eq_func : PartialView func (@eq_func typ) :=
+Global Instance Eq_func : PartialView@{Set} func (@eq_func typ) :=
   PartialViewPMap 12 func_map eq_refl.
-Global Instance ApplicativeView_func : PartialView func (@ap_func typ) :=
+Global Instance ApplicativeView_func : PartialView@{Set} func (@ap_func typ) :=
   PartialViewPMap 13 func_map eq_refl.
-Global Instance ListOp_func : PartialView func (@listOp_func typ) :=
+Global Instance ListOp_func : PartialView@{Set} func (@listOp_func typ) :=
   PartialViewPMap 14 func_map eq_refl.
 
 Section MakeJavaFunc.

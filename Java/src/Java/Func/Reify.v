@@ -3,6 +3,7 @@ Require Import MirrorCore.Reify.ReifyView.
 Require Import MirrorCore.Lambda.Expr.
 Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.Lib.ListView.
+Require Import MirrorCore.Lib.ListOpView.
 Require Import MirrorCore.Lib.ApplicativeView.
 Require Import MirrorCore.Lib.ProdView.
 Require Import MirrorCore.Lib.EqView.
@@ -37,14 +38,7 @@ Require Import ChargeCore.Logics.BILogic.
 Require Import ChargeCore.Logics.Later.
 
 Require Import ExtLib.Structures.Applicative.
-
-Set Printing Universes.
-About MirrorCore.Reify.ReifyClass.Reify.
-Print MirrorCore.Reify.Patterns.
-Print Coq.Init.Datatypes.
-Print MirrorCore.Lambda.RewriteRelations.
-
-About reify_subst_typ.
+Require Import MirrorCore.Lib.NatView.
 
 Global Instance Reify_typ : Reify typ :=
   Reify_typ typ (reify_base_typ typ ::
@@ -53,15 +47,27 @@ Global Instance Reify_typ : Reify typ :=
                  reify_subst_typ typ _ String.string val ::
                  reify_java_typ typ :: nil).
 
-Require Import MirrorCore.Lib.NatView.
+Global Instance Reify_java : Reify (expr typ func) :=
+  Reify_func typ func (reify_nat typ func :: 
+(*                       reify_bool typ func ::
+                       reify_string typ func ::
+Removing the comments for these two makes the syntax declaration for exprs fail, but 
+we get no universe inconsistency.
+*)
+                       reify_eq typ func ::
+                       reify_applicative typ func (Fun (String.string -> val)) ::
+                       reify_list typ func :: 
+                       reify_listOp typ func :: 
+                       reify_prod typ func ::
+          	       reify_ilogic typ func :: 
+                       reify_bilogic typ func ::
+                       reify_embed typ func ::
+                       reify_subst typ func String.string val :: nil).
 
 Set Printing Universes.
 
-Reify Declare Syntax patterns_java_expr :=
-  reify_func typ func (reify_nat typ func :: nil).
-
-
 Reify Declare Syntax reify_typ := reify_scheme@{Set} typ.
+Reify Declare Syntax reify_java := reify_scheme (expr typ func).
 
 Ltac reify trm :=
   let t := fresh "t" in
