@@ -1,11 +1,12 @@
 Require Import ChargeCore.Logics.ILogic.
 Require Import ChargeCore.Logics.BILogic.
-Require Import ChargeCore.Logics.ILEmbed.
+Require Import ChargeCore.Logics.ILEmbed. 
 Require Import ChargeCore.Open.Stack.
 
 Require Import Java.Language.Lang.
 Require Import Java.Language.Program.
 Require Import Java.Semantics.AxiomaticSemantics.
+Require Import Java.Semantics.OperationalSemantics.
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
 Require Import Java.Examples.ListModel.
@@ -20,154 +21,168 @@ Open Scope string_scope.
 Open Scope cmd_scope.
 Open Scope list_scope.
 
-Definition add_body :=
-  (cseq (calloc "tn" "NodeC")
-        (cseq (cwrite "tn" "val" (E_var "n")) 
+Definition head_body :=
+  (cseq (cread "h" "this" "head")
+        (cread "v" "h" "value")).
+
+Definition HeadM : Method :=
+  Build_Method ("this"::nil) head_body (E_var "v").
+
+Definition tail_body :=
+  (cseq (calloc "lst" "List")
+        (cseq (cread "h" "this" "head")
+              (cseq (cread "tail" "h" "next")
+                    (cwrite "lst" "head" (E_var "tail"))))).
+
+Definition TailM : Method :=
+  Build_Method ("this"::nil) tail_body (E_var "lst").
+
+Definition cons_body :=
+  (cseq (calloc "n" "Node")
+        (cseq (cwrite "n" "val" (E_var "x")) 
               (cseq (cread "lst" "this" "head")
-                    (cseq (cwrite "tn" "next" (E_var "lst"))
-                          (cwrite "this" "head" (E_var "tn")))))).
+                    (cseq (cwrite "n" "next" (E_var "lst"))
+                          (cwrite "this" "head" (E_var "n")))))).
 
-  Definition AddM : Method :=
-    Build_Method ("this"::"n"::nil) add_body (E_val (vint 0)).
+Definition ConsM : Method :=
+  Build_Method ("this"::"n"::nil) cons_body (E_val null).
 
-  Definition NodeC :=
-    Build_Class ("val"::"next"::nil) nil.
-  
-  Definition ListC := Build_Class ("head"::nil) (("add", AddM)::nil).
+Definition reverse_body :=
+  (cseq (cread "i" "this" "head")
+        (cseq (cassign "j" (E_val null))
+              (cseq (cwhile (E_not (E_eq (E_var "i") (E_val null)))
+                            (cseq (cread "k" "i" "next")
+                                  (cseq (cwrite "i" "next" (E_var "j"))
+                                        (cseq (cassign "j" (E_var "i"))
+                                              (cassign "i" (E_var "k"))))))
+                    (cwrite "this" "head" (E_var "j"))))).
 
-  Definition ListProg := Build_Program
-    (("List", ListC)::("NodeC", NodeC)::nil).  
-(*
-  Definition add_spec : spec :=
-    Forall xs : list val, method_spec "List" "add" ("this"::"n"::nil) "" 
-                                    (fun s => List (s "this") xs) 
-                                    (fun s => List (s "this") ((s "n")::xs)).
+Definition ReverseM : Method :=
+  Build_Method ("this"::nil) reverse_body (E_val null).
 
-*)
+Definition NodeC :=
+  Build_Class ("val"::"next"::nil) nil.
 
-(*
-Require Import AxiomaticSemantics String AssertionLogic ILogic ILEmbed BILogic Lang Stack ZArith Coq.Lists.List ListModel.
-Require Import Program SpecLogic OperationalSemantics.
+Definition ListC := Build_Class ("head"::nil) (("head", HeadM) ::
+                                               ("tail", TailM) ::
+                                               ("cons", ConsM) ::
+                                               ("reverse", ReverseM) ::
+                                               nil).
 
-Set Implicit Arguments.
-Unset Strict Implicit.
+Definition ListProg := Build_Program
+                         (("List", ListC)::("Node", NodeC)::nil).  
 
-Open Scope string_scope.
-Open Scope cmd_scope.
-Open Scope list_scope.
+Require Import ExtLib.Structures.Applicative.
+Require Import MirrorCore.TypesI.
+Require Import ChargeCore.Open.OpenILogic.
 
-Definition add_body :=
-  (cseq (calloc "tn" "NodeC")
-        (cseq (cwrite "tn" "val" (E_var "n")) 
-              (cseq (cread "lst" "this" "head")
-                    (cseq (cwrite "tn" "next" (E_var "lst"))
-                          (cwrite "this" "head" (E_var "tn")))))).
+Local Instance Applicative_Fun : Applicative (RFun stack) :=
+{ pure := fun _ x _ => x
+; ap := fun _ _ f x y => (f y) (x y)
+}.
 
-  Definition AddM : Method :=
-    Build_Method ("this"::"n"::nil) add_body (E_val (vint 0)).
+Definition head_frame x xs : sasn :=
+  (ap (ap (pure (T := RFun stack) List) 
+          (stack_get "this")) 
+      (pure  (T := RFun stack) (x::xs))).
+Definition head_return x : sasn := 
+    (embed (open_eq (stack_get "r") (pure (T := RFun stack) x))).
+Definition head_requires x xs := head_frame x xs.
+Definition head_ensures x xs := head_frame x xs.
 
-  Definition NodeC :=
-    Build_Class ("val"::"next"::nil) nil.
-  
-  Definition ListC := Build_Class ("head"::nil) (("add", AddM)::nil).
+Definition head_spec : spec :=
+  Forall x : val, Forall xs : list val, 
+    method_spec "List" "head" ("this"::nil) "r"
+                (head_requires x xs)
+                (head_ensures x xs //\\ head_return x).
 
-  Definition ListProg := Build_Program
-    (("List", ListC)::("NodeC", NodeC)::nil).  
 
-  Definition add_spec : spec :=
-    Forall xs : list val, method_spec "List" "add" ("this"::"n"::nil) "" 
-                                    (fun s => List (s "this") xs) 
-                                    (fun s => List (s "this") ((s "n")::xs)).
 
-Lemma method_specL C m args r P Q G M Pr
-  (HProg : G |-- prog_eq Pr)
-  (Hargs : NoDup (r::args))
-  (H : method_lookup Pr C m M)
-  (Hlength : length args = length (m_params M))
-  (Htriple : G |-- {[Subst.apply_subst P
-       (Subst.substl_trunc (Subst.zip args (map (fun x s => s x) (m_params M))))]} (m_body M)
-  {[Subst.apply_subst Q
-      (Subst.substl_trunc
-         (Subst.zip (r :: args) (eval (m_ret M) :: map Open.var_expr (m_params M))))]} ) :
-  G |-- method_spec C m args r P Q.
-Proof.
-  Require Import ChargeCore.Logics.ILInsts.
-  Local Transparent ILPre_Ops.
-  intros Pr' n HG.
-  split; [apply Hargs|].
-  eexists (m_params M), (m_body M), (m_ret M).
-  specialize (HProg _ _ HG). simpl in HProg.
-  split. simpl. intros.
-  specialize (HProg _ H0).
-  destruct HProg; subst.
-  repeat split; try assumption.
-  destruct M; simpl. apply H.
-  admit. (* This should be provable from valid_program *)
-  apply Htriple.
-  assumption.
-Qed.
+Definition tail_frame h n : sasn :=
+  ap (ap (ap (pure (T := RFun stack) pointsto) 
+             (stack_get "this"))
+         (pure (T := RFun stack) "head"))
+     (pure (T := RFun stack) h) ** 
+  ap (ap (ap (pure (T := RFun stack) pointsto) 
+             (pure (T := RFun stack) h))
+         (pure (T := RFun stack) "next"))
+     (pure (T := RFun stack) n).
+Definition tail_return n : sasn := 
+    (embed (open_eq (stack_get "r") (pure (T := RFun stack) n))).
+Definition tail_requires h n xs : sasn :=
+  tail_frame h n **
+  ap (ap (pure (T := RFun stack) Node) 
+         (stack_get "this"))
+     (pure  (T := RFun stack) xs).
+Definition tail_ensures h n xs : sasn :=
+  tail_frame h n **
+  ap (ap (pure (T := RFun stack) List) 
+          (stack_get "this")) 
+     (pure  (T := RFun stack) xs).
+
+Definition tail_spec : spec :=
+  Forall h : val, Forall n : val, Forall x : val, Forall xs : list val, 
+    method_spec "List" "tail" ("this"::nil) "r"
+                (tail_requires h n xs)
+                (tail_ensures h n xs //\\ tail_return n).
+
+
+
+Definition cons_requires xs : sasn :=
+  ap (ap (pure (T := RFun stack) List) 
+         (stack_get "this")) 
+     (pure  (T := RFun stack) xs).
+Definition cons_ensures xs : sasn :=
+  ap (ap (pure List) 
+         (stack_get "this")) 
+     (ap (ap (pure cons) 
+             (stack_get "n")) 
+         (pure (T := RFun stack) xs)).
+                                            
+Definition cons_spec : spec :=
+    Forall xs : list val, 
+      method_spec "List" "cons" ("this"::"n"::nil) "" 
+                  (cons_requires xs)
+                  (cons_ensures xs).
+
+
+
+Definition reverse_requires xs : sasn :=
+  ap (ap (pure (T := RFun stack) List) 
+         (stack_get "this")) 
+     (pure  (T := RFun stack) xs).
+Definition reverse_ensures xs : sasn :=
+  ap (ap (pure (T := RFun stack) List) 
+         (stack_get "this")) 
+     (pure  (T := RFun stack) (rev xs)).
+
+Definition reverse_spec : spec :=
+    Forall xs : list val, 
+      method_spec "List" "reverse" ("this"::nil) "" 
+                  (reverse_requires xs)
+                  (reverse_ensures xs).
             
-Lemma ListCorrect : prog_eq ListProg |-- add_spec.
+Lemma HeadCorrect : prog_eq ListProg |-- head_spec.
 Proof.
   admit.
-Qed.
+Admitted.
 
-  unfold add_spec.
-  apply lforallR; intros xs.
-  unfold add_spec.
-  unfold ProgAux. unfold ListC, NodeC.
-  
-  apply landR.
-  
-  apply embedPropR. search_NoDup string_dec.
-  do 3 eapply lexistsR.
-  apply landR.
-  Print prog_eq_to_prop.
-  apply prog_eq_to_prop.
-  unfold method_spec.
-  Check Build_Class.
-  unfold method_lookup.
-  unfold Prog. simpl. ProgAux. simpl.
-  unfold add_spec. unfold method_spec.
-  apply lforallR; intros xs.
-  apply landR.
-  apply embedPropR.
-  search_NoDup string_dec.
-
-  do 3 eapply lexistsR. apply landR.
-  apply prog_eq_to_prop.
-  split.
-  unfold method_lookup. simpl.
-  eexists.
-  unfold ListC.
-  unfold Prog, ProgAux.
-  simpl; split.
-  SM'.mapsto_tac.
-  SM'.mapsto_tac.
-  split.
-  reflexivity.
-  unfold add_body. simpl.
-  check_not_modifies.
-
-  Require Import Subst.
-  unfold apply_subst, stack_subst.
-  simpl.
-  unfold add_body.
-  eapply rule_seq.
-  eapply roc_pre with ltrue; [apply ltrueR|].
-  etransitivity; [|apply rule_alloc_ax with (fields := SS.add "val" (SS.add "next" SS.empty))].
-  apply prog_eq_to_prop.
-  unfold Prog, ProgAux.
-  simpl.
-  eexists.
-  split.
-  SM'.mapsto_tac.
-  reflexivity.
-  rewrite <- exists_into_precond2.
-  apply lforallR. intro p.
-
-  
-  simpl.
+Lemma TailCorrect : prog_eq ListProg |-- tail_spec.
+Proof.
   admit.
-Qed.
-*)
+Admitted.
+
+Lemma ConsCorrect : prog_eq ListProg |-- cons_spec.
+Proof.
+  admit.
+Admitted.
+
+Lemma ReverseCorrect : prog_eq ListProg |-- reverse_spec.
+Proof.
+  admit.
+Admitted.
+
+Lemma ListCorrect : prog_eq ListProg |-- head_spec //\\ tail_spec //\\ cons_spec //\\ reverse_spec.
+Proof.
+  admit.
+Admitted.

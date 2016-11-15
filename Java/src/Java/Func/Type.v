@@ -49,73 +49,9 @@ Lemma pmap_lookup'_Empty p : pmap_lookup' Empty p = _None.
 Proof.
   induction p; simpl in *; try apply IHp. reflexivity.
 Qed.
-(*
-Definition OneOf_Branch_left n l r (H : OneOfF l) : OneOf (Branch n l r).
-Proof.
-  destruct H.
-  exists (xO index0); simpl; apply value0.
-Defined.
 
-Definition OneOf_Branch_right n l r (H : OneOf r) : OneOf (Branch n l r).
-Proof.
-  destruct H.
-  exists (xI index0); simpl; apply value0.
-Defined.
-
-Definition OneOf_Branch_node n l r (H : n) : OneOf (Branch (_Some n) l r).
-Proof.
-  exists xH; simpl; apply H.
-Defined.
-
-
-Definition OneOf_Branch n l r (H : OneOf (Branch (_Some n) l r)) :
-  n + OneOf l + OneOf r.
-Proof.
-  remember (Branch (_Some n) l r).
-  generalize dependent l; generalize dependent r.
-  induction p; intros; inversion Heqp; subst.
-  destruct H. destruct index0; [right | left; right | left; left; assumption]; simpl in *.
-  exists index0; assumption.
-  exists index0; assumption.
-Defined.
-*)
 Definition typ' := OneOfType.OneOfF typ_map.
-(*
-Instance TSym_Empty : TSym
-Proof.
-  split; intros.
-  apply OneOf_Empty in X; destruct X.
-  exfalso. apply OneOf_Empty in a; destruct a.
-Defined.
 
-Instance TSym_Branch n l r
-         (Hl : TSym (fun x => OneOf (l x)))
-         (Hr : TSym (fun x => OneOf (r x)))
-         (Hn : TSym n) :
-  TSym (fun x => (OneOf (Branch (_Some (n x)) (l x) (r x)))).
-Proof.
-  split; intros.
-  apply OneOf_Branch in X. destruct X as [[X | X] | X].
-  eapply @symbolD in Hn; eassumption.
-  eapply @symbolD in Hl; eassumption.
-  eapply @symbolD in Hr; eassumption.
-  destruct a, b; simpl.
-
-  destruct index0, index1; try (solve [right; intros H; inv_all; subst; inversion x]).
-  + eapply @symbol_dec with (a := mkOneOf _ index0 value0) (b := mkOneOf _ index1 value1) in Hr.
-    destruct Hr; [left | right]; inv_all; subst; [reflexivity|].
-    intros H. apply n1. inv_all. inversion x; subst.
-    rewrite (uip_trans Pos.eq_dec _ _ x eq_refl) in *. reflexivity.
-  + eapply @symbol_dec with (a := mkOneOf _ index0 value0) (b := mkOneOf _ index1 value1) in Hl.
-    destruct Hl; [left | right]; inv_all; subst; [reflexivity|].
-    intros H. apply n1. inv_all. inversion x; subst.
-    rewrite (uip_trans Pos.eq_dec _ _ x eq_refl) in *. reflexivity.
-  + eapply @symbol_dec with (a := value0) (b := value1) in Hn.
-    destruct Hn; [left | right]; subst; [reflexivity|].
-    intros H. apply n1. inv_all. inversion x; subst.
-    rewrite (uip_trans Pos.eq_dec _ _ x eq_refl) in *. reflexivity.
-Defined.
-*)
 Definition TSymAll_typ_map : TSym_All typ_map.
   repeat first [eapply TSym_All_Branch_None |
                 eapply TSym_All_Branch_Some; [eapply _ | |] |
@@ -261,11 +197,7 @@ Global Instance Typ2_tyProd : Typ2 RType_typ prod := Typ2_sym (f_insert tProd).
 Global Instance Typ2Ok_tyProd : Typ2Ok Typ2_tyProd := Typ2Ok_sym (f_insert tProd).
 
 Definition null' : TypesI.typD tyVal := null.
-(*
-Program Instance SubstTypeD_typ : @SubstTypeD typ _ _ _ := {
-	stSubst := eq_refl
-}.
-*)
+
 Definition should_not_be_necessary : ILogicOps (TypesI.typD tySpec).
 Proof.
   simpl.
@@ -291,24 +223,8 @@ Definition pv_elim {T U : Type} {Pv : PartialView T U} {Z} {PVo : PartialViewOk 
   | pNone => fun _ _ X => X tt
   end eq_refl.
 
-
-
-
-Check TypeViewOk_base_typ.
-Check TypeView_base_typ.
-
 Arguments pv_elim {_ _ _ _ _} _ _ {_} _.
 
-(*                           match jt as x 
-                                 in java_typ 0 
-                                 return
-                                        poption (ILogic.ILogicOps (TypesI.typD (f_insert x))) with
-                             | tAsn => pSome _
-                             | _ => pNone
-                           end) pNone)).
-*)
-
-Check prop_match.
 Existing Instance should_not_be_necessary.
 
 Definition prop_match := prop_match (FVOk := TypeViewOk_base_typ).
@@ -316,8 +232,6 @@ Definition asn_match := asn_match (FVOk := TypeViewOk_java_typ).
 Definition spec_match := spec_match (FVOk := TypeViewOk_java_typ).
 Definition string_match := string_match (FVOk := TypeViewOk_base_typ).
 Definition val_match := val_match (FVOk := TypeViewOk_java_typ).
-
-
 
 Definition ilops : @logic_ops typ RType_typ :=
   fun t =>
@@ -351,7 +265,7 @@ Definition ilops : @logic_ops typ RType_typ :=
                         (fun _ => pNone))
                    | _ => pNone
                    end))).
-Check string_match.
+
 Definition bilops : @bilogic_ops typ RType_typ :=
   fun t =>
     asn_match 
@@ -411,144 +325,3 @@ Definition eops : @embed_ops typ RType_typ :=
               (fun _ => None))
          | _, _ => None
          end).
-
-(*
-Definition ilp : il_pointwise :=
-  fun t =>
-    match t with
-      | tySasn => true
-      | tyPure => true
-      | _ => false
-    end.
-
-Definition bilp : bil_pointwise :=
-  fun t =>
-    match t with
-      | tySasn => true
-      | _ => false
-    end.
-
-Definition eilp : eil_pointwise :=
-  fun t u =>
-    match t, u with
-      | tyStack, tyProp => true
-      | tyStack, tyAsn => true
-      | _, _ => false
-    end.
-*)
-
-(*
-Lemma eilpOk : eil_pointwiseOk eops eilp.
-Proof.
-  intros t u; simpl.
-  destruct t; try apply I.
-  destruct u; try apply I.
-  remember (type_cast_typ t1 u1).
-  destruct o; try apply I.
-  destruct t1; subst.
-  destruct t1_1.
-  Focus 6.
-  destruct t1_2.
-  Focus 5.
-  destruct t2.
-  Focus 8.
-  destruct u2.
-  Focus 10.
-  match goal with
-    |- match ?a with | Some _ => _ | None => _ end => remember a
-  end.
-  destruct o.
-  intros.
-  pose proof eilf_pointwise_embed_eq (gs := eops) (eilp := eilp).
-  rewrite @eilf_pointwise_embed_eq.
-  simpl. reflexivity.
-  Print il_pointwiseOk.
-  simpl.
-  unfold Denotation.tyArrD, Denotation.tyArrD', Denotation.trmD, Denotation.tyArrR, Denotation.tyArrR', Denotation.trmR, eq_rect_r, eq_rect, eq_sym, id.
-  simpl.
-  unfold ILEmbed.embed.
-  simpl.
-  destruct e.
-  simpl. reflexivity.
-  reflexivity.
-  remember (eops tyProp tySasn).
-  destruct o.
-  rewrite <- Heqo0.
-Print eil_pointwiseOk.
-*)
-(*
-Lemma ilpOk : il_pointwiseOk ilops ilp.
-Proof.
-  intros t; simpl; destruct t; try apply I.
-  destruct t1; simpl; try apply I.
-  destruct t1_1; try apply I.
-  destruct t1_2; try apply I.
-  destruct t2; simpl; try apply I.
-  repeat split.
-  repeat split.
-Qed.
-
-Lemma BilpOk : bil_pointwiseOk bilops bilp.
-Proof.
-  intros t; simpl; destruct t; try apply I.
-  destruct t1; simpl; try apply I.
-  destruct t1_1; try apply I.
-  destruct t1_2; try apply I.
-  destruct t2; simpl; try apply I.
-  repeat split.
-Qed.
-*)
-(*
-Fixpoint edt (t : typ) : typD t -> typD t -> option bool :=
-  match t return typD t -> typD t -> option bool with
-    | tyBool => fun e1 e2 => Some (e1 ?[ eq ] e2)
-    | tyVal => fun e1 e2 => Some (e1 ?[ eq ] e2)
-    | tyString => fun e1 e2 => Some (e1 ?[ eq ] e2)
-    | tyNat => fun e1 e2 => Some (e1 ?[ eq ] e2)
-    | tyProg => fun e1 e2 => Some (e1 ?[ eq ] e2)
-    | tyCmd => fun e1 e2 => Some (e1 ?[ eq ] e2)
-    | tyDExpr => fun e1 e2 => Some (e1 ?[ eq ] e2)
-    | tyList tyString => fun e1 e2 => Some (e1 ?[ eq ] e2)
-    | tyProd t1 t2 =>
-      fun e1 e2 =>
-        match edt t1 (fst e1) (fst e2), edt t2 (snd e1) (snd e2) with
-          | Some a, Some b => Some (a && b)
-          | _, _ => None
-        end
-    | _ => fun _ _ => None
-  end.
-*)
-(*
-Instance SemiEqDecTyp_edt : SemiEqDecTyp typ := {
-    semi_eq_dec_typ := edt
-  }.
-
-Definition edtOk :
-  forall t a b,
-    match edt t a b with
-      | Some true => a = b
-      | Some false => a <> b
-      | None => True
-    end.
-Proof.
-  induction t; simpl in *; intros; try apply I; try (consider (e1 ?[ eq ] e2); intuition congruence).
-  destruct t; simpl in *; try apply I.
-  consider (a ?[ eq ] b); intuition congruence.
-  destruct a, b; simpl.
-  forward. inv_all; subst.
-  specialize (IHt1 t t3); specialize (IHt2 t0 t4).
-  destruct b0, b1; rewrite H in IHt1; rewrite H0 in IHt2; simpl; intuition congruence.
-  consider (a ?[ eq ] b); intuition congruence.
-  consider (a ?[ eq ] b); intuition congruence.
-  consider (a ?[ eq ] b); intuition congruence.
-  consider (a ?[ eq ] b); intuition congruence.
-  consider (a ?[ eq ] b); intuition congruence.
-  consider (a ?[ eq ] b); intuition congruence.
-  consider (a ?[ eq ] b); intuition congruence.
-Qed.
-
-Instance SemiEqDecTypOk_edt : SemiEqDecTypOk SemiEqDecTyp_edt := {
-    semi_eq_dec_typOk := edtOk
-  }.
-
-*)

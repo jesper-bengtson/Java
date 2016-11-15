@@ -533,6 +533,106 @@ Require Import MirrorCore.Lambda.Ptrns.
 
 End MakeJavaFunc.
 
+Require Import MirrorCore.Reify.ReifyClass.
+
+Section ReifyJavaFunc.
+
+  Polymorphic Definition reify_cProg : Command@{Set} (expr typ func) :=
+    CPattern (ls := (Program:Type)::nil) (RHasType Program (RGet 0 RIgnore)) 
+             (fun (x : id Program) => Inj (fProg x)).
+
+  Polymorphic Definition reify_cMethod : Command@{Set} (expr typ func) :=
+    CPattern (ls := (Method:Type)::nil) (RHasType Method (RGet 0 RIgnore)) 
+             (fun (x : id Method) => Inj (fMethod x)).
+
+  Polymorphic Definition reify_cVal: Command@{Set} (expr typ func) :=
+    CPattern (ls := (val:Type)::nil) (RHasType val (RGet 0 RIgnore)) 
+             (fun (x : id val) => Inj (fVal x)).
+
+  Polymorphic Definition reify_cDExpr : Command@{Set} (expr typ func) :=
+    CPattern (ls := (dexpr:Type)::nil) (RHasType dexpr (RGet 0 RIgnore)) 
+             (fun (x : id dexpr) => Inj (fDExpr x)).
+
+  Polymorphic Definition reify_cFields : Command@{Set} (expr typ func) :=
+    CPattern (ls := (list field:Type)::nil) (RHasType (list string) (RGet 0 RIgnore)) 
+             (fun (x : id (list field)) => Inj (fFields x)).
+
+  Polymorphic Definition reify_cCmd : Command@{Set} (expr typ func) :=
+    CPattern (ls := (cmd:Type)::nil) (RHasType cmd (RGet 0 RIgnore)) 
+             (fun (x : id cmd) => Inj (fCmd x)).
+
+  Polymorphic Definition reify_method_spec : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact method_spec) (Inj fMethodSpec).
+  
+  Polymorphic Definition reify_prog_eq : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact prog_eq) (Inj fProgEq).
+
+  Polymorphic Definition reify_triple : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact triple) (Inj fTriple).
+  
+  Polymorphic Definition reify_typeof : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact typeof) (Inj fTypeOf).
+
+  Polymorphic Definition reify_field_lookup : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact field_lookup) (Inj fFieldLookup).
+
+  Polymorphic Definition reify_method_lookup : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact method_lookup) (Inj fMethodLookup).
+
+  Polymorphic Definition reify_pointsto : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact pointsto) (Inj fPointsto).
+
+  Polymorphic Definition reify_null : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact null) (Inj fNull).
+
+  Polymorphic Definition reify_m_body : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact m_body) (Inj fMethodBody).
+
+  Polymorphic Definition reify_m_params : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact m_params) (Inj fMethodArgs).
+  
+  Polymorphic Definition reify_m_ret : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact m_ret) (Inj fMethodRet).
+
+  Polymorphic Definition reify_eplus : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact eplus) (Inj fPlusE).
+
+  Polymorphic Definition reify_eminus : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact eminus) (Inj fMinusE).
+
+  Polymorphic Definition reify_etimes : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact etimes) (Inj fTimesE).
+
+  Polymorphic Definition reify_eand : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact eand) (Inj fAndE).
+
+  Polymorphic Definition reify_eor : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact eor) (Inj fOrE).
+
+  Polymorphic Definition reify_enot : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact enot) (Inj fNotE).
+
+  Polymorphic Definition reify_elt : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact elt) (Inj fLtE).
+
+  Polymorphic Definition reify_eeq : Command@{Set} (expr typ func) :=
+    CPattern (ls := nil) (RExact eeq) (Inj fValEq).
+
+  Polymorphic Definition reify_eval : Command@{Set} (expr typ func) :=
+    CPattern (ls := (dexpr:Type)::nil) (RApp (RExact eval) (RHasType dexpr (RGet 0 RIgnore)))
+             (fun (x : id dexpr) => evalDExpr x).
+
+  Polymorphic Definition reify_java_func : Command@{Set} (expr typ func) :=
+    CFirst (reify_cProg :: reify_cMethod :: reify_cVal ::
+            reify_cDExpr :: reify_cCmd :: reify_cFields ::
+            reify_prog_eq :: reify_triple :: reify_typeof :: reify_field_lookup ::
+            reify_method_spec :: reify_method_lookup :: reify_pointsto :: reify_null ::
+            reify_m_body :: reify_m_params :: reify_m_ret ::
+            reify_eplus :: reify_eminus :: reify_etimes :: reify_eand :: 
+            reify_eor :: reify_enot :: reify_elt :: reify_eeq :: 
+            reify_eval :: nil).
+
+End ReifyJavaFunc.
 
 Class Environment := { java_env :> @SymEnv.functions typ _}.
 
