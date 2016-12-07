@@ -57,7 +57,7 @@ Definition TSymAll_typ_map : TSym_All typ_map.
                 eapply TSym_All_Branch_Some; [eapply _ | |] |
                 eapply TSym_All_Empty].
 Defined.
-
+ 
 Global Instance TSym_typ' : TSym typ'.
   apply TSymOneOf. apply TSymAll_typ_map.
 Defined.

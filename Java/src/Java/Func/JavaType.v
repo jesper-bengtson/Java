@@ -321,15 +321,29 @@ Require Import MirrorCore.Reify.ReifyClass.
 
 Section ReifyJavaType.
   Context {typ : Set} {FV : PartialView typ (java_typ 0)}.
+  Context {RType_typ : RType typ} {Typ2_Fun : Typ2 _ Fun}.
+  Context {Typ0_string : Typ0 _ String.string}.
+
+  Let tyString := @typ0 _ RType_typ _ _.
+  Let tyArr := @typ2 _ RType_typ _ _.
+
+  Definition reify_tyVar : Command typ :=
+    CPattern (ls := nil) (RExact Lang.var) tyString.
 
   Definition reify_tyVal : Command typ :=
     CPattern (ls := nil) (RExact val) (@tyVal typ _).
+
+  Definition reify_tyStack : Command typ :=
+    CPattern (ls := nil) (RExact Lang.stack) (tyArr tyString tyVal).
 
   Definition reify_tySpec : Command typ :=
     CPattern (ls := nil) (RExact spec) tySpec.
 
   Definition reify_tyAsn : Command typ :=
     CPattern (ls := nil) (RExact asn) tyAsn.
+
+  Definition reify_tySasn : Command typ :=
+    CPattern (ls := nil) (RExact sasn) (tyArr (tyArr tyString tyVal) tyAsn).
 
   Definition reify_tyProg : Command typ :=
     CPattern (ls := nil) (RExact Program) tyProg.
@@ -344,9 +358,10 @@ Section ReifyJavaType.
     CPattern (ls := nil) (RExact dexpr) tyDExpr.
 
     Definition reify_java_typ : Command typ :=
-      CFirst (reify_tyVal :: reify_tySpec :: reify_tyAsn :: reify_tyProg ::
-              reify_tyMethod :: reify_tyCmd :: reify_tyDExpr :: nil).
+      CFirst (reify_tyVal :: reify_tyVar :: reify_tyStack :: reify_tySpec :: reify_tyAsn :: 
+              reify_tyProg :: reify_tySasn :: reify_tyMethod :: reify_tyCmd :: 
+              reify_tyDExpr :: nil).
 
 End ReifyJavaType.
 
-Arguments reify_java_typ _ {_}.
+Arguments reify_java_typ _ {_ _ _ _}.

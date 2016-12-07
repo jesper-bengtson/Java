@@ -22,8 +22,9 @@ Require Import MirrorCore.Lib.BoolView.
 Require Import MirrorCore.Lib.ListView.
 Require Import MirrorCore.Lib.ProdView.
 Require Import MirrorCore.Lambda.ExprDsimul.
-Require Import MirrorCore.MTypes.BaseType.
-Require Import Java.Func.ListOpView.
+Require Import MirrorCore.CTypes.BaseType.
+Require Import MirrorCore.CTypes.GenericTypes.
+Require Import MirrorCore.Lib.ListOpView.
 
 Require Import ChargeCore.Open.Stack.
 Require Import ChargeCore.Open.Subst.
@@ -127,17 +128,111 @@ End Tactics.
 
 Definition my_exprD' := @exprD typ RType_typ (expr typ func).
 
+Locate TSym_list_typ.
+Print MirrorCore.CTypes.BaseType.
+Locate funcD.
+
+Print Transparent Dependencies TSym_base_typ.
+
 Ltac cbv_denote :=
   cbv [
-      goalD_aux
+      MirrorCore.syms.SymEnv.funcD
+      MirrorCore.syms.SymEnv.RSym_func
+
+      (* ExtLib.Data.Option *)
+
+        ExtLib.Data.Option.Applicative_option
+        ExtLib.Data.Option.eq_option_eq
+        ExtLib.Data.Option.Injective_Some
+
+      (* MirrorCore.Util.Quant *)
+      
+        MirrorCore.Util.Quant._impls 
+        MirrorCore.Util.Quant._and
+        MirrorCore.Util.Quant._foralls 
+        MirrorCore.Util.Quant._exists 
+ 
+      (* MirrorCore.OpenT *)
+        
+        MirrorCore.OpenT.OpenT
+        MirrorCore.OpenT.Applicative_OpenT
+        MirrorCore.OpenT.Functor_OpenT
+        MirrorCore.OpenT.OpenT_Use
+        MirrorCore.OpenT.OpenTrel
+        MirrorCore.OpenT.OpenTeq
+        MirrorCore.OpenT.Open_Abs
+        MirrorCore.OpenT.Open_App
+
+      (* MirrorCore.CTypes.CoreTypes *)
+
+        MirrorCore.CTypes.CoreTypes.TypeView_sym0
+        MirrorCore.CTypes.CoreTypes.TypeViewOk_sym0
+
+      (* MirrorCore.CTypes.GenericTypes *)
+
+        MirrorCore.CTypes.GenericTypes.symD
+
+      (* MirrorCore.CTypes.BaseType *)
+
+         MirrorCore.CTypes.BaseType.base_typ_rect
+         MirrorCore.CTypes.BaseType.base_typ_rec
+         MirrorCore.CTypes.BaseType.base_typ_ind
+         MirrorCore.CTypes.BaseType.base_typ_dec
+         MirrorCore.CTypes.BaseType.base_typD
+         MirrorCore.CTypes.BaseType.prop_match
+         MirrorCore.CTypes.BaseType.string_match
+         MirrorCore.CTypes.BaseType.TSym_base_typ
+         MirrorCore.CTypes.BaseType.tyProp
+         MirrorCore.CTypes.BaseType.tyNat
+         MirrorCore.CTypes.BaseType.tyBool
+         MirrorCore.CTypes.BaseType.tyString
+
+      (* MirrorCore.CTypes.List *)
+
+         MirrorCore.CTypes.ListType.list_typ_rect
+         MirrorCore.CTypes.ListType.list_typ_rec
+         MirrorCore.CTypes.ListType.list_typ_ind
+         MirrorCore.CTypes.ListType.list_typ_dec
+         MirrorCore.CTypes.ListType.list_typD
+         MirrorCore.CTypes.ListType.TSym_list_typ
+         MirrorCore.CTypes.ListType.tyList
+
+      (* MirrorCore.CTypes.Prod *)
+
+         MirrorCore.CTypes.ProdType.prod_typ_rect
+         MirrorCore.CTypes.ProdType.prod_typ_rec
+         MirrorCore.CTypes.ProdType.prod_typ_ind
+         MirrorCore.CTypes.ProdType.prod_typ_dec
+         MirrorCore.CTypes.ProdType.prod_typD
+         MirrorCore.CTypes.ProdType.TSym_prod_typ
+         MirrorCore.CTypes.ProdType.tyProd
+
+      (* MirrorCore.Views.View *)
+
+         MirrorCore.Views.View.f_view
+         MirrorCore.Views.View.pv_ok
+         MirrorCore.Views.View.PartialView_trans
+         MirrorCore.Views.View.PartialView_transOk
+
+        Option.Applicative_option List.Traversable_list
+        app amap_substD
+        map
+        MirrorCore.EnvI.tenv
+(*        ExtLib.Structures.Applicative.pure*)
+        ExtLib.Structures.Traversable.mapT
+        ExtLib.Data.List.mapT_list
+        Coq.Init.Wf.well_founded
+        goalD_aux
         
 	(* ExprD' *)
-        exprD symAs  typeof_sym typeof_expr type_cast
+        exprD symAs typeof_sym typeof_expr type_cast
+        MirrorCore.Lambda.ExprDsimul.ExprDenote.lambda_exprD
+        lambda_exprD
         lambda_exprD_simul func_simul
         Expr.Expr_expr
         (* RSym *)
         
-        SymSum.RSym_sum Rcast Relim Rsym eq_sym symD(* RSym_env*)
+        SymSum.RSym_sum Rcast Relim Rsym eq_sym MirrorCore.SymI.symD(* RSym_env*)
         Rcast_val eq_rect_r eq_rect Datatypes.id
         RSym_Empty RSymOneOf typeof_sym_OneOf symD_OneOf sym_eqb_OneOf
         (* Monad *)
@@ -151,9 +246,11 @@ Ltac cbv_denote :=
         HList.hlist_hd HList.hlist_tl
         
         (* TypesI *)
+        MirrorCore.TypesI.Rty
         TypesI.Typ1_App
         TypesI.Typ2_App
         TypesI.typD 
+        TypesI.RFun 
         typ2_match typ2 typ2_cast
         typ1_match typ1 typ1_cast
         typ0_match typ0 typ0_cast
@@ -164,10 +261,11 @@ Ltac cbv_denote :=
         MirrorCore.VariablesI.UVar
         MirrorCore.Lambda.ExprVariables.ExprUVar_expr
         ExprI.exprT_Inj ExprI.exprT_UseV ExprI.exprT_UseU
-        exprT_App ExprI.exprT OpenT
+        exprT_App ExprI.exprT
         HList.nth_error_get_hlist_nth 
         
         exprT_GetVAs exprT_GetUAs
+        exprT
         
         (* ILogicView*)
         
@@ -348,17 +446,33 @@ Ltac cbv_denote :=
         
         (* JavaType *)
         
+        Java.Func.Type.spec_match
+        Java.Func.Type.string_match
+        Java.Func.Type.TypeView_java_typ'
+        Java.Func.Type.TypeView_java_typ
+        Java.Func.Type.TypeViewOk_base_typ
+        Java.Func.Type.TypeViewOk_java_typ
         JavaType.tyVal JavaType.tySpec JavaType.tyAsn
         JavaType.tyProg JavaType.tyMethod JavaType.tyCmd
-        JavaType.tyDExpr JavaType.tySubst
+        JavaType.tyDExpr
+        Java.Func.JavaType.java_typD
 
         JavaType.fptrn_tyVal JavaType.fptrn_tySpec JavaType.fptrn_tyAsn
         JavaType.fptrn_tyProg JavaType.fptrn_tyMethod JavaType.fptrn_tyCmd
-        JavaType.fptrn_tyDExpr JavaType.fptrn_tySubst
+        JavaType.fptrn_tyDExpr
 
         JavaType.ptrn_tyVal JavaType.ptrn_tySpec JavaType.ptrn_tyAsn
         JavaType.ptrn_tyProg JavaType.ptrn_tyMethod JavaType.ptrn_tyCmd
-        JavaType.ptrn_tyDExpr JavaType.ptrn_tySubst
+        JavaType.ptrn_tyDExpr
+
+        Java.Func.JavaType.spec_match
+        Java.Func.JavaType.asn_match
+        Java.Func.JavaType.val_match
+        Java.Func.JavaType.TSym_java_typ
+        Java.Func.JavaType.java_typ_rect
+        Java.Func.JavaType.java_typ_rec
+        Java.Func.JavaType.java_typ_ind
+        Java.Func.JavaType.java_typ_dec
  (*
         Typ2_Fun Typ0_Prop RType_typ typD Typ0_string Typ0_bool
         Typ0_val Typ0_nat Typ0_term Typ1_list Typ2_prod
@@ -367,12 +481,121 @@ Ltac cbv_denote :=
         JavaType.bilops JavaType.ilops
         JavaType.eops (*JavaType.lops*)
 *)        
+
+        Java.Func.Type.asn_match
+        Java.Func.Type.TypeView_base_typ
+        Java.Func.Type.TypeView_base_typ'
+        Java.Func.Type.prop_match
+        Typ0_term
+        Java.Func.Type.Typ2_tyArr Java.Func.Type.Typ0_tyProp Java.Func.Type.Typ0_tyNat 
+        Java.Func.Type.Typ0_tyString Java.Func.Type.Typ0_tyVal Java.Func.Type.Typ0_tyBool 
+        Java.Func.Type.Typ1_tyList Java.Func.Type.Typ2_tyProd Java.Func.Type.RType_typ
+        Java.Func.Type.TSym_typ' Java.Func.Type.TSymAll_typ_map
+
         (*   JavaType.typD *)
+
+        (* MirrorCore.CTypes.CoreTypes *)
+
+        MirrorCore.CTypes.CoreTypes.RType_ctyp
+        MirrorCore.CTypes.CoreTypes.typ0D
+        MirrorCore.CTypes.CoreTypes.typ1D
+        MirrorCore.CTypes.CoreTypes.typ2D
+        MirrorCore.CTypes.CoreTypes.Typ2_Fun
+        MirrorCore.CTypes.CoreTypes.Typ0_Prop
+        MirrorCore.CTypes.CoreTypes.RType_ctyp
+        MirrorCore.CTypes.CoreTypes.ctyp_cast
+        MirrorCore.CTypes.CoreTypes.ctyp_dec
+        MirrorCore.CTypes.CoreTypes.ctypD
+        MirrorCore.CTypes.CoreTypes.Typ0_sym
+        MirrorCore.CTypes.CoreTypes.Typ1_sym
+        MirrorCore.CTypes.CoreTypes.Typ2_sym
+        MirrorCore.CTypes.CoreTypes.symbol_dec
+        MirrorCore.CTypes.CoreTypes.type_for_arity
+        MirrorCore.CTypes.CoreTypes.symbolD
+        MirrorCore.CTypes.CoreTypes.applyn
+        MirrorCore.CTypes.CoreTypes.applyn'
+        MirrorCore.CTypes.CoreTypes.UIP_nat
+        MirrorCore.CTypes.CoreTypes.Injective_tyApp
+
+        MirrorCore.CTypes.TSymOneOf.TSymOneOf
+        MirrorCore.CTypes.TSymOneOf.PartialViewOk_TSymOneOf
+        MirrorCore.CTypes.TSymOneOf.PartialViewPMap_Type
+        MirrorCore.CTypes.TSymOneOf.OneOfType.Injective_OneOf
+        MirrorCore.CTypes.TSymOneOf.TSym_Empty_set
+        MirrorCore.CTypes.TSymOneOf.TSym_All
+        MirrorCore.CTypes.TSymOneOf.TSym_All_Empty
+        MirrorCore.CTypes.TSymOneOf.TSym_All_Branch_None
+        MirrorCore.CTypes.TSymOneOf.TSym_All_Branch_Some
+        MirrorCore.CTypes.TSymOneOf.pmap_lookup'_Empty
+        MirrorCore.CTypes.TSymOneOf.OneOfType.asNth
+        MirrorCore.CTypes.TSymOneOf.OneOfType.asNth'
+        MirrorCore.CTypes.TSymOneOf.OneOfType.asNth'_get_lookup
+        MirrorCore.CTypes.TSymOneOf.OneOfType.asNth''
+        MirrorCore.CTypes.TSymOneOf.OneOfType.OutOfF
+        MirrorCore.CTypes.TSymOneOf.OneOfType.IntoF
+        MirrorCore.CTypes.TSymOneOf.OneOfType.IntoF_OutOfF
+        MirrorCore.CTypes.TSymOneOf.OneOfType.TypeR
+        MirrorCore.CTypes.TSymOneOf.OneOfType.pmap_left
+        MirrorCore.CTypes.TSymOneOf.OneOfType.pmap_right
+        MirrorCore.CTypes.TSymOneOf.OneOfType.pmap_here
+        MirrorCore.CTypes.TSymOneOf.OneOfType.pmap_lookup'
+        MirrorCore.CTypes.TSymOneOf.OneOfType.pmap_insert
+        MirrorCore.CTypes.TSymOneOf.OneOfType.indexF
+        MirrorCore.CTypes.TSymOneOf.OneOfType.valueF
+
+        Coq.Arith.PeanoNat.Nat.eq_dec
+        Coq.Numbers.BinNums.positive_rect
+        Coq.Numbers.BinNums.positive_rec
+        Coq.Init.Logic.and_ind
+        Coq.Init.Logic.and_rect
+        Coq.Init.Logic.eq_ind_r
+        Coq.Init.Logic.eq_ind
+        Coq.Init.Logic.eq_rect
+        Coq.Init.Logic.eq_rect_r
+        Coq.Init.Logic.eq_rec
+        Coq.Init.Logic.eq_sym
+        Coq.Init.Logic.eq_trans
+        Coq.Init.Logic.f_equal
+        Coq.Init.Logic.False_rect
+        Coq.Init.Logic.False_ind
+(*        Coq.Init.Peano.O_S*)
+        Coq.Init.Peano.eq_add_S
+(*        Coq.Init.Peano.not_eq_S*)
+        Coq.Init.Peano.f_equal_nat
+        Coq.Init.Datatypes.nat_rect
+        Coq.Init.Datatypes.nat_rec
+        Coq.Init.Datatypes.idProp
+        Coq.Init.Datatypes.IDProp
+        Coq.Init.Specif.sumbool_rec
+        Coq.Init.Specif.sumbool_rect
+
+        (* ExtLib.Tactics.Injection *)
+
+        ExtLib.Tactics.Injection.result
+        ExtLib.Tactics.Injection.injection
+
+        (* ExtLib.Data.Eq *)
+
+        ExtLib.Data.Eq.internal_eq_sym_involutive
+        ExtLib.Data.Eq.internal_eq_sym_internal
+
+        ExtLib.Data.Eq.UIP_trans.uip_trans
+        ExtLib.Data.Eq.UIP_trans.uip_prop_trans
+        ExtLib.Data.Eq.eq_Arr_eq
+        ExtLib.Data.Eq.eq_Const_eq
+
+        (* ExtLib.Data.Vector *)
+
+        ExtLib.Data.Vector.vector_dec
+        ExtLib.Data.Vector.vector_hd
+        ExtLib.Data.Vector.vector_tl
+        ExtLib.Data.Vector.vector_map
+
 	(* JavaFunc *)
         
-        
+        JavaFunc.Applicative_Fun        
         JavaFunc.RSym_ilfunc JavaFunc.RSym_bilfunc (*JavaFunc.RSym_embed_func*)
-        ilops (*is_pure*) func func_map RSym_JavaFunc typeof_java_func java_func_eq
+        ilops bilops eops is_pure func func_map RSym_JavaFunc typeof_java_func java_func_eq
         java_func_symD RelDec_java_func typeof_ilfunc
         OneOfType.list_to_pmap OneOfType.list_to_pmap_aux
         JavaFunc.Expr_expr
@@ -387,15 +610,30 @@ Ltac cbv_denote :=
         JavaFunc.fOrE JavaFunc.fNotE JavaFunc.fLtE JavaFunc.fValEq
         JavaFunc.mkTriple JavaFunc.mkFieldLookup JavaFunc.mkTypeOf
         JavaFunc.mkProgEq JavaFunc.mkExprList JavaFunc.evalDExpr
+
+        Java.Func.Type.val_match
+        Java.Func.Type.string_match
         
         (* OTHER *)
         
         goalD Ctx.propD propD exprD_typ0 exprD split_env
         
+        Nat.add
+        Nat.pred
+        snd
+        fst
+        not
         amap_substD
         substD
+        SUBST.raw
         SUBST.raw_substD
+        positive_ind positive_rect
+        UVarMap.MAP.t
+        UVarMap.MAP.key
         UVarMap.MAP.fold
+        UVarMap.MAP.from_key
+        FMapPositive.PositiveMap.key
+        FMapPositive.PositiveMap.t
         FMapPositive.PositiveMap.fold
         FMapPositive.PositiveMap.xfoldi
         FMapPositive.append
@@ -405,6 +643,7 @@ Ltac cbv_denote :=
         Pos.to_nat
         Pos.succ
         Pos.iter_op
+        Pos.eq_dec
         List.app
         HList.hlist_app
         Quant._foralls
@@ -414,6 +653,7 @@ Ltac cbv_denote :=
         View.f_insert
         SumN.pmap_lookup'
         (* FMapPositive *)
+        FMapPositive.append
         FMapPositive.pmap_here
         FMapPositive.pmap_left
         FMapPositive.pmap_right
@@ -440,9 +680,574 @@ Ltac cbv_denote :=
         SymOneOf.OneOfType.OutOf
         SymOneOf.OneOfType.Injective_OneOf
         SymOneOf.OneOfType.asNth''
+        SymOneOf.OneOfType.list_to_pmap
+        SymOneOf.OneOfType.list_to_pmap_aux
+        SymOneOf.OneOfType.TypeS
+        SymOneOf.OneOfType.TypeR
         SymOneOf.typeof_sym_OneOf
+        SymOneOf.RSymOneOf
+        SymOneOf.symD_OneOf
+        SymOneOf.RSym_All_Branch_Some
 
     ].
+
+Ltac cbv_denote_tac a :=
+  eval cbv [
+      MirrorCore.syms.SymEnv.funcD
+      MirrorCore.syms.SymEnv.RSym_func
+
+      (* ExtLib.Data.Option *)
+
+        ExtLib.Data.Option.Applicative_option
+        ExtLib.Data.Option.eq_option_eq
+        ExtLib.Data.Option.Injective_Some
+
+      (* MirrorCore.Util.Quant *)
+      
+        MirrorCore.Util.Quant._impls 
+        MirrorCore.Util.Quant._and
+        MirrorCore.Util.Quant._foralls 
+        MirrorCore.Util.Quant._exists 
+ 
+      (* MirrorCore.OpenT *)
+        
+        MirrorCore.OpenT.OpenT
+        MirrorCore.OpenT.Applicative_OpenT
+        MirrorCore.OpenT.Functor_OpenT
+        MirrorCore.OpenT.OpenT_Use
+        MirrorCore.OpenT.OpenTrel
+        MirrorCore.OpenT.OpenTeq
+        MirrorCore.OpenT.Open_Abs
+        MirrorCore.OpenT.Open_App
+
+      (* MirrorCore.CTypes.CoreTypes *)
+
+        MirrorCore.CTypes.CoreTypes.TypeView_sym0
+        MirrorCore.CTypes.CoreTypes.TypeViewOk_sym0
+
+      (* MirrorCore.CTypes.GenericTypes *)
+
+        MirrorCore.CTypes.GenericTypes.symD
+
+      (* MirrorCore.CTypes.BaseType *)
+
+         MirrorCore.CTypes.BaseType.base_typ_rect
+         MirrorCore.CTypes.BaseType.base_typ_rec
+         MirrorCore.CTypes.BaseType.base_typ_ind
+         MirrorCore.CTypes.BaseType.base_typ_dec
+         MirrorCore.CTypes.BaseType.base_typD
+         MirrorCore.CTypes.BaseType.prop_match
+         MirrorCore.CTypes.BaseType.string_match
+         MirrorCore.CTypes.BaseType.TSym_base_typ
+         MirrorCore.CTypes.BaseType.tyProp
+         MirrorCore.CTypes.BaseType.tyNat
+         MirrorCore.CTypes.BaseType.tyBool
+         MirrorCore.CTypes.BaseType.tyString
+
+      (* MirrorCore.CTypes.List *)
+
+         MirrorCore.CTypes.ListType.list_typ_rect
+         MirrorCore.CTypes.ListType.list_typ_rec
+         MirrorCore.CTypes.ListType.list_typ_ind
+         MirrorCore.CTypes.ListType.list_typ_dec
+         MirrorCore.CTypes.ListType.list_typD
+         MirrorCore.CTypes.ListType.TSym_list_typ
+         MirrorCore.CTypes.ListType.tyList
+
+      (* MirrorCore.CTypes.Prod *)
+
+         MirrorCore.CTypes.ProdType.prod_typ_rect
+         MirrorCore.CTypes.ProdType.prod_typ_rec
+         MirrorCore.CTypes.ProdType.prod_typ_ind
+         MirrorCore.CTypes.ProdType.prod_typ_dec
+         MirrorCore.CTypes.ProdType.prod_typD
+         MirrorCore.CTypes.ProdType.TSym_prod_typ
+         MirrorCore.CTypes.ProdType.tyProd
+
+      (* MirrorCore.Views.View *)
+
+         MirrorCore.Views.View.f_view
+         MirrorCore.Views.View.pv_ok
+         MirrorCore.Views.View.PartialView_trans
+         MirrorCore.Views.View.PartialView_transOk
+
+        Option.Applicative_option List.Traversable_list
+        app amap_substD
+        map
+        MirrorCore.EnvI.tenv
+(*        ExtLib.Structures.Applicative.pure*)
+        ExtLib.Structures.Traversable.mapT
+        ExtLib.Data.List.mapT_list
+        Coq.Init.Wf.well_founded
+        goalD_aux
+        
+	(* ExprD' *)
+        exprD symAs typeof_sym typeof_expr type_cast
+        MirrorCore.Lambda.ExprDsimul.ExprDenote.lambda_exprD
+        lambda_exprD
+        lambda_exprD_simul func_simul
+        Expr.Expr_expr
+        (* RSym *)
+        
+        SymSum.RSym_sum Rcast Relim Rsym eq_sym MirrorCore.SymI.symD(* RSym_env*)
+        Rcast_val eq_rect_r eq_rect Datatypes.id
+        RSym_Empty RSymOneOf typeof_sym_OneOf symD_OneOf sym_eqb_OneOf
+        (* Monad *)
+        
+        Monad.bind Monad.ret
+        
+        OptionMonad.Monad_option
+        
+        (* HList *)
+        
+        HList.hlist_hd HList.hlist_tl
+        
+        (* TypesI *)
+        MirrorCore.TypesI.Rty
+        TypesI.Typ1_App
+        TypesI.Typ2_App
+        TypesI.typD 
+        TypesI.RFun 
+        typ2_match typ2 typ2_cast
+        typ1_match typ1 typ1_cast
+        typ0_match typ0 typ0_cast
+        castR castD
+        (* ExprI *)
+        
+        MirrorCore.VariablesI.Var ExprVariables.ExprVar_expr
+        MirrorCore.VariablesI.UVar
+        MirrorCore.Lambda.ExprVariables.ExprUVar_expr
+        ExprI.exprT_Inj ExprI.exprT_UseV ExprI.exprT_UseU
+        exprT_App ExprI.exprT
+        HList.nth_error_get_hlist_nth 
+        
+        exprT_GetVAs exprT_GetUAs
+        exprT
+        
+        (* ILogicView*)
+        
+        ILogicView.mkEntails ILogicView.mkTrue ILogicView.mkFalse 
+        ILogicView.mkAnd ILogicView.mkOr ILogicView.mkImpl
+        ILogicView.mkExists ILogicView.mkForall
+        
+        ILogicView.fEntails ILogicView.fTrue ILogicView.fFalse ILogicView.fAnd 
+        ILogicView.fOr ILogicView.fImpl ILogicView.fExists ILogicView.fForall
+        ILogicView.RSym_ilfunc 
+        
+        ILogicView.funcD
+        ILogicView.entailsR
+	ILogicView.trueR
+	ILogicView.falseR
+	ILogicView.andR
+	ILogicView.orR
+	ILogicView.existsR
+	ILogicView.forallR
+        
+        (* BILogicFunc *)
+        
+        BILogicView.mkEmp BILogicView.mkStar BILogicView.mkWand
+        
+        BILogicView.fEmp BILogicView.fStar BILogicView.fWand
+        
+        BILogicView.RSym_bilfunc
+        
+        BILogicView.funcD
+	BILogicView.empR
+	BILogicView.starR
+	BILogicView.wandR
+        
+        BILogicView.typeof_bilfunc
+        
+        (* LaterFunc *)
+        (*
+          LaterFunc.mkLater
+          
+          LaterFunc.fLater
+          
+          LaterFunc.LaterFuncSumL LaterFunc.LaterFuncSumR LaterFunc.LaterFuncExpr          
+          LaterFunc.RSym_later_func LaterFunc.LaterFuncInst
+          
+          LaterFunc.funcD LaterFunc.typ2_cast'
+          
+          LaterFunc.typeof_later_func
+          
+         (* EmbedFunc *)
+         *)
+        EmbedView.mkEmbed
+        
+        EmbedView.fEmbed
+        
+        EmbedView.RSym_embed_func 
+        
+        EmbedView.funcD 
+        
+	EmbedView.embedD
+        
+        EmbedView.typeof_embed_func
+        
+        (* EqView *)
+        
+        EqView.mkCons EqView.fEq EqView.RSym_EqFunc EqView.eq_func_symD EqView.eqR EqView.typeof_eq_func
+        EqView.eq_func_eq EqView.typeof_eq_func
+        
+        (* StringView *)
+        
+        StringView.fString
+        StringView.mkString
+        
+        StringView.RSym_StringFunc StringView.string_func_symD
+        
+        StringView.stringR
+        
+        StringView.typeofStringFunc
+        
+        (* NatView *)
+        
+        NatView.fNat
+        NatView.mkNat
+        
+        NatView.RSym_NatFunc NatView.nat_func_symD
+        
+        NatView.natR
+        
+        NatView.typeofNatFunc
+        
+        (* BoolView *)
+        
+        BoolView.fBool
+        BoolView.mkBool
+        
+        BoolView.RSym_BoolFunc BoolView.bool_func_symD
+        
+        BoolView.boolR
+        
+        BoolView.typeofBoolFunc
+        (* BoolView *)
+        
+        BoolView.fBool
+        BoolView.mkBool
+        
+        BoolView.RSym_BoolFunc BoolView.bool_func_symD
+        
+        BoolView.boolR
+        
+        BoolView.typeofBoolFunc
+        
+        (* ProdView *)
+        
+        ProdView.fPair
+        ProdView.mkPair
+        
+        ProdView.RSym_ProdFunc ProdView.prod_func_symD
+        
+        ProdView.pairR
+        
+        ProdView.typeof_prod_func
+        
+        (* ListView *)
+        
+        ListView.fNil ListView.fCons
+        ListView.mkNil ListView.mkCons
+        
+        ListView.RSym_ListFunc ListView.list_func_symD
+        
+        ListView.nilR ListView.consR
+        
+        ListView.typeof_list_func
+        
+        (* ListOpView *)
+        
+        ListOpView.fLength ListOpView.fNoDup ListOpView.fIn
+        ListOpView.fMap ListOpView.fFold ListOpView.fCombine
+        
+        ListOpView.mkLength ListOpView.mkNoDup ListOpView.mkIn
+        ListOpView.mkMap ListOpView.mkFold ListOpView.mkCombine
+        
+        ListOpView.RSym_ListOpFunc ListOpView.listOp_func_symD
+        
+        ListOpView.lengthR ListOpView.NoDupR ListOpView.InR
+        ListOpView.mapR ListOpView.foldR ListOpView.combineR
+        
+        
+        ListOpView.typeof_listOp_func
+          
+        (* ApView *)
+        
+        ApplicativeView.fPure ApplicativeView.fAp
+        ApplicativeView.mkPure ApplicativeView.mkAp
+          
+        ApplicativeView.RSym_ApFunc ApplicativeView.ap_func_symD
+       
+        ApplicativeView.pureR ApplicativeView.apR
+        
+        ApplicativeView.typeof_ap_func
+        
+	(* OpenFunc *)
+	
+	SubstView.mkNull SubstView.mkStackGet
+	SubstView.mkStackSet SubstView.mkApplySubst SubstView.mkSingleSubst SubstView.mkSubst
+	SubstView.mkTruncSubst
+	
+	SubstView.fNull SubstView.fStackGet
+	SubstView.fApplySubst SubstView.fSingleSubst SubstView.fSubst SubstView.fTruncSubst
+	  
+	SubstView.open_func_symD
+	
+	SubstView.typeof_subst_func SubstView.RSym_SubstFunc
+        
+	SubstView.stack_getR
+	SubstView.stack_setR
+	SubstView.applySubstR
+	SubstView.singleSubstR
+	
+        
+        (* JavaType *)
+        
+        Java.Func.Type.spec_match
+        Java.Func.Type.string_match
+        Java.Func.Type.TypeView_java_typ'
+        Java.Func.Type.TypeView_java_typ
+        Java.Func.Type.TypeViewOk_base_typ
+        Java.Func.Type.TypeViewOk_java_typ
+        JavaType.tyVal JavaType.tySpec JavaType.tyAsn
+        JavaType.tyProg JavaType.tyMethod JavaType.tyCmd
+        JavaType.tyDExpr
+        Java.Func.JavaType.java_typD
+
+        JavaType.fptrn_tyVal JavaType.fptrn_tySpec JavaType.fptrn_tyAsn
+        JavaType.fptrn_tyProg JavaType.fptrn_tyMethod JavaType.fptrn_tyCmd
+        JavaType.fptrn_tyDExpr
+
+        JavaType.ptrn_tyVal JavaType.ptrn_tySpec JavaType.ptrn_tyAsn
+        JavaType.ptrn_tyProg JavaType.ptrn_tyMethod JavaType.ptrn_tyCmd
+        JavaType.ptrn_tyDExpr
+
+        Java.Func.JavaType.spec_match
+        Java.Func.JavaType.asn_match
+        Java.Func.JavaType.val_match
+        Java.Func.JavaType.TSym_java_typ
+        Java.Func.JavaType.java_typ_rect
+        Java.Func.JavaType.java_typ_rec
+        Java.Func.JavaType.java_typ_ind
+        Java.Func.JavaType.java_typ_dec
+ (*
+        Typ2_Fun Typ0_Prop RType_typ typD Typ0_string Typ0_bool
+        Typ0_val Typ0_nat Typ0_term Typ1_list Typ2_prod
+        should_not_be_necessary should_also_not_be_necessary
+        
+        JavaType.bilops JavaType.ilops
+        JavaType.eops (*JavaType.lops*)
+*)        
+
+        Java.Func.Type.asn_match
+        Java.Func.Type.TypeView_base_typ
+        Java.Func.Type.TypeView_base_typ'
+        Java.Func.Type.prop_match
+        Typ0_term
+        Java.Func.Type.Typ2_tyArr Java.Func.Type.Typ0_tyProp Java.Func.Type.Typ0_tyNat 
+        Java.Func.Type.Typ0_tyString Java.Func.Type.Typ0_tyVal Java.Func.Type.Typ0_tyBool 
+        Java.Func.Type.Typ1_tyList Java.Func.Type.Typ2_tyProd Java.Func.Type.RType_typ
+        Java.Func.Type.TSym_typ' Java.Func.Type.TSymAll_typ_map
+
+        (*   JavaType.typD *)
+
+        (* MirrorCore.CTypes.CoreTypes *)
+
+        MirrorCore.CTypes.CoreTypes.RType_ctyp
+        MirrorCore.CTypes.CoreTypes.typ0D
+        MirrorCore.CTypes.CoreTypes.typ1D
+        MirrorCore.CTypes.CoreTypes.typ2D
+        MirrorCore.CTypes.CoreTypes.Typ2_Fun
+        MirrorCore.CTypes.CoreTypes.Typ0_Prop
+        MirrorCore.CTypes.CoreTypes.RType_ctyp
+        MirrorCore.CTypes.CoreTypes.ctyp_cast
+        MirrorCore.CTypes.CoreTypes.ctyp_dec
+        MirrorCore.CTypes.CoreTypes.ctypD
+        MirrorCore.CTypes.CoreTypes.Typ0_sym
+        MirrorCore.CTypes.CoreTypes.Typ1_sym
+        MirrorCore.CTypes.CoreTypes.Typ2_sym
+        MirrorCore.CTypes.CoreTypes.symbol_dec
+        MirrorCore.CTypes.CoreTypes.type_for_arity
+        MirrorCore.CTypes.CoreTypes.symbolD
+        MirrorCore.CTypes.CoreTypes.applyn
+        MirrorCore.CTypes.CoreTypes.applyn'
+        MirrorCore.CTypes.CoreTypes.UIP_nat
+        MirrorCore.CTypes.CoreTypes.Injective_tyApp
+
+        MirrorCore.CTypes.TSymOneOf.TSymOneOf
+        MirrorCore.CTypes.TSymOneOf.PartialViewOk_TSymOneOf
+        MirrorCore.CTypes.TSymOneOf.PartialViewPMap_Type
+        MirrorCore.CTypes.TSymOneOf.OneOfType.Injective_OneOf
+        MirrorCore.CTypes.TSymOneOf.TSym_Empty_set
+        MirrorCore.CTypes.TSymOneOf.TSym_All
+        MirrorCore.CTypes.TSymOneOf.TSym_All_Empty
+        MirrorCore.CTypes.TSymOneOf.TSym_All_Branch_None
+        MirrorCore.CTypes.TSymOneOf.TSym_All_Branch_Some
+        MirrorCore.CTypes.TSymOneOf.pmap_lookup'_Empty
+        MirrorCore.CTypes.TSymOneOf.OneOfType.asNth
+        MirrorCore.CTypes.TSymOneOf.OneOfType.asNth'
+        MirrorCore.CTypes.TSymOneOf.OneOfType.asNth'_get_lookup
+        MirrorCore.CTypes.TSymOneOf.OneOfType.asNth''
+        MirrorCore.CTypes.TSymOneOf.OneOfType.OutOfF
+        MirrorCore.CTypes.TSymOneOf.OneOfType.IntoF
+        MirrorCore.CTypes.TSymOneOf.OneOfType.IntoF_OutOfF
+        MirrorCore.CTypes.TSymOneOf.OneOfType.TypeR
+        MirrorCore.CTypes.TSymOneOf.OneOfType.pmap_left
+        MirrorCore.CTypes.TSymOneOf.OneOfType.pmap_right
+        MirrorCore.CTypes.TSymOneOf.OneOfType.pmap_here
+        MirrorCore.CTypes.TSymOneOf.OneOfType.pmap_lookup'
+        MirrorCore.CTypes.TSymOneOf.OneOfType.pmap_insert
+        MirrorCore.CTypes.TSymOneOf.OneOfType.indexF
+        MirrorCore.CTypes.TSymOneOf.OneOfType.valueF
+
+        Coq.Arith.PeanoNat.Nat.eq_dec
+        Coq.Numbers.BinNums.positive_rect
+        Coq.Numbers.BinNums.positive_rec
+        Coq.Init.Logic.and_ind
+        Coq.Init.Logic.and_rect
+        Coq.Init.Logic.eq_ind_r
+        Coq.Init.Logic.eq_ind
+        Coq.Init.Logic.eq_rect
+        Coq.Init.Logic.eq_rect_r
+        Coq.Init.Logic.eq_rec
+        Coq.Init.Logic.eq_sym
+        Coq.Init.Logic.eq_trans
+        Coq.Init.Logic.f_equal
+        Coq.Init.Logic.False_rect
+        Coq.Init.Logic.False_ind
+(*        Coq.Init.Peano.O_S*)
+        Coq.Init.Peano.eq_add_S
+(*        Coq.Init.Peano.not_eq_S*)
+        Coq.Init.Peano.f_equal_nat
+        Coq.Init.Datatypes.nat_rect
+        Coq.Init.Datatypes.nat_rec
+        Coq.Init.Datatypes.idProp
+        Coq.Init.Datatypes.IDProp
+        Coq.Init.Specif.sumbool_rec
+        Coq.Init.Specif.sumbool_rect
+
+        (* ExtLib.Tactics.Injection *)
+
+        ExtLib.Tactics.Injection.result
+        ExtLib.Tactics.Injection.injection
+
+        (* ExtLib.Data.Eq *)
+
+        ExtLib.Data.Eq.internal_eq_sym_involutive
+        ExtLib.Data.Eq.internal_eq_sym_internal
+
+        ExtLib.Data.Eq.UIP_trans.uip_trans
+        ExtLib.Data.Eq.UIP_trans.uip_prop_trans
+        ExtLib.Data.Eq.eq_Arr_eq
+        ExtLib.Data.Eq.eq_Const_eq
+
+        (* ExtLib.Data.Vector *)
+
+        ExtLib.Data.Vector.vector_dec
+        ExtLib.Data.Vector.vector_hd
+        ExtLib.Data.Vector.vector_tl
+        ExtLib.Data.Vector.vector_map
+
+	(* JavaFunc *)
+        
+        
+        JavaFunc.Applicative_Fun
+        JavaFunc.RSym_ilfunc JavaFunc.RSym_bilfunc (*JavaFunc.RSym_embed_func*)
+        ilops bilops eops is_pure func func_map RSym_JavaFunc typeof_java_func java_func_eq
+        java_func_symD RelDec_java_func typeof_ilfunc
+        OneOfType.list_to_pmap OneOfType.list_to_pmap_aux
+        JavaFunc.Expr_expr
+        mkPointstoVar
+(*        JavaFunc.RSym_sub_func*)
+        JavaFunc.RSym_func JavaFunc.java_env
+        JavaFunc.fVal JavaFunc.fFields
+        JavaFunc.fProg JavaFunc.fCmd JavaFunc.fDExpr JavaFunc.fFields
+        JavaFunc.fMethodSpec JavaFunc.fProgEq JavaFunc.fTriple JavaFunc.fTypeOf
+        JavaFunc.fFieldLookup JavaFunc.fPointsto JavaFunc.fNull
+        JavaFunc.fPlusE JavaFunc.fMinusE JavaFunc.fTimesE JavaFunc.fAndE
+        JavaFunc.fOrE JavaFunc.fNotE JavaFunc.fLtE JavaFunc.fValEq
+        JavaFunc.mkTriple JavaFunc.mkFieldLookup JavaFunc.mkTypeOf
+        JavaFunc.mkProgEq JavaFunc.mkExprList JavaFunc.evalDExpr
+
+        Java.Func.Type.val_match
+        Java.Func.Type.string_match
+        
+        (* OTHER *)
+        
+        goalD Ctx.propD propD exprD_typ0 exprD split_env
+        
+        Nat.add
+        Nat.pred
+        snd
+        fst
+        not
+        amap_substD
+        substD
+        SUBST.raw
+        SUBST.raw_substD
+        positive_ind positive_rect
+        UVarMap.MAP.t
+        UVarMap.MAP.key
+        UVarMap.MAP.fold
+        UVarMap.MAP.from_key
+        FMapPositive.PositiveMap.key
+        FMapPositive.PositiveMap.t
+        FMapPositive.PositiveMap.fold
+        FMapPositive.PositiveMap.xfoldi
+        FMapPositive.append
+        UVarMap.MAP.from_key
+        pred
+        plus
+        Pos.to_nat
+        Pos.succ
+        Pos.iter_op
+        Pos.eq_dec
+        List.app
+        HList.hlist_app
+        Quant._foralls
+        Quant._exists
+        goalD_Prop
+          
+        View.f_insert
+        SumN.pmap_lookup'
+        (* FMapPositive *)
+        FMapPositive.append
+        FMapPositive.pmap_here
+        FMapPositive.pmap_left
+        FMapPositive.pmap_right
+        FMapPositive.pmap_lookup
+        FMapPositive.pmap_insert
+        FMapPositive.branch
+        FMapPositive.pmap_remove
+        FMapPositive.pmap_empty
+        FMapPositive.pmap_union
+        
+        Pos.add
+        (* SymOneOf *)
+
+        SymOneOf.internal_eq_rew_dep
+
+        SymOneOf.OneOfType.pmap_lookup'
+        SymOneOf.OneOfType.pmap_insert
+        SymOneOf.OneOfType.pmap_here
+        SymOneOf.OneOfType.pmap_left
+        SymOneOf.OneOfType.pmap_right
+        SymOneOf.OneOfType.Into
+        SymOneOf.OneOfType.asNth'
+        SymOneOf.OneOfType.asNth
+        SymOneOf.OneOfType.OutOf
+        SymOneOf.OneOfType.Injective_OneOf
+        SymOneOf.OneOfType.asNth''
+        SymOneOf.OneOfType.list_to_pmap
+        SymOneOf.OneOfType.list_to_pmap_aux
+        SymOneOf.OneOfType.TypeS
+        SymOneOf.OneOfType.TypeR
+        SymOneOf.typeof_sym_OneOf
+        SymOneOf.RSymOneOf
+        SymOneOf.symD_OneOf
+        SymOneOf.RSym_All_Branch_Some
+
+    ] in a.
 
 Let elem_ctor : forall x : typ, typD x -> @SymEnv.function _ _ :=
   @SymEnv.F _ _.

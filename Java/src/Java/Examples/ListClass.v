@@ -186,3 +186,5 @@ Lemma ListCorrect : prog_eq ListProg |-- head_spec //\\ tail_spec //\\ cons_spec
 Proof.
   admit.
 Admitted.
+
+Goal forall (x : val) (xs : list val), |-- List2 x xs.

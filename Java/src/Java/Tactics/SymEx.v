@@ -54,10 +54,10 @@ Require Import Charge.Tactics.Rtac.EApply.
 Require Import Charge.Tactics.Rtac.Instantiate.
 
 Require Import Coq.Arith.Peano_dec.
-Require Import MirrorCore.MTypes.BaseType.
-Require Import MirrorCore.MTypes.ProdType.
-Require Import MirrorCore.MTypes.ListType.
-Require Import MirrorCore.MTypes.ModularTypes.
+Require Import MirrorCore.CTypes.BaseType.
+Require Import MirrorCore.CTypes.ProdType.
+Require Import MirrorCore.CTypes.ListType.
+Require Import MirrorCore.CTypes.GenericTypes.
 
 Require Import Java.Func.Type.
 
@@ -75,8 +75,9 @@ Definition cancelTest n :=
 
 Section blurb.
 
-Context {fs : Environment}.
-
+(*Context {fs : Environment}.*)
+Instance fs : Environment := 
+  Build_Environment (FMapPositive.PositiveMap.empty (SymEnv.function typ _)).
 Time Eval vm_compute in typeof_expr nil nil (cancelTest 10).
 
 Fixpoint search_NoDup
@@ -144,21 +145,33 @@ Proof.
   admit.
 Admitted.
 
+Lemma test (P : Prop) (H : P) : P.
+Proof.
+  intuition.
+Qed.
+
+Definition test_lemma : lemma typ (expr typ func) (expr typ func).
+Proof.
+  reify_lemma reify_java test.
+Defined.
+
+Print test_lemma.
 
 Definition andA_temp_lemma : lemma typ (expr typ func) (expr typ func).
-reify_lemma reify_imp andA_temp.
+reify_lemma reify_java andA_temp.
 Defined.
 Print andA_temp_lemma.
+Check @lforall.
 (** Skip **)
 Definition skip_lemma : lemma typ (expr typ func) (expr typ func).
-reify_lemma reify_imp rule_skip.
+reify_lemma reify_java rule_skip.
 Defined.
 Print skip_lemma.
-
+Locate reify_lemma.
+Print andA_temp_lemma.
 Lemma skip_lemma_sound :
   @lemmaD typ (expr typ func) RType_typ Expr_expr _ (exprD_typ0 (T:=Prop)) _ nil nil skip_lemma.
 Proof.
-  
   unfold lemmaD; simpl; intros.
   unfold AbsAppI.exprT_App, exprT_Inj, Rcast_val, Rcast in * ; simpl in *.
   apply rule_skip. apply H.
@@ -167,7 +180,7 @@ Qed.
 Example test_skip_lemma : test_lemma skip_lemma. Admitted.
 *)
 Definition skip_lemma2 : lemma typ (expr typ func) (expr typ func).
-reify_lemma reify_imp rule_skip2.
+reify_lemma reify_java rule_skip2.
 Defined.
 
 Print skip_lemma2.
@@ -176,7 +189,7 @@ Example test_skip_lemma2 : test_lemma skip_lemma2. Admitted.
 *)
 Definition seq_lemma (c1 c2 : cmd) : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp (@rule_seq c1 c2).
+  reify_lemma reify_java (@rule_seq c1 c2).
 Defined.
 
 Lemma seq_lemma_sound c1 c2 :
@@ -191,7 +204,7 @@ Example test_seq_lemma (c1 c2 : cmd) : test_lemma (seq_lemma c1 c2). Admitted.
 *)
 Definition if_lemma (e : dexpr) (c1 c2 : cmd) : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp (@rule_if e c1 c2).
+  reify_lemma reify_java (@rule_if e c1 c2).
 Defined.
 
 Require Import ExtLib.Tactics.
@@ -201,25 +214,29 @@ Lemma if_lemma_sound e c1 c2 :
 Proof.
   unfold lemmaD; simpl; intros.
   unfold lemmaD'; simpl.
-  repeat (unfold AbsAppI.exprT_App; simpl in *).
+  unfold exprD_typ0; simpl.
+  unfold lambda_exprD; simpl.
   admit.
 Admitted.
 (*
 Example test_if_lemma e (c1 c2 : cmd) : test_lemma (if_lemma e c1 c2). Admitted.
 *)
-Definition read_lemma (x y : var) (f : field) : lemma typ (expr typ func) (expr typ func).
+Definition read_lemma (x y : string) (f : field) : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp (@rule_read_fwd x y f).
+  Check @rule_read_fwd.
+  reify_lemma reify_java (@rule_read_fwd x y f).
 Defined.
 
 Print read_lemma.
+Check @rule_read_fwd.
 
 Lemma read_lemma_sound x y f : ReifiedLemma (read_lemma x y f).
 Proof.
   split.
   unfold lemmaD; simpl; intros.
+  unfold read_lemma, lemmaD'; simpl.
   repeat (unfold AbsAppI.exprT_App; simpl in *).
-  eapply rule_read_fwd; [eapply H | eapply H0].
+          eapply rule_read_fwd; [eapply H | eapply H0].
 Qed.
 
 (*
@@ -227,17 +244,22 @@ Example test_read_lemma x y f : test_lemma (read_lemma x y f). Admitted.
 *)
 Set Printing Width 140.
 
-Definition write_lemma (x : var) (f : field) (e : dexpr) : lemma typ (expr typ func) (expr typ func).
+Definition write_lemma (x : string) (f : field) (e : dexpr) : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp (@rule_write_fwd x f e).
+  reify_lemma reify_java (@rule_write_fwd x f e).
 Defined.
 
-Lemma write_lemma_sound x f e :
-	lemmaD (exprD_typ0 (T:=Prop)) nil nil (write_lemma x f e).
+Print write_lemma.
+
+
+Lemma write_lemma_sound x f e : ReifiedLemma (write_lemma x f e).
 Proof.
+  split.
   unfold lemmaD; simpl; intros.
-  unfold lemmaD'; simpl; intros.
+  unfold write_lemma, lemmaD'; simpl; intros.
+  unfold exprD_typ0, exprD, Expr_expr, Expr.Expr_expr, lambda_exprD; simpl.
   repeat (unfold AbsAppI.exprT_App; simpl in *).
+(*          eapply (rule_write_fwd).*)
   admit.
 Admitted.
 
@@ -246,7 +268,7 @@ Example test_write_lemma x f e : test_lemma (write_lemma x f e). Admitted.
 *)
 Definition assign_lemma (x : var) (e : dexpr) : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp (@rule_assign_fwd x e).
+  reify_lemma reify_java (@rule_assign_fwd x e).
 Defined.
 
 Definition assign_lemma_sound x e :
@@ -262,7 +284,7 @@ Example test_assign_lemma x e : test_lemma (assign_lemma x e). Admitted.
 *)
 Definition alloc_lemma (x : var) (C : class) : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp (@rule_alloc_fwd x C).
+  reify_lemma reify_java (@rule_alloc_fwd x C).
 Defined.
 (*
 Example test_alloc_lemma x C : test_lemma (alloc_lemma x C). Admitted.
@@ -277,7 +299,7 @@ Admitted.
 
 Definition pull_exists_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp (@pull_exists val).
+  reify_lemma reify_java (@pull_exists val).
 Defined.
 (*
 Example test_pull_exists_lemma : test_lemma pull_exists_lemma. Admitted.
@@ -287,19 +309,19 @@ Eval vm_compute in pull_exists_lemma.
 
 Definition ent_exists_right_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp (@ent_right_exists val).
+  reify_lemma reify_java (@ent_right_exists val).
 Defined.
 
 Definition ent_exists_left_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp (@ent_left_exists val).
+  reify_lemma reify_java (@ent_left_exists val).
 Defined.
 (*
 Example test_pull_exists_lemma2 : test_lemma ent_exists_right_lemma. Admitted.
 *)
 Definition eq_to_subst_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp eq_to_subst.
+  reify_lemma reify_java eq_to_subst.
 Defined.
 
 Print eq_to_subst_lemma.
@@ -313,7 +335,7 @@ Example test_eq_lemma : test_lemma (eq_to_subst_lemma). Admitted.
 Definition scall_lemma (x : Lang.var) (C : class) (m : string) (es : list dexpr)
   : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp rule_static_complete.
+  reify_lemma reify_java rule_static_complete.
 Qed.
 *)
 (*
@@ -569,10 +591,12 @@ Definition PULL_TRIPLE_EXISTS : rtac typ (expr typ func) :=
   THEN (THEN (EAPPLY pull_exists_lemma) (INTRO typ func)) BETA.
 Check @CANCELLATION.
 
+Definition CANCELLATION := CANCELLATION typ func tySasn is_pure.
+
 Definition solve_entailment : rtac typ (expr typ func) :=
   THEN' (THEN (INSTANTIATE typ func)
-              (FIRST (SOLVE (CANCELLATION typ func tySasn is_pure) ::
-                     THEN (REPEAT 1000 EQSUBST) (CANCELLATION typ func tySasn is_pure) :: nil))) (MINIFY typ func).
+              (FIRST (SOLVE CANCELLATION ::
+                     THEN (REPEAT 1000 EQSUBST) CANCELLATION :: nil))) (MINIFY typ func).
 
 (*
 Definition solve_entailment (rw : rewriter (typ := typ) (func := func)) : rtac typ (expr typ func) :=
@@ -591,10 +615,10 @@ Require Import Charge.Tactics.Open.Subst.
 Require Import Charge.Tactics.Lists.Fold.
 *)
 
-Require Import Java.Func.ListOpView.
-
+Require Import MirrorCore.Lib.ListOpView.
+(*
 Definition FOLD := SIMPL true (red_beta (fun x e args => red_fold (apps e args))).
-
+*)
 (*
 Definition solve_alloc rw : rtac typ (expr typ func) :=
     THEN (INSTANTIATE typ func)
@@ -612,8 +636,8 @@ Definition simStep (r : rtac typ (expr typ func)) :=
   THEN (THEN (TRY PULL_TRIPLE_EXISTS) SUBST) r.
 Print write_lemma.
 
-Set Printing Universes.
 (*
+Set Printing Universes.
 Require Import MirrorCore.Views.ListOpView.
 Print Universes.
 Check @red_fold_ptrn typ func.
@@ -717,9 +741,14 @@ Proof.
   admit.
 Admitted.
 
+Lemma CANCELLATION_sound : rtac_sound CANCELLATION.
+Proof.
+  admit.
+Admitted.
+
 Require Import MirrorCore.Lib.ApplicativeView.
 Require Import MirrorCore.Lib.StringView.
-
+(*
 Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr typ func :=
    mkAp (func := func) tyVal tyAsn
         (mkAp tyString (tyArr tyVal tyAsn)
@@ -729,7 +758,7 @@ Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr
                     x)
               (mkPure (func := func) tyString (mkString f)))
         e  .
-
+*)
 Require Import Java.Semantics.OperationalSemantics.
 Require Import Java.Logic.SpecLogic.
 Require Import Java.Logic.AssertionLogic.
@@ -769,29 +798,29 @@ Ltac run_rtac reify term_table tac_sound :=
 	  let name := fresh "e" in
 	  lazymatch goal with
 	    | |- ?P =>
-	      reify_aux reify_imp term_table P name;
+	      reify_aux reify_java term_table P name;
 	      let t := eval vm_compute in (typeof_expr nil nil name) in
 	      let goal := eval unfold name in name in
 	      match t with
 	        | Some ?t =>
-	          let goal_result := constr:(run_tac tac (GGoal name)) in
-	          let result := eval vm_compute in goal_result in
+	          let goal_result := constr:(run_tac tac (GGoal name)) in 
+	          let result := eval vm_compute in goal_result in 
 	           lazymatch result with
-	            | More_ ?s ?g =>
+	            | More_ ?s ?g => 
 	              cut (goalD_Prop nil nil g) ; [
 	                  change (goalD_Prop nil nil g -> exprD_Prop nil nil name);
                         let H := constr:(@eq_refl (Result (CTop nil nil)) (More_ s g)) in
                         refine(@run_rtac_More  _ tac s _ _ tac_sound _);
                           vm_cast_no_check H
-	                | pose (run_tac tac (GGoal name)); cbv_denote
-	              ]
+	                |(* pose (run_tac tac (GGoal name)); cbv_denote*)
+	              ] 
 	            | Solved ?s =>
                       let H := constr:(@eq_refl (Result (CTop nil nil)) (Solved s)) in
                       refine (@run_rtac_Solved _ tac s name tac_sound _);
                         vm_cast_no_check H
 	            | Fail => idtac "Tactic" tac "failed."
 	            | ?x => idtac "Error: run_rtac could not resolve the result from the tactic :" tac; idtac x
-	          end
+	          end 
 	        | None => idtac "expression " goal "is ill typed" t
 	      end
 	  end
@@ -802,34 +831,65 @@ Ltac run_rtac reify term_table tac_sound :=
 	    lazymatch goal with
 	  | |- ?P =>
             let name := fresh "e" in
-	    reify_aux reify_imp term_table P name
+	    reify_aux reify_java term_table P name
           end.
 
+Require Import ChargeCore.Logics.BILogic.
+Open Scope string.
 
-Print seq_lemma.
+Definition blurg := 0.
+
+Ltac cbv_denote_typeof_sym :=
+  match goal with
+  | |- context [typeof_sym ?a] =>
+    let r := cbv_denote_tac (typeof_sym a) in 
+    idtac a r;
+      progress change (typeof_sym a) with r; cbv beta iota delta [blurg]
+  end.
+
+Ltac cbv_denote_symD :=
+  match goal with
+  | |- context [SymI.symD ?a] =>
+    let r := cbv_denote_tac (SymI.symD a) in 
+    idtac a r;
+      progress change (SymI.symD a) with r; cbv beta iota delta [blurg]
+  end.
+
+
+Lemma test_read : ltrue |--
+    triple 
+
+      ((ap_pointsto [("o" : string), ("f" : string), pure (T := RFun (RFun string val)) (vint 3)])  **
+       ap_pointsto [("o" : string), ("g" : string), pure (T := RFun (RFun string val)) (vint 4)])
+      (ap_pointsto [("o" : string), ("f": string), pure (T := RFun (RFun string val)) (vint 3)] **
+      (ap_pointsto [("o" : string), ("g": string), pure (T := RFun (RFun string val)) (vint 4)]))
+      (cseq (cread "x" "o" "f") (cseq (cread "y" "o" "g") cskip)).
+Proof.
+  Time run_rtac reify_java term_table runTac_sound.
+Time Qed.
 
 Definition myTac :=
   THEN (REPEAT 2 (INTRO typ func)) solve_entailment.
 
-
+(*
 Require Import Java.Examples.ListClass.
-
-Ltac charge := run_rtac reify_imp term_table runTac_sound; intros.
+*)
+Ltac charge := run_rtac reify_java term_table runTac_sound; intros.
 
 Require Import MirrorCore.syms.SymOneOf.
-
+(*
 Lemma FOLD_sound : rtac_sound FOLD.
 Proof.
   admit.
 Admitted.
-
+*)
 
 (*
 Lemma test_alloc : prog_eq ListProg |-- triple ltrue lfalse (calloc "x" "NodeC").
 Proof.
   charge.
   
-run_rtac reify_imp term_table FOLD_sound.
+run_rtac reify_java term_table FOLD_sound.
 Check 
 Print FOLD.
 Print alloc_lemma.
@@ -845,18 +905,18 @@ Print ptrnString.
 eexists.
 eexists.
 assert (exists x, prog_eq ListProg |-- prog_eq x).
-*)
+
 Definition myTac2 : rtac typ (expr typ func) := THEN (INTRO typ func) 
                                                      (CANCELLATION typ func tySpec (fun _ => true)).
                                                                    
-                                                                      (*
+                                                                      
 Lemma myTac2_sound : rtac_sound myTac2.
 Proof.
   admit.
 Admitted
 
 
-run_rtac reify_imp term_table myTac2_sound.
+run_rtac reify_java term_table myTac2_sound.
 
 reflexivity.
   cbv_denote.
@@ -872,48 +932,34 @@ Admitted.
 
 Lemma solve_entailment_test : forall x, exists y : sasn, x |-- y.
 Proof.
-  run_rtac reify_imp term_table myTac_sound.
+  run_rtac reify_java term_table myTac_sound.
 Qed.
 
 Lemma test_skip_lemma3 : testSkip 10.
 Proof.
   unfold testSkip; simpl.
-  Time run_rtac reify_imp term_table runTac_sound.
+  Time run_rtac reify_java term_table runTac_sound.
 Time Qed.
-
-Require Import ChargeCore.Logics.BILogic.
-Open Scope string.
 
 Print read_lemma.
 Print EAPPLY.
-Definition test a b c := EAPPLY (read_lemma a b c).
+Definition test2 a b c := EAPPLY (read_lemma a b c).
 
-Lemma test_sound a b c : rtac_sound (test a b c).
+Lemma test_sound a b c : rtac_sound (test2 a b c).
 Proof.
   admit.
 Admitted.
 
 Require Import MirrorCore.AbsAppI.
 
-Lemma test_read : ltrue |--
-    triple
-      (ap_pointsto [("o" : Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)] **
-       ap_pointsto [("o" : Lang.var), ("g" : field), pure (T := Fun (Lang.stack)) (vint 4)])
-      (ap_pointsto [("o" : Lang.var), ("f": field), pure (T := Fun (Lang.stack)) (vint 3)] **
-      (ap_pointsto [("o" : Lang.var), ("g": field), pure (T := Fun (Lang.stack)) (vint 4)]))
-      (cseq (cread "x" "o" "f") (cseq (cread "y" "o" "g") cskip)).
-Proof.
-  Time run_rtac reify_imp term_table runTac_sound.
-Time Qed.
-
 Lemma test_write :
 	ltrue |--
 	triple
-      (ap_pointsto [("o": Lang.var), ("f" : field), pure (T := Fun (Lang.stack)) (vint 3)])
-      (ap_pointsto [("o": Lang.var), ("f": field), pure (T := Fun (Lang.stack)) (vint 4)])
+      (ap_pointsto [("o": String.string), ("f" : field), pure (T := RFun (RFun string val)) (vint 3)])
+      (ap_pointsto [("o": String.string), ("f": field), pure (T := RFun (RFun string val)) (vint 4)])
       (cseq (cwrite "o" "f" (E_val (vint 4))) cskip).
 Proof.
-  Time run_rtac reify_imp term_table runTac_sound.
+  Time run_rtac reify_java term_table runTac_sound.
 Time Qed.
 
 Require Import BinInt.
@@ -1036,7 +1082,7 @@ Lemma test_swap :
  {[ap_pointsto  ["o", ("f")%string, eval (E_val (vint 6))] **
    ap_pointsto  ["o", ("g")%string, eval (E_val (vint 5))] ** empSP]} ).
 Proof.
-  Time run_rtac reify_imp term_table (@runTac_sound rw_fail).
+  Time run_rtac reify_java term_table (@runTac_sound rw_fail).
 Qed.
 *)
 
@@ -1049,12 +1095,12 @@ Ltac run_rtac2 reify term_table tac_sound :=
 	  let name := fresh "e" in
 	  lazymatch goal with
 	    | |- ?P =>
-	      reify_aux reify_imp term_table P name; clear name
+	      reify_aux reify_java term_table P name; clear name
 	  end
 	| _ => idtac tac_sound "is not a soudness theorem."
   end.
 
-Ltac charge2 := run_rtac2 reify_imp term_table runTac_sound; intros.
+Ltac charge2 := run_rtac2 reify_java term_table runTac_sound; intros.
 
 Lemma test_swap2 : mkSwap 20.
 Proof.
@@ -1197,7 +1243,7 @@ Proof.
 Qed.
 
 Definition true_lemma : lemma typ (expr typ func) (expr typ func).
-reify_lemma reify_imp LTrue.
+reify_lemma reify_java LTrue.
 Defined.
 Print true_lemma.
 (*
@@ -1222,7 +1268,7 @@ Qed.
 
 Lemma test_true : True.
 Proof.
-  run_rtac reify_imp term_table AUTO_sound.
+  run_rtac reify_java term_table AUTO_sound.
 Qed.
 
 Print test_true.
@@ -1258,7 +1304,7 @@ Qed.
 
 Definition andI_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp andI.
+  reify_lemma reify_java andI.
 Defined.
 Print andI_lemma.
 Lemma andI_lemma_sound :
@@ -1282,7 +1328,7 @@ Qed.
 
 Lemma test_and : forall (P Q R : Prop), Q -> P -> R -> P /\ Q.
 Proof.
-  run_rtac reify_imp term_table AUTO'_sound.
+  run_rtac reify_java term_table AUTO'_sound.
 Qed.
 
 Print test_and.
@@ -1322,12 +1368,12 @@ Qed.
 
 Definition orI1_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp orI1.
+  reify_lemma reify_java orI1.
 Defined.
 
 Definition orI2_lemma : lemma typ (expr typ func) (expr typ func).
 Proof.
-  reify_lemma reify_imp orI2.
+  reify_lemma reify_java orI2.
 Defined.
 
 Lemma orI1_lemma_sound :
@@ -1363,7 +1409,7 @@ Lemma test_and2 : forall (P Q R T : Prop),
 	 Q -> P -> R -> (P /\ Q /\ R) \/
 	    (Q /\ T /\ (R /\ R) /\ (P /\ Q) /\ Q).
 Proof.
-  run_rtac reify_imp term_table AUTO''_sound.
+  run_rtac reify_java term_table AUTO''_sound.
 Qed.
 (*
 Ltac run_rtac reify term_table tac_sound :=
@@ -1411,7 +1457,7 @@ Qed.
 Lemma test_pull_quant_left  (P : sasn) (Q : nat -> sasn) :
   P //\\ (Exists x : nat, Q x) |-- P.
 Proof.
-  run_rtac reify_imp term_table PULL_EXISTSL_sound.
+  run_rtac reify_java term_table PULL_EXISTSL_sound.
 
   Print func.
 *)

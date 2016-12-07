@@ -21,7 +21,7 @@ Require Import Java.Func.Reify.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Local Instance Applicative_Fun A : Applicative (Fun A) :=
+Local Instance Applicative_Fun A : Applicative (RFun A) :=
 { pure := fun _ x _ => x
 ; ap := fun _ _ f x y => (f y) (x y)
 }.
@@ -91,10 +91,10 @@ Proof.
   	[apply Hc1|apply Hc2].*)
 Admitted.
 
-  Lemma rule_read_fwd (x y : Lang.var) (f : field) (e : stack -> val) (P Q : sasn) (G : spec)
+  Lemma rule_read_fwd (x y : String.string) (f : field) (e : RFun (RFun String.string val) val) (P Q : RFun (RFun String.string val) asn) (G : spec)
     (HP : P |-- ap_pointsto [y, f, e])
-    (HQ : Exists v : val, (embed (ap_eq [stack_get x, apply_subst e (subst1 (pure (T := Fun stack) v) x)])) //\\
-    					      (apply_subst P (subst1 (pure (T := Fun stack) v) x)) |-- Q) :
+    (HQ : Exists v : val, (embed (ap_eq [stack_get x, apply_subst e (subst1 (pure (T := RFun (RFun String.string val)) v) x)])) //\\
+    					      (apply_subst P (subst1 (pure (T := RFun (RFun String.string val)) v) x)) |-- Q) :
     G |-- {[ P ]} cread x y f {[ Q ]}.
   Proof.
     admit.
@@ -106,7 +106,7 @@ Admitted.
     Admitted.
 
 
-  Lemma rule_write_fwd (x : Lang.var) (f : field) (e : dexpr) G (P Q F : sasn) (e' : stack -> val)
+  Lemma rule_write_fwd (x : String.string) (f : field) (e : dexpr) G (P Q F : RFun (RFun String.string val) asn) (e' : RFun (RFun String.string val) val)
         (HP : P |-- ap_pointsto [x, f, e'] ** F) 
         (HQ : ap_pointsto [x, f, eval e] ** F |-- Q) :
     G |-- ({[ P ]} cwrite x f e {[ Q ]}).
