@@ -633,7 +633,7 @@ Definition simStep (rw : rewriter (typ := typ) (func := func)) (r : rtac typ (ex
 *)
 
 Definition simStep (r : rtac typ (expr typ func)) :=
-  THEN (THEN (TRY PULL_TRIPLE_EXISTS) SUBST) r.
+  THEN (INSTANTIATE typ func) (THEN (THEN (THEN (TRY PULL_TRIPLE_EXISTS) SUBST) (TRY EQSUBST)) r).
 Print write_lemma.
 
 (*
@@ -708,8 +708,11 @@ Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
                 | cwrite x f e => THEN (EAPPLY (write_lemma x f e)) solve_entailment
 (*		| cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
                                       (ON_EACH (tripleE c1::TRY (tripleE c2)::nil))*)
-                | cseq c1 c2 => THEN' (EAPPLY (seq_lemma c1 c2))
-                                               (ON_EACH (tripleE c1::simStep (TRY (tripleE c2))::nil))
+                | cseq c1 c2 => 
+                  THEN' (EAPPLY (seq_lemma c1 c2))
+                        (ON_EACH 
+                           (tripleE c1::
+                                    simStep (TRY (tripleE c2))::nil))
 		| _ => IDTAC
 	end.
 
@@ -812,7 +815,7 @@ Ltac run_rtac reify term_table tac_sound :=
                         let H := constr:(@eq_refl (Result (CTop nil nil)) (More_ s g)) in
                         refine(@run_rtac_More  _ tac s _ _ tac_sound _);
                           vm_cast_no_check H
-	                |(* pose (run_tac tac (GGoal name)); cbv_denote*)
+	                | pose (run_tac tac (GGoal name)); cbv_denote
 	              ] 
 	            | Solved ?s =>
                       let H := constr:(@eq_refl (Result (CTop nil nil)) (Solved s)) in
@@ -962,11 +965,6 @@ Proof.
   Time run_rtac reify_java term_table runTac_sound.
 Time Qed.
 
-Require Import BinInt.
-
-  Opaque pure.
-  Opaque ap.
-
 Definition Test_swap2_body := (cseq (cseq (cread ("x")%string ("this")%string ("a")%string) (cseq (cread ("y")%string ("this")%string ("b")%string) (cseq (cwrite ("this")%string ("a")%string (E_var ("y")%string)) (cwrite ("this")%string ("b")%string (E_var ("x")%string))))) cskip).
 Definition Test_swap2_Method := (Build_Method (("this")%string :: nil) Test_swap2_body (E_val nothing)).
 Definition Test_Class := (Build_Class (("a")%string :: (("b")%string :: nil)) ((("swap2")%string, Test_swap2_Method) :: nil)).
@@ -983,8 +981,6 @@ Theorem Test_swap2_s : lentails ltrue (triple
 ).
 Proof.
   unfold Test_swap2_body.
-  Opaque pure.
-  simpl.
   Time charge.
 Qed.
 
@@ -1005,11 +1001,10 @@ Test_swap2_body2
 ).
 Proof.
   unfold Test_swap2_body2.
-  simpl.
   Time charge.
-Admitted.
+Time Qed.
 
-Lemma test2 :
+Lemma test3 :
 
 lentails ltrue (triple
    ( ap_pointsto ["o", "f1", eval (E_val 1%Z)] **
@@ -1025,50 +1020,48 @@ Proof.
   charge.
 Qed.
 
-
-Fixpoint mkSwapPre n : sasn :=
+Locate Z.of_nat.
+Fixpoint mkSwapPre n : RFun (RFun string val) asn :=
 	match n with
 	  | 0   => empSP
-	  | S n => ap_pointsto [("o": Lang.var), (append "f" (nat2string10 n) : field),
-	  	                     (eval (E_val (vint (Z.of_nat n))))] **
+	  | S n => ap_pointsto [("o": string ), (append "f" (nat2string10 n) : field),
+	  	                     (eval (E_val (vint (BinInt.Z.of_nat n))))] **
 	           mkSwapPre n
 	end.
 
 
-Fixpoint mkSwapPostAux n m :=
+Fixpoint mkSwapPostAux n m : RFun (RFun string val) asn :=
   match n with
     | 0 => empSP
-	| S n => ap_pointsto [("o": Lang.var), (append "f" (nat2string10 n) : field),
-	  	                     (eval (E_val (vint (Z.of_nat (m - (S n))))))] **
+	| S n => ap_pointsto [("o": string), (append "f" (nat2string10 n) : field),
+	  	                     (eval (E_val (vint (BinInt.Z.of_nat (m - (S n))))))] **
 	         mkSwapPostAux n m
   end.
 
-Definition mkSwapPost n := mkSwapPostAux n n.
+Definition mkSwapPost n : RFun (RFun string val) asn := mkSwapPostAux n n.
 
-Fixpoint mkRead n c :=
+Fixpoint mkRead n c : cmd :=
 	match n with
 	  | 0 => c
-	  | S n => cseq (cread ((append "x" (nat2string10 n):Lang.var)) ("o":Lang.var) ((append "f" (nat2string10 n)):field))
+	  | S n => cseq (cread ((append "x" (nat2string10 n):string)) ("o":string) ((append "f" (nat2string10 n)):field))
 	                (mkRead n c)
     end.
 
 Fixpoint mkWriteAux n m c :=
 	match n with
 	  | 0 => c
-	  | S n => cseq (cwrite ("o":Lang.var) (append "f" (nat2string10 n)) (E_var (append "x" (nat2string10 (m - (S n))))))
+	  | S n => cseq (cwrite ("o":string) (append "f" (nat2string10 n)) (E_var (append "x" (nat2string10 (m - (S n))))))
 	                (mkWriteAux n m c)
     end.
 
 Definition mkWrite n c := mkWriteAux n n c.
 
-Definition mkSwapProg (n : nat) (c : cmd) := mkRead n (mkWrite n c).
+Definition mkSwapProg (n : nat) (c : cmd) : cmd := mkRead n (mkWrite n c).
 
-Definition mkSwap n :=
+Definition mkSwap n : Prop :=
 	ltrue |-- triple (mkSwapPre n) (mkSwapPost n) (mkSwapProg n cskip).
 
 Set Printing Depth 100.
-
-  Opaque ap.
 
 (*
 Lemma test_swap :
@@ -1105,7 +1098,7 @@ Ltac charge2 := run_rtac2 reify_java term_table runTac_sound; intros.
 Lemma test_swap2 : mkSwap 20.
 Proof.
   unfold mkSwap, mkSwapPre, mkSwapPost, mkSwapProg, mkSwapPostAux, mkRead, mkWrite, mkWriteAux.
-  Opaque pure.
+  Opaque pure ap.
   simpl.
 
 (* GREGORY : charge runs the complete tactic, charge2 runs only reification *)

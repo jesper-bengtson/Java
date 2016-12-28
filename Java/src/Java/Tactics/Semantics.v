@@ -26,7 +26,7 @@ Local Instance Applicative_Fun A : Applicative (RFun A) :=
 ; ap := fun _ _ f x y => (f y) (x y)
 }.
 
-Lemma pull_exists {A} {P : A -> sasn} c Q G
+Lemma pull_exists {A} {P : A -> (RFun (RFun String.string val) asn)} c Q G
 	(H : forall x, G |-- {[P x]} c {[Q]}) :
 	G |-- {[lexists P]} c {[Q]}.
 Proof.
@@ -34,7 +34,7 @@ Proof.
   apply lforallR. apply H.
 Qed.
 
-Lemma eq_to_subst x (e : Lang.stack -> val) (P Q : sasn) 
+Lemma eq_to_subst x (e : RFun (RFun String.string val) val) (P Q : RFun (RFun String.string val) asn) 
     (H : apply_subst P (subst1 e x) |-- apply_subst Q (subst1 e x)) :
 	embed (ap_eq [stack_get x, e]) //\\ P |-- Q.
 Proof.
@@ -42,21 +42,21 @@ Proof.
   admit.
 Admitted.
 
-Lemma ent_right_exists {A} (P : sasn) (Q : A -> sasn)
+Lemma ent_right_exists {A} (P : RFun (RFun String.string val) asn) (Q : A -> RFun (RFun String.string val) asn)
 	(H : exists x, P |-- Q x) :
 	P |-- lexists Q.
 Proof.
   admit.
 Admitted.
 
-Lemma ent_left_exists {A} (P : A -> sasn) (Q : sasn)
+Lemma ent_left_exists {A} (P : A -> RFun (RFun String.string val) asn) (Q : RFun (RFun String.string val) asn)
 	(H : forall x : A, P x |-- Q) :
 	lexists P |-- Q.
 Proof.
   admit.
 Admitted.
 
-Lemma rule_seq c1 c2 (P Q R : sasn) G
+Lemma rule_seq c1 c2 (P Q R : RFun (RFun String.string val) asn) G
       (Hc1 : G |-- {[P]} c1 {[Q]})
       (Hc2 : G |-- {[Q]} c2 {[R]}) :
   G |-- {[P]} cseq c1 c2 {[R]}.
@@ -77,10 +77,10 @@ Proof.
   apply rule_skip. reflexivity.
 Qed.
 
-Lemma rule_if (e : dexpr) c1 c2 (P Q : sasn) G
-      (Hc1 : G |-- {[(@embed (@vlogic Lang.var val) sasn _ 
+Lemma rule_if (e : dexpr) c1 c2 (P Q : RFun (RFun String.string val) asn) G
+      (Hc1 : G |-- {[(@embed (@vlogic Lang.var val) (RFun (RFun String.string val) asn) _ 
                       (ap_eq [eval e, pure (vbool true)])) //\\ P]} c1 {[Q]})
-      (Hc2 : G |-- {[(@embed (@vlogic Lang.var _) sasn _ 
+      (Hc2 : G |-- {[(@embed (@vlogic Lang.var _) (RFun (RFun String.string val) asn) _ 
                       (ap_eq [eval (E_not e), pure (vbool true)])) //\\ P]} c2 {[Q]}) : 
   G |-- {[P]} cif e c1 c2 {[Q]}. 
 Proof.
@@ -137,7 +137,7 @@ Admitted.
 *)
   Admitted.
 
-  Lemma rule_alloc_fwd (x : Lang.var) (C : class) (G : spec) (P Q : sasn) (fields : list field) (Pr : Program) 
+  Lemma rule_alloc_fwd (x : Lang.var) (C : class) (G : spec) (P Q : RFun (RFun String.string val) asn) (fields : list field) (Pr : Program) 
 	(Heq : G |-- prog_eq Pr)
 	(Hf : field_lookup Pr C fields) 
 	(Hent : Exists p : val, embed (ap_typeof [stack_get x, C]) //\\
@@ -150,7 +150,7 @@ Admitted.
   Admitted.
 (*
   Lemma rule_static_complete (x : Lang.var) C (m : String.string) (es : list dexpr) (ps : list String.string) (r : Lang.var) G
-    (P Q F Pm Qm : sasn)
+    (P Q F Pm Qm : RFun (RFun String.string val) asn)
     (HSpec : G |-- |> method_spec C m ps r Pm Qm)
     (HPre: P |-- apply_subst Pm (substl_trunc (zip ps (@map _ (stack -> val) eval es))) ** F)
     (HLen: length ps = length es) :
@@ -164,7 +164,7 @@ Proof.
 Admitted.
 
 Lemma rule_dynamic_complete (x y : Lang.var) (m : String.string) (es : list dexpr) (ps : list String.string) C (r : Lang.var) G
-    (P Q F Pm Qm : sasn)
+    (P Q F Pm Qm : RFun (RFun String.string val) asn)
     (HSpec : G |-- |> method_spec C m ps r Pm Qm)
     (HPre: P |-- (embed (ap_typeof [stack_get y, C]) //\\ 
                   apply_subst Pm (substl_trunc (zip ps (@map _ (stack -> val) eval (E_var y :: es))))) ** 

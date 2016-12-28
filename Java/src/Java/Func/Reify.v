@@ -40,6 +40,7 @@ Require Import ChargeCore.Logics.Later.
 Require Import ExtLib.Structures.Applicative.
 Require Import MirrorCore.Lib.NatView.
 
+
 Reify Declare Typed Table term_table : BinNums.positive => typ.
 
 Local Instance Applicative_Fun A : Applicative (RFun A) :=
