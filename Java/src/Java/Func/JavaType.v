@@ -8,6 +8,7 @@ Require Import MirrorCore.CTypes.CoreTypes.
 Require Import MirrorCore.Views.FuncView.
 Require Import MirrorCore.Views.Ptrns.
 Require Import MirrorCore.Views.TypeView.
+Require Import MirrorCore.Lib.StringView.
 
 Require Import ChargeCore.Open.Subst.
 
@@ -25,6 +26,9 @@ Inductive java_typ : nat -> Set :=
 | tAsn : java_typ 0
 | tProg : java_typ 0
 | tMethod : java_typ 0
+| tMethodName : java_typ 0
+| tFieldName : java_typ 0
+| tClassName : java_typ 0
 | tCmd : java_typ 0
 | tDExpr : java_typ 0.
 
@@ -55,10 +59,28 @@ Definition java_typ_dec {n} (a : java_typ n) : forall b, {a = b} + {a <> b}.
         | tProg => left eq_refl
         | _ => right (fun pf => _)
         end
-    | tMethod =>
+    | tMethod =>  
       fun b =>
         match b as b in java_typ 0 return {tMethod = b} + {tMethod <> b} with
         | tMethod => left eq_refl
+        | _ => right (fun pf => _)
+        end
+    | tMethodName =>  
+      fun b =>
+        match b as b in java_typ 0 return {tMethodName = b} + {tMethodName <> b} with
+        | tMethodName => left eq_refl
+        | _ => right (fun pf => _)
+        end
+    | tFieldName =>  
+      fun b =>
+        match b as b in java_typ 0 return {tFieldName = b} + {tFieldName <> b} with
+        | tFieldName => left eq_refl
+        | _ => right (fun pf => _)
+        end
+    | tClassName =>  
+      fun b =>
+        match b as b in java_typ 0 return {tClassName = b} + {tClassName <> b} with
+        | tClassName => left eq_refl
         | _ => right (fun pf => _)
         end
     | tCmd =>
@@ -83,8 +105,11 @@ Definition java_typD {n} (t : java_typ n) : type_for_arity n :=
   | tAsn => asn
   | tProg => Program
   | tMethod => Method
+  | tMethodName => method
+  | tFieldName => method
+  | tClassName => class
   | tCmd => cmd
-  | tExpr => dexpr
+  | tDExpr => dexpr
   end.
 
 Section DepMatch_java_typ.
@@ -164,6 +189,9 @@ Section FuncView_java_type.
   Definition tyAsn := f_insert tAsn.
   Definition tyProg := f_insert tProg.
   Definition tyMethod := f_insert tMethod.
+  Definition tyMethodName := f_insert tMethodName.
+  Definition tyFieldName := f_insert tFieldName.
+  Definition tyClassName := f_insert tClassName.
   Definition tyCmd := f_insert tCmd.
   Definition tyDExpr := f_insert tDExpr.
 
@@ -202,10 +230,24 @@ Section FuncView_java_type.
         | _ => bad f
       end.
 
-  Definition fptrn_tyDExpr : ptrn (java_typ 0) unit :=
+  Definition fptrn_tyMethodName : ptrn (java_typ 0) unit :=
     fun f U good bad =>
       match f with
-        | tDExpr => good tt
+        | tMethodName => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrn_tyClassName : ptrn (java_typ 0) unit :=
+    fun f U good bad =>
+      match f with
+        | tClassName => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrn_tyFieldName : ptrn (java_typ 0) unit :=
+    fun f U good bad =>
+      match f with
+        | tFieldName => good tt
         | _ => bad f
       end.
 
@@ -213,6 +255,13 @@ Section FuncView_java_type.
     fun f U good bad =>
       match f with
         | tCmd => good tt
+        | _ => bad f
+      end.
+
+  Definition fptrn_tyDExpr : ptrn (java_typ 0) unit :=
+    fun f U good bad =>
+      match f with
+        | tDExpr => good tt
         | _ => bad f
       end.
 
@@ -283,6 +332,9 @@ Section FuncView_java_type.
   Definition ptrn_tyAsn : ptrn typ unit := ptrn_view FV fptrn_tyAsn.
   Definition ptrn_tyProg : ptrn typ unit := ptrn_view FV fptrn_tyProg.
   Definition ptrn_tyMethod : ptrn typ unit := ptrn_view FV fptrn_tyMethod.
+  Definition ptrn_tyMethodName : ptrn typ unit := ptrn_view FV fptrn_tyMethodName.
+  Definition ptrn_tyClassName : ptrn typ unit := ptrn_view FV fptrn_tyClassName.
+  Definition ptrn_tyFieldName : ptrn typ unit := ptrn_view FV fptrn_tyFieldName.
   Definition ptrn_tyCmd : ptrn typ unit := ptrn_view FV fptrn_tyCmd.
   Definition ptrn_tyDExpr : ptrn typ unit := ptrn_view FV fptrn_tyDExpr.
 
@@ -324,8 +376,8 @@ Section ReifyJavaType.
   Context {RType_typ : RType typ} {Typ2_Fun : Typ2 _ Fun}.
   Context {Typ0_string : Typ0 _ String.string}.
 
-  Let tyString := @typ0 _ RType_typ _ _.
   Let tyArr := @typ2 _ RType_typ _ _.
+  Let tyString := @typ0 _ RType_typ _ _.
 
   Definition reify_tyVar : Command typ :=
     CPattern (ls := nil) (RExact Lang.var) tyString.
@@ -351,6 +403,15 @@ Section ReifyJavaType.
   Definition reify_tyMethod : Command typ :=
     CPattern (ls := nil) (RExact Method) tyMethod.
 
+  Definition reify_tyMethodName : Command typ :=
+    CPattern (ls := nil) (RExact method) tyMethodName.
+
+  Definition reify_tyClassName : Command typ :=
+    CPattern (ls := nil) (RExact class) tyClassName.
+
+  Definition reify_tyFieldName : Command typ :=
+    CPattern (ls := nil) (RExact field) tyFieldName.
+
   Definition reify_tyCmd : Command typ :=
     CPattern (ls := nil) (RExact cmd) tyCmd.
 
@@ -358,9 +419,10 @@ Section ReifyJavaType.
     CPattern (ls := nil) (RExact dexpr) tyDExpr.
 
     Definition reify_java_typ : Command typ :=
-      CFirst (reify_tyVal :: reify_tyVar :: reify_tyStack :: reify_tySpec :: reify_tyAsn :: 
+      CFirst (reify_tyVal :: reify_tyStack :: reify_tySpec :: reify_tyAsn :: 
               reify_tyProg :: reify_tySasn :: reify_tyMethod :: reify_tyCmd :: 
-              reify_tyDExpr :: nil).
+              reify_tyMethodName :: reify_tyClassName :: reify_tyFieldName ::
+              reify_tyDExpr :: reify_tyVar :: nil).
 
 End ReifyJavaType.
 

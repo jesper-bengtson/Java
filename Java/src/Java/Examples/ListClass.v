@@ -187,4 +187,3 @@ Proof.
   admit.
 Admitted.
 
-Goal forall (x : val) (xs : list val), |-- List2 x xs.

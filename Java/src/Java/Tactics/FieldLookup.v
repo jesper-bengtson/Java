@@ -8,8 +8,9 @@ Require Import MirrorCore.Lib.StringView.
 
 Require Import Java.Func.JavaFunc.
 Require Import Java.Func.JavaType.
+Require Import Java.Func.Type.
 Require Import Java.Language.Program.
-
+(*
 Section FieldLookup.
   Context {fs : Environment}.
 
@@ -33,7 +34,7 @@ Section FieldLookup.
                         (ptrnString get))
                    get)) Fail.
 
-(*
+
 Lemma FIELD_LOOKUP_sound : rtac_sound FIELD_LOOKUP.
 Proof.
   unfold rtac_sound, rtac_spec; intros.

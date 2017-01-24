@@ -193,8 +193,13 @@ Definition vlogic_eval (e : dexpr) : vlogic := fun s => eval e s = true.
 Definition eval_exprs (s : stack) (es : list dexpr) :=
   map (fun e => eval_aux s e) es.
 
-Notation "'field'"  := string.
-Notation "'method'" := string.
+Definition field : Set := String.string.
+Definition method : Set := String.string.
+
+Global Instance RelDec_var : RelDec (@eq var) := RelDec_string.
+Global Instance RelDec_method : RelDec (@eq var) := RelDec_string.
+Global Instance RelDec_class : RelDec (@eq var) := RelDec_string.
+Global Instance RelDec_field : RelDec (@eq var) := RelDec_string.
 
 Inductive cmd :=
 | cassign   : var -> dexpr -> cmd
@@ -252,10 +257,10 @@ Proof.
 	  rewrite andb_true_iff, IHc.
 	  consider (d ?[ eq ] d0); intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v0); consider (s ?[ eq ] s0); consider (d ?[ eq ] d0);
+	  consider (v ?[ eq ] v0); consider (f ?[ eq ] f0); consider (d ?[ eq ] d0);
 	    simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (s ?[ eq ] s0);
+	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (f ?[ eq ] f0);
 	    simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
 	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (l ?[ eq ] l0);
@@ -268,10 +273,10 @@ Proof.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
 	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (s ?[ eq ] s0);
+	  consider (v ?[ eq ] v1); consider (v0 ?[ eq ] v2); consider (m ?[ eq ] m0);
 	    consider (l ?[ eq ] l0); simpl; intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
-	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); consider (s ?[ eq ] s0);
+	  consider (v ?[ eq ] v0); consider (c ?[ eq ] c0); consider (m ?[ eq ] m0);
 	    consider (l ?[ eq ] l0); simpl; try intuition congruence.
 	+ destruct y; unfold rel_dec; simpl; try intuition congruence.
 	  consider (d ?[ eq ] d0); try intuition congruence.

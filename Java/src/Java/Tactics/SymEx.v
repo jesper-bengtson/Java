@@ -20,6 +20,7 @@ Require Import MirrorCore.Lambda.RedAll.
 Require Import MirrorCore.Lambda.ExprVariables.
 Require Import MirrorCore.Lambda.Rtac.
 Require Import Charge.Views.ILogicView.
+Require Import Charge.Patterns.ILogicPattern.
 (*
 Require Import Charge.Tactics.OrderedCanceller.
 Require Import Charge.Tactics.BILNormalize.
@@ -31,6 +32,7 @@ Require Import Java.Func.JavaFunc.
 Require Import Java.Tactics.Semantics.
 
 Require Import Charge.Views.BILogicView.
+Require Import Charge.Patterns.BILogicPattern.
 
 Require Import Charge.Tactics.Rtac.ReifyLemma.
 (*
@@ -161,14 +163,12 @@ Definition andA_temp_lemma : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_java andA_temp.
 Defined.
 Print andA_temp_lemma.
-Check @lforall.
+
 (** Skip **)
 Definition skip_lemma : lemma typ (expr typ func) (expr typ func).
 reify_lemma reify_java rule_skip.
 Defined.
-Print skip_lemma.
-Locate reify_lemma.
-Print andA_temp_lemma.
+
 Lemma skip_lemma_sound :
   @lemmaD typ (expr typ func) RType_typ Expr_expr _ (exprD_typ0 (T:=Prop)) _ nil nil skip_lemma.
 Proof.
@@ -207,6 +207,8 @@ Proof.
   reify_lemma reify_java (@rule_if e c1 c2).
 Defined.
 
+Print if_lemma.
+
 Require Import ExtLib.Tactics.
 
 Lemma if_lemma_sound e c1 c2 :
@@ -221,14 +223,12 @@ Admitted.
 (*
 Example test_if_lemma e (c1 c2 : cmd) : test_lemma (if_lemma e c1 c2). Admitted.
 *)
-Definition read_lemma (x y : string) (f : field) : lemma typ (expr typ func) (expr typ func).
+Definition read_lemma (x y : String.string) (f : field) : lemma typ (expr typ func) (expr typ func).
 Proof.
-  Check @rule_read_fwd.
   reify_lemma reify_java (@rule_read_fwd x y f).
 Defined.
 
 Print read_lemma.
-Check @rule_read_fwd.
 
 Lemma read_lemma_sound x y f : ReifiedLemma (read_lemma x y f).
 Proof.
@@ -244,7 +244,7 @@ Example test_read_lemma x y f : test_lemma (read_lemma x y f). Admitted.
 *)
 Set Printing Width 140.
 
-Definition write_lemma (x : string) (f : field) (e : dexpr) : lemma typ (expr typ func) (expr typ func).
+Definition write_lemma (x : Lang.var) (f : field) (e : dexpr) : lemma typ (expr typ func) (expr typ func).
 Proof.
   reify_lemma reify_java (@rule_write_fwd x f e).
 Defined.
@@ -266,23 +266,28 @@ Admitted.
 (*
 Example test_write_lemma x f e : test_lemma (write_lemma x f e). Admitted.
 *)
-Definition assign_lemma (x : var) (e : dexpr) : lemma typ (expr typ func) (expr typ func).
+Definition assign_lemma (x : Lang.var) (e : dexpr) : lemma typ (expr typ func) (expr typ func).
 Proof.
   reify_lemma reify_java (@rule_assign_fwd x e).
 Defined.
+
+Print assign_lemma.
 
 Definition assign_lemma_sound x e :
   lemmaD (exprD_typ0 (T := Prop)) nil nil (assign_lemma x e).
 Proof.
   unfold lemmaD; simpl; intros.
   unfold lemmaD'; simpl; intros.
+  unfold exprD_typ0, exprD, Expr_expr, Expr.Expr_expr, lambda_exprD; simpl.
+  repeat (unfold AbsAppI.exprT_App; simpl in *).
+  
   admit.
 Admitted.
 
 (*
 Example test_assign_lemma x e : test_lemma (assign_lemma x e). Admitted.
 *)
-Definition alloc_lemma (x : var) (C : class) : lemma typ (expr typ func) (expr typ func).
+Definition alloc_lemma (x : Lang.var) (C : class) : lemma typ (expr typ func) (expr typ func).
 Proof.
   reify_lemma reify_java (@rule_alloc_fwd x C).
 Defined.
@@ -290,7 +295,7 @@ Defined.
 Example test_alloc_lemma x C : test_lemma (alloc_lemma x C). Admitted.
 *)
 
-Definition allog_lemma_sound (x : var) (C : class) :
+Definition alloc_lemma_sound (x : Lang.var) (C : class) :
   lemmaD (exprD_typ0 (T := Prop)) nil nil (alloc_lemma x C).
 Proof.
   unfold lemmaD, lemmaD'; simpl in *.
@@ -517,6 +522,7 @@ Require Import Charge.Views.SubstView.
 
 Definition THEN (r1 r2 : rtac typ (expr typ func)) :=
   THEN (THEN (THEN (INSTANTIATE typ func) (runOnGoals r1)) (runOnGoals (INSTANTIATE typ func))) (runOnGoals r2).
+Check @red_subst.
 Definition substTac (_ : list (option (expr typ func))) (e : expr typ func) (args : list (expr typ func)) := red_subst (apps e args).
 Definition SUBST := SIMPL true (red_beta substTac).
 
@@ -750,7 +756,7 @@ Proof.
 Admitted.
 
 Require Import MirrorCore.Lib.ApplicativeView.
-Require Import MirrorCore.Lib.StringView.
+
 (*
 Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr typ func :=
    mkAp (func := func) tyVal tyAsn
@@ -775,7 +781,7 @@ Fixpoint seq_skip n :=
 	end.
 
 Require Import ExtLib.Structures.Applicative.
-Local Instance Applicative_Fun A : Applicative (Fun A) :=
+Local Instance Applicative_Fun A : Applicative (RFun A) :=
 { pure := fun _ x _ => x
 ; ap := fun _ _ f x y => (f y) (x y)
 }.
@@ -801,13 +807,14 @@ Ltac run_rtac reify term_table tac_sound :=
 	  let name := fresh "e" in
 	  lazymatch goal with
 	    | |- ?P =>
-	      reify_aux reify_java term_table P name;
+	      reify_aux reify term_table P name;
 	      let t := eval vm_compute in (typeof_expr nil nil name) in
 	      let goal := eval unfold name in name in
 	      match t with
 	        | Some ?t =>
 	          let goal_result := constr:(run_tac tac (GGoal name)) in 
-	          let result := eval vm_compute in goal_result in 
+	          let result := eval vm_compute in goal_result in
+                                                    pose goal_result;
 	           lazymatch result with
 	            | More_ ?s ?g => 
 	              cut (goalD_Prop nil nil g) ; [
@@ -825,7 +832,7 @@ Ltac run_rtac reify term_table tac_sound :=
 	            | ?x => idtac "Error: run_rtac could not resolve the result from the tactic :" tac; idtac x
 	          end 
 	        | None => idtac "expression " goal "is ill typed" t
-	      end
+	      end 
 	  end
 	| _ => idtac tac_sound "is not a soudness theorem."
   end.
@@ -839,7 +846,7 @@ Ltac run_rtac reify term_table tac_sound :=
 
 Require Import ChargeCore.Logics.BILogic.
 Open Scope string.
-
+(*
 Definition blurg := 0.
 
 Ltac cbv_denote_typeof_sym :=
@@ -858,14 +865,13 @@ Ltac cbv_denote_symD :=
       progress change (SymI.symD a) with r; cbv beta iota delta [blurg]
   end.
 
-
 Lemma test_read : ltrue |--
     triple 
 
-      ((ap_pointsto [("o" : string), ("f" : string), pure (T := RFun (RFun string val)) (vint 3)])  **
-       ap_pointsto [("o" : string), ("g" : string), pure (T := RFun (RFun string val)) (vint 4)])
-      (ap_pointsto [("o" : string), ("f": string), pure (T := RFun (RFun string val)) (vint 3)] **
-      (ap_pointsto [("o" : string), ("g": string), pure (T := RFun (RFun string val)) (vint 4)]))
+      ((ap_pointsto [("o" : string), ("f" : field), pure (T := RFun (string -> val)) (vint 3)])  **
+       ap_pointsto [("o" : string), ("g" : field), pure (T := RFun (string -> val)) (vint 4)])
+      (ap_pointsto [("o" : string), ("f": field), pure (T := RFun (string -> val)) (vint 3)] **
+      (ap_pointsto [("o" : string), ("g": field), pure (T := RFun (string -> val)) (vint 4)]))
       (cseq (cread "x" "o" "f") (cseq (cread "y" "o" "g") cskip)).
 Proof.
   Time run_rtac reify_java term_table runTac_sound.
@@ -958,24 +964,27 @@ Require Import MirrorCore.AbsAppI.
 Lemma test_write :
 	ltrue |--
 	triple
-      (ap_pointsto [("o": String.string), ("f" : field), pure (T := RFun (RFun string val)) (vint 3)])
-      (ap_pointsto [("o": String.string), ("f": field), pure (T := RFun (RFun string val)) (vint 4)])
+      (ap_pointsto [("o": String.string), ("f" : field), pure (T := RFun (string -> val)) (vint 3)])
+      (ap_pointsto [("o": String.string), ("f": field), pure (T := RFun (string -> val)) (vint 4)])
       (cseq (cwrite "o" "f" (E_val (vint 4))) cskip).
 Proof.
   Time run_rtac reify_java term_table runTac_sound.
 Time Qed.
 
-Definition Test_swap2_body := (cseq (cseq (cread ("x")%string ("this")%string ("a")%string) (cseq (cread ("y")%string ("this")%string ("b")%string) (cseq (cwrite ("this")%string ("a")%string (E_var ("y")%string)) (cwrite ("this")%string ("b")%string (E_var ("x")%string))))) cskip).
+Definition a : field := "a".
+Definition b : field := "b".
+
+Definition Test_swap2_body := (cseq (cseq (cread ("x")%string ("this")%string a) (cseq (cread ("y")%string ("this")%string b) (cseq (cwrite ("this")%string a (E_var ("y")%string)) (cwrite ("this")%string b (E_var ("x")%string))))) cskip).
 Definition Test_swap2_Method := (Build_Method (("this")%string :: nil) Test_swap2_body (E_val nothing)).
-Definition Test_Class := (Build_Class (("a")%string :: (("b")%string :: nil)) ((("swap2")%string, Test_swap2_Method) :: nil)).
+Definition Test_Class := (Build_Class (a :: b :: nil)) ((("swap2")%string, Test_swap2_Method) :: nil).
 Theorem Test_swap2_s : lentails ltrue (triple
   (
-    ap_pointsto [("this")%string, ("a")%string, eval (E_val ((0)%Z))] **
-    ap_pointsto [("this")%string, ("b")%string, eval (E_val ((1)%Z))] ** empSP
+    ap_pointsto [("this")%string, a, eval (E_val ((0)%Z))] **
+    ap_pointsto [("this")%string, b, eval (E_val ((1)%Z))] ** empSP
   )
   (
-    ap_pointsto [("this")%string, ("a")%string, eval (E_val ((1)%Z))] **
-    ap_pointsto [("this")%string, ("b")%string, eval (E_val ((0)%Z))] ** empSP
+    ap_pointsto [("this")%string, a, eval (E_val ((1)%Z))] **
+    ap_pointsto [("this")%string, b, eval (E_val ((0)%Z))] ** empSP
   )
   Test_swap2_body
 ).
@@ -987,15 +996,15 @@ Qed.
 
 
 
-Definition Test_swap2_body2 := (cseq (cread "x" "this" "a") (cseq (cread "y" "this" "b") (cseq (cwrite "this" "a" (E_var "y")) (cseq (cwrite "this" "b" (E_var "x")) cskip)))).
+Definition Test_swap2_body2 := (cseq (cread "x" "this" a) (cseq (cread "y" "this" b) (cseq (cwrite "this" a (E_var "y")) (cseq (cwrite "this" b (E_var "x")) cskip)))).
 Theorem Test_swap3_s : lentails ltrue (triple
   (
-    ap_pointsto ["this", "a", eval (E_val 0%Z)] **
-    ap_pointsto ["this", "b", eval (E_val 1%Z)] ** empSP
+    ap_pointsto ["this", a, eval (E_val 0%Z)] **
+    ap_pointsto ["this", b, eval (E_val 1%Z)] ** empSP
   )
   (
-    ap_pointsto ["this", "a", eval (E_val 1%Z)] **
-    ap_pointsto ["this", "b", eval (E_val 0%Z)] ** empSP
+    ap_pointsto ["this", a, eval (E_val 1%Z)] **
+    ap_pointsto ["this", b, eval (E_val 0%Z)] ** empSP
   )
 Test_swap2_body2
 ).
@@ -1005,21 +1014,269 @@ Proof.
 Time Qed.
 
 Lemma test3 :
-
+ 
 lentails ltrue (triple
-   ( ap_pointsto ["o", "f1", eval (E_val 1%Z)] **
-       ap_pointsto ["o", "f0", eval (E_val 0%Z)] ** empSP)
-    (ap_pointsto ["o", "f1", eval (E_val 0%Z)] **
-      ap_pointsto ["o", "f0", eval (E_val 1%Z)] ** empSP )
+   ( ap_pointsto ["o", a, eval (E_val 1%Z)] **
+       ap_pointsto ["o", b, eval (E_val 0%Z)] ** empSP)
+    (ap_pointsto ["o", a, eval (E_val 0%Z)] **
+      ap_pointsto ["o", b, eval (E_val 1%Z)] ** empSP )
 
-    (cseq (cread "x1" "o" "f1")
-    (cseq (cread "x0" "o" "f0")
-    (cseq (cwrite "o" "f1" (E_var "x0"))
-    (cseq (cwrite "o" "f0" (E_var "x1")) cskip))))).
+    (cseq (cread "x1" "o" a)
+    (cseq (cread "x0" "o" b)
+    (cseq (cwrite "o" a (E_var "x0"))
+    (cseq (cwrite "o" b (E_var "x1")) cskip))))).
 Proof.
   charge.
 Qed.
+*)
+Require Import Charge.Rewriter.ILogicRewrite.
+Require Import Charge.Rewriter.BIlogicRewrite.
+Require Import MirrorCore.Lambda.PolyInst.
 
+Definition PULL_EXISTS2 : rtac typ (expr typ func) :=
+  REWRITE (ilops := ilops) 
+          func_unify 
+          (List.app (ILogicRewrite.pull_exists_lemmasL (ilops := ilops)) (BIlogicRewrite.pull_exists_lemmasL (bilops := bilops))) 
+          (bil_proper (bilops := bilops)).
+
+Definition rewrite_it := 
+  THEN (REPEAT 3 (INTRO typ func)) 
+       (THEN (INSTANTIATE typ func)
+             PULL_EXISTS2).
+
+Theorem rewrite_it_sound : rtac_sound rewrite_it.
+  admit.
+Admitted.
+Require Import Charge.Tactics.Rtac.PApply.
+Definition REFL :=
+  THEN (REPEAT 4 (INTRO typ func)) (THEN (TRY (INSTANTIATE typ func)) 
+                                         (PAPPLY func_unify (plem_entails_refl (ilops := ilops)))).
+
+Theorem REFL_sound : rtac_sound REFL.
+Proof.
+  admit.
+Admitted.
+Require Import MirrorCore.PLemma.
+Require Import Charge.Tactics.RTac.Red.
+Lemma test2 : forall (P : nat -> RFun stack asn) (Q : RFun stack asn) (s : stack), True.
+intros.
+assert (ap (T := RFun stack) (@pure (RFun stack) (Applicative_Fun stack) (forall U : Type, (U -> asn) -> asn) (@lexists asn _)) P |-- Q).
+assert (lexists (fun x => P x //\\ Q) |-- Q).
+Transparent ILInsts.ILFun_Ops.
+intro t.
+simpl.
+unfold lentails. simpl.
+simpl.
+unfold ILInsts.ILFun_Ops.
+intros a.
+Check @lexists.
+Check @lexists asn _.
+assert (ap (ap (pure land) (ap (T := RFun stack) (pure (T := RFun stack) (@lexists asn _)) P)) Q s |-- (P //\\ Q) s).
+assert (ap (ap (pure land) P) Q s |-- (P //\\ Q) s)
+simpl.
+apply f_equal.
+intro s.
+reflexivity.
+Lemma test_pq : forall (P : nat -> asn) (R : asn),
+   ((Exists x, P x) //\\ (Exists x : nat, ((Exists x, P 5 //\\ P x) ** P x))) |-- R.
+
+Ltac rtac_debug :=
+  match goal with 
+  | H := context [
+             match ?a with
+             | Fail => _
+             | More_ _ _ => _
+             | Solved _ => _
+             end
+           ] |- _ => 
+         let r := eval vm_compute in a in
+                                      change a with r in H; cbv iota beta in H
+  end.
+
+
+Proof.
+  run_rtac reify_java term_table rewrite_it_sound.
+Require Import MirrorCore.CTypes.CoreTypes.
+Eval compute in (bilops (tyArr (tyArr tyString tyVal) tyAsn)).
+  unfold e in r.
+  unfold rewrite_it in r.
+  simpl in r.
+  unfold run_tac in r.
+  unfold runOnGoals in r.
+  simpl in r.
+  unfold THEN in r.
+  simpl in r.
+  unfold INSTANTIATE in r.
+  simpl in r.
+  unfold RTac.Instantiate.INSTANTIATE in r.
+  simpl in r.
+  unfold SIMPLIFY in r. simpl in r. 
+  unfold MirrorCore.RTac.Then.THEN in r.
+  unfold runOnGoals in r.
+  unfold INTRO in r.
+  unfold RTac.Intro.INTRO in r.
+    
+  match goal with 
+  | H := context [_subst ?a ?b ?c ?d] |- _ =>
+         let r := eval vm_compute in (_subst a b c d) in
+                                      change (_subst a b c d) with r in H; cbv beta iota in H
+                                          
+  end.
+  repeat (
+  match goal with
+  | H := context [fintro ?a] |- _ => 
+         let r := eval vm_compute in (fintro a) in 
+         change (fintro a) with r in H; cbv beta iota in H
+  end).
+  unfold More in r.
+  unfold TRY in r.
+    match goal with 
+  | H := context [_subst ?a ?b ?c ?d] |- _ =>
+         let r := eval vm_compute in (_subst a b c d) in
+                                      change (_subst a b c d) with r in H; cbv beta iota in H
+                                          
+   end.
+    unfold fromAll in r.
+    unfold ILogicRewrite.rewrite_it in r.
+    unfold Tactic.auto_setoid_rewrite_bu in r.
+    unfold BottomUp.bottom_up in r.
+    unfold BottomUp.setoid_rewrite in r.
+    unfold BottomUp.setoid_rewrite' in r.
+    unfold Core.rw_orelse in r.
+    unfold Core.rw_bind_catch in r.
+    match goal with
+    | H := context [@get_respectful ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k ?l ?m] |- _ =>
+           let r := eval vm_compute in (@get_respectful a b c d e f g h i j k l m) in
+                                        change (@get_respectful a b c d e f g h i j k l m) with r in H; cbv beta iota in H
+    end.
+    unfold Core.rw_bind in r.
+    unfold BottomUp.recursive_rewrite.
+    unfold BottomUp.recursive_rewrite in r.  
+    unfold BottomUp.recursive_rewrite' in r. 
+    unfold Core.rw_bind in r.
+    match goal with
+    | H := context [@get_respectful ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k ?l ?m] |- _ =>
+           let r := eval vm_compute in (@get_respectful a b c d e f g h i j k l m) in
+                                        change (@get_respectful a b c d e f g h i j k l m) with r in H; cbv beta iota in H; idtac r
+    end.
+    Set Printing Depth 100.
+    match goal with
+    | H := context [@get_respectful ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k ?l ?m] |- _ =>
+           let r := eval vm_compute in (@get_respectful a b c d e f g h i j k l m) in
+                                        change (@get_respectful a b c d e f g h i j k l m) with r in H; cbv beta iota in H; idtac r
+    end.
+    
+    unfold Core.rw_bind in r.
+ Print get_respectful.
+ Print Core.ResolveProper.
+Check get_respectful func_unify
+(@Inj (CoreTypes.ctyp typ') func
+   {|
+   SymOneOf.OneOfType.index := 3;
+   SymOneOf.OneOfType.value := @ilf_entails typ
+                                 (@CoreTypes.tyBase0 typ'
+                                    {|
+                                    TSymOneOf.OneOfType.indexF := 4;
+                                    TSymOneOf.OneOfType.valueF := tAsn |}) |})
+(@Rflip (CoreTypes.ctyp typ') (expr (CoreTypes.ctyp typ') func)
+   (@Rinj (CoreTypes.ctyp typ') (expr (CoreTypes.ctyp typ') func)
+      (@Inj (CoreTypes.ctyp typ') func
+         (@fImpl (CoreTypes.ctyp typ') func ILogicView_func
+            (@typ0 (CoreTypes.ctyp typ') (@RType_typ typ' TSym_typ') Prop Typ0_tyProp))))).
+
+Print is_refl.
+    rtac_debug.
+    unfold PAPPLY in r.
+    unfold RTac.PApply.PAPPLY in r.
+    unfold AT_GOAL in r.
+    match goal with 
+    | H := context [PApply.get_lemma ?a ?b ?c] |- _ => 
+           let r := eval vm_compute in (PApply.get_lemma a b c) in
+                                        change (PApply.get_lemma a b c) with r in H; cbv beta iota in H
+    end.
+Check landexistsDR.    
+    vm_compute in r.
+    unfold PApply.get_lemma in r.
+    unfold ILogicRewrite.rewrite_it in r.
+    unfold Tactic.auto_setoid_rewrite_bu in r.
+    rtac_debug.
+Print AllSubst.
+  match goal with
+  | H := context [Polymorphic.inst ?a ?b] |- _ => 
+         let r := eval vm_compute in (Polymorphic.inst a b) in 
+         change (Polymorphic.inst a b) with r in H; cbv beta iota in H
+  end.
+  unfold PolyInst.get_types in r.
+  match goal with 
+  | H := context [func_unify ?a ?b ?c] |- _ => 
+         let r := eval vm_compute in (func_unify a b c) in 
+                                      idtac r
+  end.
+Print type_sym_unifier.
+  unfold type_sym_unifier in r.
+Set Printing All.
+Set Printing Depth 100.
+  Eval vm_compute in (@typeof_sym (CoreTypes.ctyp typ') Java.Func.Type.RType_typ func 
+                           (@RSym_func fs)
+                           (OneOfType.mkOneOf func_map (xI xH)
+                              (@ilf_entails typ
+                                 (@CoreTypes.tyBase0 typ'
+                                    (TSymOneOf.OneOfType.mkOneOfF typ_map O (xO (xO xH)) tAsn))))
+).
+Print type_sym_unifier.
+  match goal with 
+  | H := 
+    context [type_sym_unifier (CTypeUnify.ctype_unify_slow typ') ?a ?b ?c] |- _ =>
+    let r := eval vm_compute in
+    (type_sym_unifier (CTypeUnify.ctype_unify_slow typ') a b c) in 
+        idtac r
+  end.
+Print CoreTypes.
+  Print PolyInst.get_types.
+  
+  unfold plem_entails_refl in r.
+  
+  cbv beta iota in r.
+  
+  unfold PolyInst.build_vector in r.
+  unfold plem_entails_refl in r.
+  cbv beta iota in r.
+  unfold Polymorphic.inst in r.
+  match goal with
+  | 
+
+
+  simpl in r.
+
+  match goal with 
+  | H := context [PolyInst.get_types ?a ?b ?c ?d ?e ?f] |- _ => 
+         let x := constr:(PolyInst.get_types a b c d e f) in
+         let r := eval vm_compute in x in 
+                                 idtac r
+  end.
+  simpl in r.
+  unfold PolyInst.get_types in r.
+Print TRY.
+  
+  rtac_debug.
+  cbv iota beta in r.
+  match goal with 
+  | H : context [INTRO typ func (CTop nil nil) (TopSubst (expr typ func) nil nil) ?s] |- _ => idtac s
+  
+  end.
+  unfold INTRO in r.
+  unfold RTac.Intro.INTRO in r.
+  unfold fintro in r.
+
+  simpl in r.
+Check 
+  unfold (Then.THEN) in r.
+  vm_compute in r.
+
+Print plem_entails_refl.  
+Print lem_entails_refl.  
+  intros. Fuc
+Print lem_entails_refl.
 Locate Z.of_nat.
 Fixpoint mkSwapPre n : RFun (RFun string val) asn :=
 	match n with
@@ -1059,7 +1316,7 @@ Definition mkWrite n c := mkWriteAux n n c.
 Definition mkSwapProg (n : nat) (c : cmd) : cmd := mkRead n (mkWrite n c).
 
 Definition mkSwap n : Prop :=
-	ltrue |-- triple (mkSwapPre n) (mkSwapPost n) (mkSwapProg n cskip).
+  ltrue |-- triple (mkSwapPre n) (mkSwapPost n) (mkSwapProg n cskip).
 
 Set Printing Depth 100.
 

@@ -14,6 +14,8 @@ Require Import Charge.Views.ILogicView.
 Require Import Charge.Views.BILogicView.
 Require Import Charge.Views.SubstView.
 Require Import Charge.Views.EmbedView.
+Require Import Charge.Patterns.EmbedPattern.
+Require Import Charge.Patterns.ILogicPattern.
 
 Require Import MirrorCore.TypesI.
 Require Import MirrorCore.CTypes.CoreTypes.
@@ -37,6 +39,7 @@ Require Import MirrorCore.Lib.ApplicativeView.
 Require Import MirrorCore.Lib.NatView.
 Require Import MirrorCore.Lib.BoolView.
 Require Import MirrorCore.Lib.StringView.
+Require Import MirrorCore.UnifyI.
 
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
@@ -60,7 +63,10 @@ Inductive java_func : Set :=
 | pVal (v : val)
 | pCmd (c : cmd)
 | pExpr (e : dexpr)
-| pFields (f : list string)
+| pFields (f : list field)
+| pMethodName (m : method)
+| pFieldName (f : field)
+| pClassName (c : class)
 
 | pMethodSpec
 | pProgEq
@@ -92,30 +98,33 @@ Fixpoint beq_list {A} (f : A -> A -> bool) (xs ys : list A) :=
   | _, _ => false
   end.
 
-Definition typeof_java_func bf :=
+Definition typeof_java_func bf : option typ :=
   match bf with
   | pProg _ => Some tyProg
   | pCmd _ => Some tyCmd
   | pMethod _ => Some tyMethod
   | pVal _ => Some tyVal
   | pExpr _ => Some tyDExpr
-  | pFields _ => Some (tyList tyString)
+  | pFields _ => Some (tyList tyFieldName)
+  | pMethodName _ => Some tyMethodName
+  | pClassName _ => Some tyClassName
+  | pFieldName _ => Some tyFieldName
 
   | pMethodSpec =>
-    Some (tyArr tyString
-  	        (tyArr tyString
-  	               (tyArr tyStringList
+    Some (tyArr tyClassName
+  	        (tyArr tyMethodName
+  	               (tyArr (tyList tyString)
 		              (tyArr tyString
 		                     (tyArr tySasn (tyArr tySasn tySpec))))))
   | pProgEq => Some (tyArr tyProg tySpec)
   | pTriple => Some (tyArr tySasn (tyArr tySasn (tyArr tyCmd tySpec)))
 
-  | pTypeOf => Some (tyArr tyString (tyArr tyVal tyProp))
+  | pTypeOf => Some (tyArr tyClassName (tyArr tyVal tyProp))
 
-  | pFieldLookup => Some (tyArr tyProg (tyArr tyString (tyArr tyFields tyProp)))
-  | pMethodLookup => Some (tyArr tyProg (tyArr tyString (tyArr tyString (tyArr tyMethod tyProp))))
+  | pFieldLookup => Some (tyArr tyProg (tyArr tyClassName (tyArr tyFields tyProp)))
+  | pMethodLookup => Some (tyArr tyProg (tyArr tyClassName (tyArr tyMethodName (tyArr tyMethod tyProp))))
 
-  | pPointsto => Some (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn)))
+  | pPointsto => Some (tyArr tyVal (tyArr tyFieldName (tyArr tyVal tyAsn)))
   | pNull => Some tyVal
 
   | pMethodBody => Some (tyArr tyMethod tyCmd)
@@ -139,7 +148,10 @@ Definition java_func_eq (a b : java_func) : option bool :=
   | pVal v1, pVal v2 => Some (v1 ?[ eq ] v2)
   | pExpr e1, pExpr e2 => Some (e1 ?[ eq ] e2)
   | pFields f1, pFields f2 => Some (f1 ?[ eq ] f2)
-  | pCmd c1, pCmd c2 => Some (c1 ?[ eq ]c2)
+  | pCmd c1, pCmd c2 => Some (c1 ?[ eq ] c2)
+  | pMethodName m1, pMethodName m2 => Some (m1 ?[ eq ] m2)
+  | pClassName c1, pClassName c2 => Some (c1 ?[ eq ] c2)
+  | pFieldName f1, pFieldName f2 => Some (f1 ?[ eq ] f2)
 
   | pMethodSpec, pMethodSpec => Some true
   | pProgEq, pProgEq => Some true
@@ -200,6 +212,10 @@ Definition java_func_symD bf :=
   | pExpr e => e
   | pFields f => f
   | pCmd c => c
+  | pMethodName m => m
+  | pClassName c => c
+  | pFieldName f => f
+
   | pMethodSpec => method_spec
   | pProgEq => prog_eq
   | pTriple => triple
@@ -243,8 +259,10 @@ Proof.
   consider (c ?[ eq ] c0); intros; subst; intuition congruence.
   consider (e ?[ eq ] e0); intros; subst; intuition congruence.
   consider (f ?[ eq ] f0); intros; subst; intuition congruence.
+  consider (m ?[ eq ] m0); intros; subst; intuition congruence.
+  consider (f ?[ eq ] f0); intros; subst; intuition congruence.
+  consider (c ?[ eq ] c0); intros; subst; intuition congruence.
 Qed.
-Set Printing Universes.
 
 Definition func_map : OneOfType.pmap :=
 	OneOfType.list_to_pmap
@@ -296,12 +314,15 @@ Global Instance ListOp_func : PartialView@{Set} func (@listOp_func typ) :=
 
 Section MakeJavaFunc.
 
-  Definition fVal v : func:= f_insert (pVal v).
-  Definition fProg P : func:= f_insert (pProg P).
-  Definition fMethod M : func:= f_insert (pMethod M).
-  Definition fCmd c : func:= f_insert (pCmd c).
-  Definition fDExpr e : func:= f_insert (pExpr e).
-  Definition fFields f : func:= f_insert (pFields f).
+  Definition fVal v : func := f_insert (pVal v).
+  Definition fProg P : func := f_insert (pProg P).
+  Definition fMethod M : func := f_insert (pMethod M).
+  Definition fCmd c : func := f_insert (pCmd c).
+  Definition fDExpr e : func := f_insert (pExpr e).
+  Definition fFields f : func := f_insert (pFields f).
+  Definition fMethodName m : func := f_insert (pMethodName m).
+  Definition fClassName f : func := f_insert (pClassName f).
+  Definition fFieldName c : func := f_insert (pFieldName c).
 
   Definition fMethodSpec : func:= f_insert pMethodSpec.
   Definition fProgEq : func:= f_insert pProgEq.
@@ -363,7 +384,7 @@ Require Import MirrorCore.Lambda.Ptrns.
         | _ => bad f
       end.
 
-  Definition fptrnFields {T : Type} (p : Ptrns.ptrn (list string) T) : ptrn java_func T :=
+  Definition fptrnFields {T : Type} (p : Ptrns.ptrn (list field) T) : ptrn java_func T :=
     fun f U good bad =>
       match f with
         | pFields fs => p fs U good (fun x => bad f)
@@ -504,6 +525,7 @@ Require Import MirrorCore.Lambda.Ptrns.
   Definition mkFieldLookup P C f : expr typ func := App (App (App (Inj fFieldLookup) P) C) f.
   Definition mkTypeOf C x : expr typ func := App (App (Inj fTypeOf) C) x.
   Definition mkProgEq P : expr typ func := App (Inj fProgEq) P.
+  Definition mkFieldName f : expr typ func := Inj (fFieldName f).
 
   Definition mkMethodBody (M : Method) : expr typ func :=
     App (Inj fMethodBody) (Inj (fMethod M)).
@@ -520,7 +542,7 @@ Require Import MirrorCore.Lambda.Ptrns.
   Fixpoint evalDExpr (e : dexpr) : expr typ func :=
     match e with
     | E_val v => mkPure tyVal (Inj (fVal v))
-    | E_var x => App (Inj fStackGet) (mkString x)
+    | E_var x => App (Inj fStackGet) (Inj (fString x))
     | E_plus e1 e2 => mkAps (Inj fPlusE) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
     | E_minus e1 e2 => mkAps (Inj fMinusE) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
     | E_times e1 e2 => mkAps (Inj fTimesE) ((evalDExpr e2, tyVal)::(evalDExpr e1, tyVal)::nil) tyVal
@@ -554,12 +576,28 @@ Section ReifyJavaFunc.
              (fun (x : id dexpr) => Inj (fDExpr x)).
 
   Polymorphic Definition reify_cFields : Command@{Set} (expr typ func) :=
-    CPattern (ls := (list field:Type)::nil) (RHasType (list string) (RGet 0 RIgnore)) 
+    CPattern (ls := (list field:Type)::nil) (RHasType (list field) (RGet 0 RIgnore)) 
              (fun (x : id (list field)) => Inj (fFields x)).
 
   Polymorphic Definition reify_cCmd : Command@{Set} (expr typ func) :=
     CPattern (ls := (cmd:Type)::nil) (RHasType cmd (RGet 0 RIgnore)) 
              (fun (x : id cmd) => Inj (fCmd x)).
+
+  Polymorphic Definition reify_cVar : Command@{Set} (expr typ func) :=
+    CPattern (ls := (Lang.var:Type)::nil) (RHasType Lang.var (RGet 0 RIgnore)) 
+             (fun (x : id Lang.var) => Inj (fString x)).
+
+  Polymorphic Definition reify_cMethodName : Command@{Set} (expr typ func) :=
+    CPattern (ls := (method:Type)::nil) (RHasType method (RGet 0 RIgnore)) 
+             (fun (x : id method) => Inj (fMethodName x)).
+
+  Polymorphic Definition reify_cClassName : Command@{Set} (expr typ func) :=
+    CPattern (ls := (class:Type)::nil) (RHasType class (RGet 0 RIgnore)) 
+             (fun (x : id class) => Inj (fClassName x)).
+
+  Polymorphic Definition reify_cFieldName : Command@{Set} (expr typ func) :=
+    CPattern (ls := (field:Type)::nil) (RHasType field (RGet 0 RIgnore)) 
+             (fun (x : id field) => Inj (fFieldName x)).
 
   Polymorphic Definition reify_method_spec : Command@{Set} (expr typ func) :=
     CPattern (ls := nil) (RExact method_spec) (Inj fMethodSpec).
@@ -625,6 +663,7 @@ Section ReifyJavaFunc.
   Polymorphic Definition reify_java_func : Command@{Set} (expr typ func) :=
     CFirst (reify_cProg :: reify_cMethod :: reify_cVal ::
             reify_cDExpr :: reify_cCmd :: reify_cFields ::
+            reify_cVar :: reify_cMethodName :: reify_cClassName :: reify_cFieldName ::
             reify_prog_eq :: reify_triple :: reify_typeof :: reify_field_lookup ::
             reify_method_spec :: reify_method_lookup :: reify_pointsto :: reify_null ::
             reify_m_body :: reify_m_params :: reify_m_ret ::
@@ -675,7 +714,7 @@ Existing Instance RelDec_from_RType.
 
   Require Import ExtLib.Structures.Applicative.
 
-  Local Instance Applicative_Fun A : Applicative (Fun A) :=
+  Local Instance Applicative_Fun A : Applicative (RFun A) :=
     { pure := fun _ x _ => x
       ; ap := fun _ _ f x y => (f y) (x y)
     }.
@@ -693,19 +732,53 @@ Existing Instance RelDec_from_RType.
     apply _.
     apply _.
     apply _.
-    apply @RSym_SubstFunc@{Urefl Urefl Urefl} with (var := string) (val := val); try apply _.
+    apply @RSym_SubstFunc@{Urefl Urefl Urefl} with (var := Lang.var) (val := val); try apply _.
     exact {| Stack.null := nothing |}.
     apply _.
     apply _.
     apply _.
     apply _.
     apply _.
-    refine (@RSym_ApFunc typ RType_typ _ (Fun stack) _ _ _).
-    eapply Typ2_App. eapply Typ2_Fun. unfold stack. unfold Stack.stack.
+    refine (@RSym_ApFunc typ RType_typ _ (RFun (stack)) _ _ _).
+    eapply Typ2_App. eapply Typ2_Fun.
     eapply (Typ1_App (G:=RFun Lang.var) (X:=val)).
     apply (RSym_embed_func).
     apply eops.
     apply _.
+  Defined.
+
+Check mkOneOf.
+
+  Program Definition func_unify (a b : func) (s : FMapPositive.pmap typ) : 
+    option (FMapPositive.pmap typ) :=
+    match a, b with
+    | mkOneOf _ x a, mkOneOf _ y b => 
+      match Pos.eq_dec x y as r with
+      | left pf => _
+      | right _ => None
+      end
+    end.
+Next Obligation.
+  clear Heq_r.
+    repeat (match goal with
+     | H : context [pmap_lookup' Empty _] |- _ => apply None
+     | H : context [pmap_lookup' ?a ?b] |- _ =>
+       destruct b; simpl in *
+    end).
+    apply (prod_func_unify a b s).
+    apply (embed_func_unify a b s).
+    apply (ap_func_unify a b s).
+    apply (sym_unify a b s).
+    apply (list_func_unify a b s).
+    apply (ilfunc_unify a b s).
+    apply (listOp_func_unify a b s).
+    apply (sym_unify a b s).
+    apply (subst_func_unify a b s).
+    apply (eq_func_unify a b s).
+    apply (sym_unify a b s).
+    apply (bilfunc_unify a b s).
+    destruct (Pos.eq_dec a b); [apply (Some s) | apply None].
+    apply (sym_unify a b s).
   Defined.
 
   Global Instance RSymOk_func : RSymOk RSym_func.
@@ -826,15 +899,15 @@ Require Import Charge.Tactics.BILNormalize.
          (ptrnEmbed get get
          false)).
 *)
-
+Check pointsto.
   Definition mkPointstoVar x f e : expr typ func :=
      mkAp tyVal tyAsn
-          (mkAp tyString (tyArr tyVal tyAsn)
-                (mkAp tyVal (tyArr tyString (tyArr tyVal tyAsn))
-                      (ApplicativeView.mkPure (tyArr tyVal (tyArr tyString (tyArr tyVal tyAsn)))
+          (mkAp tyFieldName (tyArr tyVal tyAsn)
+                (mkAp tyVal (tyArr tyFieldName (tyArr tyVal tyAsn))
+                      (ApplicativeView.mkPure (tyArr tyVal (tyArr tyFieldName (tyArr tyVal tyAsn)))
                                (Inj fPointsto))
                       (App (Inj fStackGet) (mkString x)))
-                (ApplicativeView.mkPure tyString (mkString f)))
+                (ApplicativeView.mkPure tyFieldName (mkFieldName f)))
           e.
 (*
   Definition test_lemma :=

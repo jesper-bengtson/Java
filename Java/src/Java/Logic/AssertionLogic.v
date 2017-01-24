@@ -87,7 +87,7 @@ Instance UUSepAlgHeap : UUSepAlg heap := _.
 Definition asn := ILPreFrm Prog_sub (ILPreFrm ge (ILPreFrm subheap Prop)).
 
 Instance ILogicOpsAsn : ILogicOps asn := _.
-Instance BILogicOpsAsn : BILOperators asn := _.
+Instance BILogicOpsAsn : BILogicOps asn := _.
 Instance BILogicAsn : IBILogic asn := _.
 
 Local Existing Instance EmbedILPreDropOp.
@@ -103,7 +103,7 @@ Instance RelDec_var : RelDec (@eq var) := _.
 Definition sasn := (Stack.stack var val) -> asn.
 
 Instance ILogicOpsSAsn : ILogicOps sasn := _.
-Instance BILogicOpsSAsn : BILOperators sasn := _.
+Instance BILogicOpsSAsn : BILogicOps sasn := _.
 Instance BILogicSAsn : IBILogic sasn := _.
 
 Local Existing Instance EmbedILFunDropOp.
@@ -360,7 +360,7 @@ Proof.
 Qed.
 
 Transparent ILogicOpsAsn.
-Transparent BILOperatorsAsn.
+Transparent BILogicOpsAsn.
 Transparent BILPre_Ops.
 Transparent EmbedAsnPropOp.
 Transparent EmbedILPreDropOp.
@@ -465,7 +465,7 @@ Proof.
   apply subheap_prod; split; [reflexivity|].
   generalize dependent k; induction vs; simpl in *; intros. omega.
   inversion Hlength; clear Hlength.
-  unfold sepSP in H. unfold BILOperatorsAsn in H.
+  unfold sepSP in H. unfold BILogicOpsAsn in H.
   simpl in H.
   destruct H as [h1 [h2 [Hh [[h3 [H2 H3]] H4]]]].
   destruct h1, h2, h3.

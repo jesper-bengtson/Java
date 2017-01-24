@@ -14,6 +14,7 @@ Require Import MirrorCore.CTypes.TSymOneOf.
 Require Import MirrorCore.Views.FuncView.
 Require Import MirrorCore.Views.View.
 Require Import MirrorCore.Views.ViewSumN.
+Require Import MirrorCore.Lib.StringView.
 
 Require Import Charge.Views.ILogicView.
 Require Import Charge.Views.BILogicView.
@@ -33,7 +34,6 @@ Require Import Java.Language.Lang.
 Require Import Java.Language.Program.
 Require Import Java.Func.JavaType.
 
-Require Import Coq.Strings.String.
 Require Import Coq.Bool.Bool.
 
 Set Implicit Arguments.
@@ -165,9 +165,8 @@ Notation "'tyStack'" := (tyArr tyString tyVal).
 Notation "'tyPure'" := (tyArr tyStack tyProp).
 Notation "'tySasn'" := (tyArr tyStack tyAsn).
 Notation "'tyExpr'" := (tyArr tyStack tyVal).
-Notation "'tyFields'" := (tyList tyString).
+Notation "'tyFields'" := (tyList tyFieldName).
 
-Notation "'tyStringList'" := (tyList tyString).
 Notation "'tyDExprList'" := (tyList tyExpr).
 Notation "'tySubstList'" := (tyList (tyProd tyString tyExpr)).
 
@@ -181,7 +180,7 @@ Global Instance Typ0Ok_tyProp : Typ0Ok Typ0_tyProp := Typ0Ok_sym tyProp.
 Global Instance Typ0_tyNat : Typ0 RType_typ nat := Typ0_sym tyNat.
 Global Instance Typ0Ok_tyNat : Typ0Ok Typ0_tyNat := Typ0Ok_sym tyNat.
 
-Global Instance Typ0_tyString : Typ0 RType_typ string := Typ0_sym tyString.
+Global Instance Typ0_tyString : Typ0 RType_typ String.string := Typ0_sym tyString.
 Global Instance Typ0Ok_tyString : Typ0Ok Typ0_tyString := Typ0Ok_sym tyString.
 
 Global Instance Typ0_tyVal : Typ0 RType_typ val := Typ0_sym (ts:=TSym_typ') (@tyVal _ _).
@@ -252,7 +251,7 @@ Definition ilops : @logic_ops typ RType_typ :=
                      (string_match 
                         (fun x => poption (ILogicOps ((typD x -> typD t2) -> typD t3))) t1
                         (val_match
-                           (fun x => poption (ILogicOps ((string -> typD x) -> typD t3))) t2
+                           (fun x => poption (ILogicOps ((Lang.var -> typD x) -> typD t3))) t2
                            (prop_match 
                               (fun x => poption (ILogicOps (stack -> typD x))) t3
                               (pSome _)
@@ -269,17 +268,17 @@ Definition ilops : @logic_ops typ RType_typ :=
 Definition bilops : @bilogic_ops typ RType_typ :=
   fun t =>
     asn_match 
-      (fun x => poption (BILOperators (typD x))) t 
+      (fun x => poption (BILogicOps (typD x))) t 
       (pSome _)
       (fun _ => 
          match t with
          | tyArr (tyArr t1 t2) t3 =>
            (string_match 
-              (fun x => poption (BILOperators ((typD x -> typD t2) -> typD t3))) t1
+              (fun x => poption (BILogicOps ((typD x -> typD t2) -> typD t3))) t1
               (val_match
-                 (fun x => poption (BILOperators ((string -> typD x) -> typD t3))) t2
+                 (fun x => poption (BILogicOps ((Lang.var -> typD x) -> typD t3))) t2
                  (asn_match 
-                    (fun x => poption (BILOperators (stack -> typD x))) t3 
+                    (fun x => poption (BILogicOps (stack -> typD x))) t3 
                     (pSome _)
                     (fun _ => pNone))
                  (fun _ => pNone))
@@ -302,7 +301,7 @@ Definition eops : @embed_ops typ RType_typ :=
               (fun x => option (EmbedOp ((typD x -> typD t2) -> typD t3) 
                                         ((typD u1 -> typD u2) -> typD u3))) t1
               (val_match
-                 (fun x => option (EmbedOp ((string -> typD x) -> typD t3) 
+                 (fun x => option (EmbedOp ((Lang.var -> typD x) -> typD t3) 
                                            ((typD u1 -> typD u2) -> typD u3))) t2
                  (prop_match 
                     (fun x => option (EmbedOp (stack -> typD x)
@@ -312,7 +311,7 @@ Definition eops : @embed_ops typ RType_typ :=
                                                  ((typD x -> typD u2) -> typD u3))) u1
                        (val_match
                           (fun x => option (EmbedOp (stack -> Prop)
-                                                    ((string -> typD x) -> typD u3))) u2
+                                                    ((Lang.var -> typD x) -> typD u3))) u2
                           (asn_match 
                              (fun x => option (EmbedOp (stack -> Prop)
                                                        (stack -> typD x))) u3

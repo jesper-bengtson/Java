@@ -15,6 +15,9 @@ Require Import Charge.Views.ILogicView.
 Require Import Charge.Views.BILogicView.
 Require Import Charge.Views.EmbedView.
 Require Import Charge.Views.SubstView.
+Require Import Charge.Patterns.ILogicPattern.
+Require Import Charge.Patterns.BILogicPattern.
+Require Import Charge.Patterns.EmbedPattern.
 (*Require Import Charge.ModularFunc.LaterFunc.*)
 Require Import MirrorCore.Lib.NatView.
 Require Import MirrorCore.Lib.StringView.
@@ -269,12 +272,12 @@ Ltac cbv_denote :=
         
         (* ILogicView*)
         
-        ILogicView.mkEntails ILogicView.mkTrue ILogicView.mkFalse 
-        ILogicView.mkAnd ILogicView.mkOr ILogicView.mkImpl
-        ILogicView.mkExists ILogicView.mkForall
+        ILogicPattern.mkEntails ILogicPattern.mkTrue ILogicPattern.mkFalse 
+        ILogicPattern.mkAnd ILogicPattern.mkOr ILogicPattern.mkImpl
+        ILogicPattern.mkExists ILogicPattern.mkForall
         
-        ILogicView.fEntails ILogicView.fTrue ILogicView.fFalse ILogicView.fAnd 
-        ILogicView.fOr ILogicView.fImpl ILogicView.fExists ILogicView.fForall
+        ILogicPattern.fEntails ILogicPattern.fTrue ILogicPattern.fFalse ILogicPattern.fAnd 
+        ILogicPattern.fOr ILogicPattern.fImpl ILogicPattern.fExists ILogicPattern.fForall
         ILogicView.RSym_ilfunc 
         
         ILogicView.funcD
@@ -288,9 +291,9 @@ Ltac cbv_denote :=
         
         (* BILogicFunc *)
         
-        BILogicView.mkEmp BILogicView.mkStar BILogicView.mkWand
+        BILogicPattern.mkEmp BILogicPattern.mkStar BILogicPattern.mkWand
         
-        BILogicView.fEmp BILogicView.fStar BILogicView.fWand
+        BILogicPattern.fEmp BILogicPattern.fStar BILogicPattern.fWand
         
         BILogicView.RSym_bilfunc
         
@@ -316,9 +319,9 @@ Ltac cbv_denote :=
           
          (* EmbedFunc *)
          *)
-        EmbedView.mkEmbed
+        EmbedPattern.mkEmbed
         
-        EmbedView.fEmbed
+        EmbedPattern.fEmbed
         
         EmbedView.RSym_embed_func 
         
@@ -447,7 +450,6 @@ Ltac cbv_denote :=
         (* JavaType *)
         
         Java.Func.Type.spec_match
-        Java.Func.Type.string_match
         Java.Func.Type.TypeView_java_typ'
         Java.Func.Type.TypeView_java_typ
         Java.Func.Type.TypeViewOk_base_typ
@@ -456,18 +458,24 @@ Ltac cbv_denote :=
         JavaType.tyProg JavaType.tyMethod JavaType.tyCmd
         JavaType.tyDExpr
         Java.Func.JavaType.java_typD
+        Java.Func.JavaType.tyFieldName
+        Java.Func.JavaType.tyMethodName
+        Java.Func.JavaType.tyClassName
 
         JavaType.fptrn_tyVal JavaType.fptrn_tySpec JavaType.fptrn_tyAsn
         JavaType.fptrn_tyProg JavaType.fptrn_tyMethod JavaType.fptrn_tyCmd
-        JavaType.fptrn_tyDExpr
+        JavaType.fptrn_tyDExpr JavaType.fptrn_tyMethodName
+        JavaType.fptrn_tyClassName JavaType.fptrn_tyFieldName
 
         JavaType.ptrn_tyVal JavaType.ptrn_tySpec JavaType.ptrn_tyAsn
         JavaType.ptrn_tyProg JavaType.ptrn_tyMethod JavaType.ptrn_tyCmd
-        JavaType.ptrn_tyDExpr
+        JavaType.ptrn_tyDExpr JavaType.ptrn_tyClassName
+        JavaType.ptrn_tyMethodName JavaType.ptrn_tyClassName
 
         Java.Func.JavaType.spec_match
         Java.Func.JavaType.asn_match
         Java.Func.JavaType.val_match
+        Java.Func.Type.string_match
         Java.Func.JavaType.TSym_java_typ
         Java.Func.JavaType.java_typ_rect
         Java.Func.JavaType.java_typ_rec
@@ -488,7 +496,7 @@ Ltac cbv_denote :=
         Java.Func.Type.prop_match
         Typ0_term
         Java.Func.Type.Typ2_tyArr Java.Func.Type.Typ0_tyProp Java.Func.Type.Typ0_tyNat 
-        Java.Func.Type.Typ0_tyString Java.Func.Type.Typ0_tyVal Java.Func.Type.Typ0_tyBool 
+        Java.Func.Type.Typ0_tyVal Java.Func.Type.Typ0_tyBool Java.Func.Type.Typ0_tyString
         Java.Func.Type.Typ1_tyList Java.Func.Type.Typ2_tyProd Java.Func.Type.RType_typ
         Java.Func.Type.TSym_typ' Java.Func.Type.TSymAll_typ_map
 
@@ -610,9 +618,9 @@ Ltac cbv_denote :=
         JavaFunc.fOrE JavaFunc.fNotE JavaFunc.fLtE JavaFunc.fValEq
         JavaFunc.mkTriple JavaFunc.mkFieldLookup JavaFunc.mkTypeOf
         JavaFunc.mkProgEq JavaFunc.mkExprList JavaFunc.evalDExpr
+        JavaFunc.fMethodName JavaFunc.fClassName JavaFunc.fFieldName
 
         Java.Func.Type.val_match
-        Java.Func.Type.string_match
         
         (* OTHER *)
         
@@ -693,6 +701,7 @@ Ltac cbv_denote :=
 
 Ltac cbv_denote_tac a :=
   eval cbv [
+      
       MirrorCore.syms.SymEnv.funcD
       MirrorCore.syms.SymEnv.RSym_func
 
@@ -826,12 +835,12 @@ Ltac cbv_denote_tac a :=
         
         (* ILogicView*)
         
-        ILogicView.mkEntails ILogicView.mkTrue ILogicView.mkFalse 
-        ILogicView.mkAnd ILogicView.mkOr ILogicView.mkImpl
-        ILogicView.mkExists ILogicView.mkForall
+        ILogicPattern.mkEntails ILogicPattern.mkTrue ILogicPattern.mkFalse 
+        ILogicPattern.mkAnd ILogicPattern.mkOr ILogicPattern.mkImpl
+        ILogicPattern.mkExists ILogicPattern.mkForall
         
-        ILogicView.fEntails ILogicView.fTrue ILogicView.fFalse ILogicView.fAnd 
-        ILogicView.fOr ILogicView.fImpl ILogicView.fExists ILogicView.fForall
+        ILogicPattern.fEntails ILogicPattern.fTrue ILogicPattern.fFalse ILogicPattern.fAnd 
+        ILogicPattern.fOr ILogicPattern.fImpl ILogicPattern.fExists ILogicPattern.fForall
         ILogicView.RSym_ilfunc 
         
         ILogicView.funcD
@@ -845,9 +854,9 @@ Ltac cbv_denote_tac a :=
         
         (* BILogicFunc *)
         
-        BILogicView.mkEmp BILogicView.mkStar BILogicView.mkWand
+        BILogicPattern.mkEmp BILogicPattern.mkStar BILogicPattern.mkWand
         
-        BILogicView.fEmp BILogicView.fStar BILogicView.fWand
+        BILogicPattern.fEmp BILogicPattern.fStar BILogicPattern.fWand
         
         BILogicView.RSym_bilfunc
         
@@ -873,9 +882,9 @@ Ltac cbv_denote_tac a :=
           
          (* EmbedFunc *)
          *)
-        EmbedView.mkEmbed
+        EmbedPattern.mkEmbed
         
-        EmbedView.fEmbed
+        EmbedPattern.fEmbed
         
         EmbedView.RSym_embed_func 
         
@@ -1004,7 +1013,6 @@ Ltac cbv_denote_tac a :=
         (* JavaType *)
         
         Java.Func.Type.spec_match
-        Java.Func.Type.string_match
         Java.Func.Type.TypeView_java_typ'
         Java.Func.Type.TypeView_java_typ
         Java.Func.Type.TypeViewOk_base_typ
@@ -1013,18 +1021,24 @@ Ltac cbv_denote_tac a :=
         JavaType.tyProg JavaType.tyMethod JavaType.tyCmd
         JavaType.tyDExpr
         Java.Func.JavaType.java_typD
+        Java.Func.JavaType.tyFieldName
+        Java.Func.JavaType.tyMethodName
+        Java.Func.JavaType.tyClassName
 
         JavaType.fptrn_tyVal JavaType.fptrn_tySpec JavaType.fptrn_tyAsn
         JavaType.fptrn_tyProg JavaType.fptrn_tyMethod JavaType.fptrn_tyCmd
-        JavaType.fptrn_tyDExpr
+        JavaType.fptrn_tyDExpr JavaType.fptrn_tyMethodName
+        JavaType.fptrn_tyClassName JavaType.fptrn_tyFieldName
 
         JavaType.ptrn_tyVal JavaType.ptrn_tySpec JavaType.ptrn_tyAsn
         JavaType.ptrn_tyProg JavaType.ptrn_tyMethod JavaType.ptrn_tyCmd
-        JavaType.ptrn_tyDExpr
+        JavaType.ptrn_tyDExpr JavaType.ptrn_tyClassName
+        JavaType.ptrn_tyMethodName JavaType.ptrn_tyClassName
 
         Java.Func.JavaType.spec_match
         Java.Func.JavaType.asn_match
         Java.Func.JavaType.val_match
+        Java.Func.Type.string_match
         Java.Func.JavaType.TSym_java_typ
         Java.Func.JavaType.java_typ_rect
         Java.Func.JavaType.java_typ_rec
@@ -1045,7 +1059,7 @@ Ltac cbv_denote_tac a :=
         Java.Func.Type.prop_match
         Typ0_term
         Java.Func.Type.Typ2_tyArr Java.Func.Type.Typ0_tyProp Java.Func.Type.Typ0_tyNat 
-        Java.Func.Type.Typ0_tyString Java.Func.Type.Typ0_tyVal Java.Func.Type.Typ0_tyBool 
+        Java.Func.Type.Typ0_tyVal Java.Func.Type.Typ0_tyBool Java.Func.Type.Typ0_tyString
         Java.Func.Type.Typ1_tyList Java.Func.Type.Typ2_tyProd Java.Func.Type.RType_typ
         Java.Func.Type.TSym_typ' Java.Func.Type.TSymAll_typ_map
 
@@ -1150,8 +1164,7 @@ Ltac cbv_denote_tac a :=
 
 	(* JavaFunc *)
         
-        
-        JavaFunc.Applicative_Fun
+        JavaFunc.Applicative_Fun        
         JavaFunc.RSym_ilfunc JavaFunc.RSym_bilfunc (*JavaFunc.RSym_embed_func*)
         ilops bilops eops is_pure func func_map RSym_JavaFunc typeof_java_func java_func_eq
         java_func_symD RelDec_java_func typeof_ilfunc
@@ -1168,9 +1181,9 @@ Ltac cbv_denote_tac a :=
         JavaFunc.fOrE JavaFunc.fNotE JavaFunc.fLtE JavaFunc.fValEq
         JavaFunc.mkTriple JavaFunc.mkFieldLookup JavaFunc.mkTypeOf
         JavaFunc.mkProgEq JavaFunc.mkExprList JavaFunc.evalDExpr
+        JavaFunc.fMethodName JavaFunc.fClassName JavaFunc.fFieldName
 
         Java.Func.Type.val_match
-        Java.Func.Type.string_match
         
         (* OTHER *)
         
@@ -1246,7 +1259,6 @@ Ltac cbv_denote_tac a :=
         SymOneOf.RSymOneOf
         SymOneOf.symD_OneOf
         SymOneOf.RSym_All_Branch_Some
-
     ] in a.
 
 Let elem_ctor : forall x : typ, typD x -> @SymEnv.function _ _ :=
