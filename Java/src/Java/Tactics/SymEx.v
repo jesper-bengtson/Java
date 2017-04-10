@@ -1,9 +1,17 @@
 Require Import Coq.Strings.String.
 Require Import Coq.PArith.BinPos.
+
 Require Import ExtLib.Core.RelDec.
 Require Import ExtLib.Data.String.
 Require Import ExtLib.Data.Nat.
 Require Import ExtLib.Data.HList.
+Require Import ExtLib.Structures.Applicative.
+Require Import ExtLib.Tactics.
+
+Require Import MirrorCore.PLemma.
+Require Import Charge.Tactics.Rtac.Red.
+Require Import Charge.Tactics.Rtac.PApply.
+
 Require Import MirrorCore.Lemma.
 Require Import MirrorCore.TypesI.
 Require Import MirrorCore.Lambda.Expr.
@@ -14,11 +22,24 @@ Require Import MirrorCore.Subst.FMapSubst.
 Require Import MirrorCore.Lambda.ExprLift.
 Require Import MirrorCore.Lambda.ExprSubst.
 Require Import MirrorCore.Lambda.ExprUnify_simul.
+Require Import MirrorCore.Lambda.ExprTac.
 Require Import MirrorCore.Lambda.Red.
 Require Import MirrorCore.Lambda.AppN.
 Require Import MirrorCore.Lambda.RedAll.
 Require Import MirrorCore.Lambda.ExprVariables.
 Require Import MirrorCore.Lambda.Rtac.
+Require Import MirrorCore.Lambda.Ptrns.
+Require Import MirrorCore.Lib.ListOpView.
+Require Import MirrorCore.Views.Ptrns.
+Require Import MirrorCore.Views.FuncView.
+Require Import Charge.Views.ILogicView.
+Require Import MirrorCore.Lib.ApplicativeView. 
+Require Import Java.Semantics.OperationalSemantics.
+Require Import Java.Logic.SpecLogic.
+Require Import Java.Logic.AssertionLogic.
+Require Import ChargeCore.Logics.ILogic.
+Require Import ChargeCore.Logics.BILogic.
+
 Require Import Charge.Views.ILogicView.
 Require Import Charge.Patterns.ILogicPattern.
 (*
@@ -31,10 +52,12 @@ Require Import Java.Func.JavaType.
 Require Import Java.Func.JavaFunc.
 Require Import Java.Tactics.Semantics.
 
+Require Import Charge.Views.SubstView.
 Require Import Charge.Views.BILogicView.
 Require Import Charge.Patterns.BILogicPattern.
-
+Require Import ChargeCore.Logics.ILogic.
 Require Import Charge.Tactics.Rtac.ReifyLemma.
+Require Import Charge.Tactics.Rtac.Minify.
 (*
 Require Import Charge.Tactics.Rtac.PullConjunct.
 *)
@@ -60,6 +83,9 @@ Require Import MirrorCore.CTypes.BaseType.
 Require Import MirrorCore.CTypes.ProdType.
 Require Import MirrorCore.CTypes.ListType.
 Require Import MirrorCore.CTypes.GenericTypes.
+Require Import Charge.Rewriter.ILogicRewrite.
+Require Import Charge.Rewriter.BIlogicRewrite.
+Require Import MirrorCore.Lambda.PolyInst.
 
 Require Import Java.Func.Type.
 
@@ -141,7 +167,6 @@ Definition method_specI : stac typ (expr typ func) subst :=
       	| _ => @Fail _ _ _
     end.
 *)
-Require Import ChargeCore.Logics.ILogic.
 Lemma andA_temp {A : Type} `{IL : ILogic A} (P Q R S : A) (H : lentails (land P (land Q R)) S) : lentails (land (land P Q) R) S.
 Proof.
   admit.
@@ -208,8 +233,6 @@ Proof.
 Defined.
 
 Print if_lemma.
-
-Require Import ExtLib.Tactics.
 
 Lemma if_lemma_sound e c1 c2 :
 	lemmaD (exprD_typ0 (T:=Prop)) nil nil (if_lemma e c1 c2).
@@ -346,11 +369,6 @@ Qed.
 (*
 Example test_pull_exists : test_lemma (pull_exists_lemma). Admitted.
 *)
-
-Require Import ExtLib.Tactics.
-
-
-Require Import MirrorCore.Lambda.ExprTac.
 (*
 
   Lemma foldTacOk : partial_reducer_ok foldTac.
@@ -514,11 +532,8 @@ Proof.
 Admitted.
 
 Definition THEN' := @MirrorCore.RTac.Then.THEN typ (expr typ func).
-Require Import Charge.Tactics.Rtac.Minify.
 
 Let EAPPLY lem := THEN' (EAPPLY typ func lem) (MINIFY typ func).
-
-Require Import Charge.Views.SubstView.
 
 Definition THEN (r1 r2 : rtac typ (expr typ func)) :=
   THEN (THEN (THEN (INSTANTIATE typ func) (runOnGoals r1)) (runOnGoals (INSTANTIATE typ func))) (runOnGoals r2).
@@ -621,7 +636,6 @@ Require Import Charge.Tactics.Open.Subst.
 Require Import Charge.Tactics.Lists.Fold.
 *)
 
-Require Import MirrorCore.Lib.ListOpView.
 (*
 Definition FOLD := SIMPL true (red_beta (fun x e args => red_fold (apps e args))).
 *)
@@ -722,16 +736,10 @@ Fixpoint tripleE (c : cmd) : rtac typ (expr typ func) :=
 		| _ => IDTAC
 	end.
 
-Require Import MirrorCore.Lambda.Ptrns.
-Require Import MirrorCore.Views.Ptrns.
-Require Import MirrorCore.Views.FuncView.
-Require Import Charge.Views.ILogicView.
-
 Definition ptrnCmd {T : Type}
            (p : ptrn cmd T) : ptrn (expr typ func) T :=
   inj (ptrn_view _ (fptrnCmd p)).
 
-Require Import MirrorCore.Views.FuncView.
 Check rtac typ (expr typ func).
 Print rtac.
 Definition symE : rtac typ (expr typ func) :=
@@ -755,8 +763,6 @@ Proof.
   admit.
 Admitted.
 
-Require Import MirrorCore.Lib.ApplicativeView.
-
 (*
 Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr typ func :=
    mkAp (func := func) tyVal tyAsn
@@ -768,11 +774,6 @@ Definition mkPointsto (x : expr typ func) (f : field) (e : expr typ func) : expr
               (mkPure (func := func) tyString (mkString f)))
         e  .
 *)
-Require Import Java.Semantics.OperationalSemantics.
-Require Import Java.Logic.SpecLogic.
-Require Import Java.Logic.AssertionLogic.
-
-Require Import ChargeCore.Logics.ILogic.
 
 Fixpoint seq_skip n :=
 	match n with
@@ -780,7 +781,6 @@ Fixpoint seq_skip n :=
 	  | S n => cseq cskip (seq_skip n)
 	end.
 
-Require Import ExtLib.Structures.Applicative.
 Local Instance Applicative_Fun A : Applicative (RFun A) :=
 { pure := fun _ x _ => x
 ; ap := fun _ _ f x y => (f y) (x y)
@@ -844,11 +844,8 @@ Ltac run_rtac reify term_table tac_sound :=
 	    reify_aux reify_java term_table P name
           end.
 
-Require Import ChargeCore.Logics.BILogic.
 Open Scope string.
 (*
-Definition blurg := 0.
-
 Ltac cbv_denote_typeof_sym :=
   match goal with
   | |- context [typeof_sym ?a] =>
@@ -864,7 +861,9 @@ Ltac cbv_denote_symD :=
     idtac a r;
       progress change (SymI.symD a) with r; cbv beta iota delta [blurg]
   end.
-
+*)
+ 
+ 
 Lemma test_read : ltrue |--
     triple 
 
@@ -880,11 +879,22 @@ Time Qed.
 Definition myTac :=
   THEN (REPEAT 2 (INTRO typ func)) solve_entailment.
 
+Definition substTac2 :=
+  THEN (REPEAT 10 (INTRO typ func)) SUBST.
+
+Lemma substTac2_sound : rtac_sound substTac2.
+Proof.
+  admit.
+Admitted.
+
+Ltac solve_subst :=
+  run_rtac reify_java term_table substTac2_sound.
+
 (*
 Require Import Java.Examples.ListClass.
 *)
 Ltac charge := run_rtac reify_java term_table runTac_sound; intros.
-
+(*
 Require Import MirrorCore.syms.SymOneOf.
 (*
 Lemma FOLD_sound : rtac_sound FOLD.
@@ -1029,9 +1039,6 @@ Proof.
   charge.
 Qed.
 *)
-Require Import Charge.Rewriter.ILogicRewrite.
-Require Import Charge.Rewriter.BIlogicRewrite.
-Require Import MirrorCore.Lambda.PolyInst.
 
 Definition PULL_EXISTS2 : rtac typ (expr typ func) :=
   REWRITE (ilops := ilops) 
@@ -1042,12 +1049,11 @@ Definition PULL_EXISTS2 : rtac typ (expr typ func) :=
 Definition rewrite_it := 
   THEN (REPEAT 3 (INTRO typ func)) 
        (THEN (INSTANTIATE typ func)
-             PULL_EXISTS2).
+           (*  (RED_ENTAILS expr_typ) *) IDTAC).
 
 Theorem rewrite_it_sound : rtac_sound rewrite_it.
   admit.
 Admitted.
-Require Import Charge.Tactics.Rtac.PApply.
 Definition REFL :=
   THEN (REPEAT 4 (INTRO typ func)) (THEN (TRY (INSTANTIATE typ func)) 
                                          (PAPPLY func_unify (plem_entails_refl (ilops := ilops)))).
@@ -1056,13 +1062,115 @@ Theorem REFL_sound : rtac_sound REFL.
 Proof.
   admit.
 Admitted.
-Require Import MirrorCore.PLemma.
-Require Import Charge.Tactics.RTac.Red.
-Lemma test2 : forall (P : nat -> RFun stack asn) (Q : RFun stack asn) (s : stack), True.
+
+Transparent ILInsts.ILFun_Ops.
+
+      (*   
+Lemma test2 : forall (P : nat -> RFun (RFun string val) asn) (Q : RFun (RFun string val) asn), True.
 intros.
+assert ((ltrue : sasn) //\\ Q //\\ (Exists n : nat, P n) |-- ltrue).
+Transparent ILInsts.ILFun_Ops.
+intro s.
+generalize dependent s. generalize dependent Q. generalize dependent P.
+unfold Lang.var.
+run_rtac reify_java term_table rewrite_it_sound.
+Eval vm_compute in tyVal.
+Eval vm_compute in (typ0 (F := val)).
+Print rtac.
+
+assert (INTRO typ func (CTop nil nil) (TopSubst (expr typ func) nil nil) (mkForall (typ2 (typ0 (F:=string)) (typ0 (F:=val))) (typ0 (F:=Prop))
+         (App
+            (App (Inj (fEntails tyAsn))
+               (App
+                  (App
+                     (App (Inj (fAnd (typ2 (typ2 (typ0 (F:=string)) tyVal) tyAsn)))
+                        (mkTrue (typ2 (typ2 (typ0 (F:=string)) tyVal) tyAsn)))
+                     (mkTrue (typ2 (typ2 (typ0 (F:=string)) tyVal) tyAsn))) 
+                  (ExprCore.Var 3)))
+            (App (mkTrue (typ2 (typ2 (typ0 (F:=string)) tyVal) tyAsn)) (ExprCore.Var 2)))) = Fail).
+vm_compute.
+unfold rewrite_it.
+unfold mkForall.
+Opaque RED_ENTAILS.
+simpl.
+unfold THEN.
+simpl.
+unfold INSTANTIATE.
+simpl.
+unfold RTac.Instantiate.INSTANTIATE.
+simpl.
+unfold SIMPLIFY; simpl.
+unfold RTac.Then.THEN.
+simpl.
+Print beta.
+Print substitute_one.
+Transparent RED_ENTAILS.
+unfold RED_ENTAILS.
+unfold run_ptrn.
+unfold pmap.
+unfold red_entails_lhs.
+unfold pmap.
+unfold ptrnEntails.
+
+unfold app.
+unfold Mbind, Mrebuild.
+Print mkEntails.
+unfold ptrn_view.
+unfold get.
+Print mkForall.
+Check ptrn_view.
+unfold inj.
+unfold THEN, REPEAT, INSTANTIATE.
+unfold RTac.Instantiate.INSTANTIATE.
+unfold SIMPLIFY. unfold REPEAT'.
+
+vm_compute in r0.
+
+unfold tyVal in e. simpl in e.
+Check @run_ptrn.
+Check red_entails_lhs.
+
+Eval vm_compute in
+  (run_ptrn
+    (red_entails_lhs expr_typ)
+    (ExprCore.Var 0)
+    (App
+       (App (Inj (fEntails tyAsn))
+            (App
+               (App
+                  (App (Inj (fAnd (typ2 (F := Fun) (typ2 (F := Fun) (typ0 (F:=string)) tyVal) tyAsn)))
+                       (mkTrue (typ2 (F := Fun) (typ2 (F := Fun) (typ0 (F:=string)) tyVal) tyAsn)))
+                  (mkTrue (typ2 (F := Fun) (typ2 (F := Fun) (typ0 (F:=string)) tyVal) tyAsn))) 
+               (ExprCore.Var 0)))
+       (App (mkTrue (typ2 (F := Fun) (typ2 (F := Fun) (typ0 (F:=string)) tyVal) tyAsn)) (ExprCore.Var 0)))).
+
+Eval vm_compute in
+    (run_ptrn
+       (il_pointwise_red (fun _ e => e) expr_typ)
+       (ExprCore.Var 0)
+       ((App
+                     (App (Inj (fAnd (typ2 (F := Fun) (typ2 (F := Fun) (typ0 (F:=string)) tyVal) tyAsn)))
+                        (mkTrue (typ2 (F := Fun) (typ2 (F := Fun) (typ0 (F:=string)) tyVal) tyAsn)))
+                     (mkTrue (typ2 (typ2 (typ0 (F:=string)) tyVal) tyAsn))))).
+       (ExprCore.Var 0)).
+Print run_ptrn.
+Print inj.
+Eval vm_compute in 
+    (expr_typ 
+
+Set Printing Implicit.
+Check @red_entails_lhs.
+
+replace stack with (String.string -> val) by reflexivity.
+
+reify_java ((Q //\\ Q) t).
+
+run_rtac reify_java term_table (RED_ENTAILS_sound expr_typ).
+
+simpl.
+
 assert (ap (T := RFun stack) (@pure (RFun stack) (Applicative_Fun stack) (forall U : Type, (U -> asn) -> asn) (@lexists asn _)) P |-- Q).
 assert (lexists (fun x => P x //\\ Q) |-- Q).
-Transparent ILInsts.ILFun_Ops.
 intro t.
 simpl.
 unfold lentails. simpl.
@@ -1278,6 +1386,9 @@ Print lem_entails_refl.
   intros. Fuc
 Print lem_entails_refl.
 Locate Z.of_nat.
+*)
+
+
 Fixpoint mkSwapPre n : RFun (RFun string val) asn :=
 	match n with
 	  | 0   => empSP
@@ -1361,7 +1472,7 @@ Proof.
 (* GREGORY : charge runs the complete tactic, charge2 runs only reification *)
   Time charge.
 
-Time Qed.
+Time Admitted.
 
 
 
@@ -1711,4 +1822,6 @@ Proof.
 
   Print func.
 *)
-
+ 
+ End blurb.
+ 

@@ -387,7 +387,9 @@ Ltac cbv_denote :=
         ProdView.RSym_ProdFunc ProdView.prod_func_symD
         
         ProdView.pairR
-        
+        ProdView.fstR
+        ProdView.sndR
+                
         ProdView.typeof_prod_func
         
         (* ListView *)
@@ -453,6 +455,8 @@ Ltac cbv_denote :=
         Java.Func.Type.TypeView_java_typ'
         Java.Func.Type.TypeView_java_typ
         Java.Func.Type.TypeViewOk_base_typ
+        Java.Func.Type.TypeView_prod_typ'
+        Java.Func.Type.TypeView_list_typ'
         Java.Func.Type.TypeViewOk_java_typ
         JavaType.tyVal JavaType.tySpec JavaType.tyAsn
         JavaType.tyProg JavaType.tyMethod JavaType.tyCmd
@@ -950,7 +954,9 @@ Ltac cbv_denote_tac a :=
         ProdView.RSym_ProdFunc ProdView.prod_func_symD
         
         ProdView.pairR
-        
+        ProdView.fstR
+        ProdView.sndR
+                        
         ProdView.typeof_prod_func
         
         (* ListView *)
@@ -1015,6 +1021,8 @@ Ltac cbv_denote_tac a :=
         Java.Func.Type.spec_match
         Java.Func.Type.TypeView_java_typ'
         Java.Func.Type.TypeView_java_typ
+        Java.Func.Type.TypeView_list_typ'
+        Java.Func.Type.TypeView_prod_typ'
         Java.Func.Type.TypeViewOk_base_typ
         Java.Func.Type.TypeViewOk_java_typ
         JavaType.tyVal JavaType.tySpec JavaType.tyAsn
@@ -1056,6 +1064,8 @@ Ltac cbv_denote_tac a :=
         Java.Func.Type.asn_match
         Java.Func.Type.TypeView_base_typ
         Java.Func.Type.TypeView_base_typ'
+        Java.Func.Type.TypeView_prod_typ'
+        Java.Func.Type.TypeView_list_typ'
         Java.Func.Type.prop_match
         Typ0_term
         Java.Func.Type.Typ2_tyArr Java.Func.Type.Typ0_tyProp Java.Func.Type.Typ0_tyNat 
@@ -1270,7 +1280,7 @@ Ltac reify_aux reify term_table e n :=
   reify_expr reify k
              [[ (fun (y : @mk_dvar_map _ _ _ _ term_table elem_ctor) => True) ]]
              [[ e ]].
-
+(*
 Ltac run_rtac reify term_table tac_sound :=
   match type of tac_sound with
     | rtac_sound ?tac =>
@@ -1305,7 +1315,47 @@ Ltac run_rtac reify term_table tac_sound :=
 	  end
 	| _ => idtac tac_sound "is not a soudness theorem."
   end.
-
+*)
+ 
+Ltac run_rtac reify term_table tac_sound :=
+  lazymatch type of tac_sound with
+    | rtac_sound ?tac =>
+	  let name := fresh "e" in
+	  lazymatch goal with
+	    | |- ?P =>
+	      reify_aux reify term_table P name;
+	      let t := eval vm_compute in (typeof_expr nil nil name) in
+	      let goal := eval unfold name in name in
+	      match t with
+	        | Some ?t =>
+	          let goal_result := constr:(run_tac tac (GGoal name)) in 
+	          let result := eval vm_compute in goal_result in
+                                                    pose goal_result;
+	           lazymatch result with
+	            | More_ ?s ?g => 
+                  idtac "Not quite done";
+                  idtac g;
+	              cut (goalD_Prop nil nil g) ; [
+	                  change (goalD_Prop nil nil g -> exprD_Prop nil nil name);
+                        let H := constr:(@eq_refl (Result (CTop nil nil)) (More_ s g)) in
+                        refine(@run_rtac_More  _ tac s _ _ tac_sound _);
+                          vm_cast_no_check H
+	                | pose (run_tac tac (GGoal name)); cbv_denote
+	              ] 
+	            | Solved ?s =>
+                      let H := constr:(@eq_refl (Result (CTop nil nil)) (Solved s)) in
+                      idtac "solved goal";
+                      refine (@run_rtac_Solved _ tac s name tac_sound _);
+                        vm_cast_no_check H
+	            | Fail => idtac "Tactic" tac "failed."
+	            | ?x => idtac "Error: run_rtac could not resolve the result from the tactic :" tac; idtac x
+	          end 
+	        | None => idtac "expression " goal "is ill typed" t
+	      end 
+	  end
+	| _ => idtac tac_sound "is not a soudness theorem."
+  end. 
+ 
 Ltac run_rtac_print_code reify term_table tac_sound :=
   match type of tac_sound with
     | rtac_sound ?tac =>
@@ -1340,14 +1390,14 @@ Ltac run_rtac_debug reify term_table tac_sound :=
 	          idtac result;
 	          match result with
 	            | More_ ?s ?g => 
-	              cut (goalD_Prop nil nil g); [
+	              cut (goalD_Prop nil nil g)(*; [
 	                let goal_resultV := g in
 	               (* change (goalD_Prop nil nil goal_resultV -> exprD_Prop nil nil name);*)
 	                exact_no_check (@run_rtac_More _ tac _ _ _ tac_sound
 	                	(@eq_refl (Result (CTop nil nil)) (More_ s goal_resultV) <:
-	                	   run_tac tac (GGoal goal) = (More_ s goal_resultV)))
+	                	   run_tac tac (GGoal goal) = (More_ s goal_resultV))) 
 	                | cbv_denote
-	              ]
+	              ] *)
 	            | Solved ?s =>
 	              exact_no_check (@run_rtac_Solved _ tac s name tac_sound 
 	                (@eq_refl (Result (CTop nil nil)) (Solved s) <: run_tac tac (GGoal goal) = Solved s))
@@ -1358,5 +1408,47 @@ Ltac run_rtac_debug reify term_table tac_sound :=
 	      end
 	  end
 	| _ => idtac tac_sound "is not a soudness theorem."
+  end.
+
+Definition nothing := 0. 
+   
+Ltac cbv_denote_typeof_sym :=
+  match goal with
+  | |- context [typeof_sym ?a] =>
+    let r := cbv_denote_tac (typeof_sym a) in 
+    idtac a r;
+      progress change (typeof_sym a) with r; cbv beta iota delta [nothing]
+  end.
+
+Ltac cbv_denote_symD :=
+  match goal with
+  | |- context [SymI.symD ?a] =>
+    let r := cbv_denote_tac (SymI.symD a) in 
+    idtac a r;
+      progress change (SymI.symD a) with r; cbv beta iota delta [nothing]
+  end.
+
+Ltac cbv_denote_symAs :=
+  match goal with
+  | |- context [symAs ?a ?b] =>
+    let r := cbv_denote_tac (symAs a b) in 
+    idtac a b r;
+      progress change (symAs a b) with r; cbv beta iota delta [nothing]
+  end.
+
+Ltac cbv_denote_type_cast :=
+  match goal with
+  | |- context [type_cast ?a ?b] =>
+    let r := cbv_denote_tac (type_cast a b) in 
+    idtac a b r;
+      progress change (type_cast a b) with r; cbv beta iota delta [nothing]
+  end.
+
+Ltac cbv_denote_goalD_Prop :=
+  match goal with
+  | |- context [goalD_Prop ?a ?b ?c] =>
+    let r := cbv_denote_tac (goalD_Prop a b c) in 
+    idtac a b r;
+      progress change (goalD_Prop a b c) with r; cbv beta iota delta [nothing]
   end.
  

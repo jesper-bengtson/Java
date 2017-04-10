@@ -9,6 +9,7 @@ Require Import MirrorCore.Views.FuncView.
 Require Import MirrorCore.Views.Ptrns.
 Require Import MirrorCore.Views.TypeView.
 Require Import MirrorCore.Lib.StringView.
+Require Import MirrorCore.Reify.ReifyClass.
 
 Require Import ChargeCore.Open.Subst.
 
@@ -369,8 +370,6 @@ Section TSym_java_type.
 
 End TSym_java_type.
 
-Require Import MirrorCore.Reify.ReifyClass.
-
 Section ReifyJavaType.
   Context {typ : Set} {FV : PartialView typ (java_typ 0)}.
   Context {RType_typ : RType typ} {Typ2_Fun : Typ2 _ Fun}.
@@ -387,6 +386,9 @@ Section ReifyJavaType.
 
   Definition reify_tyStack : Command typ :=
     CPattern (ls := nil) (RExact Lang.stack) (tyArr tyString tyVal).
+
+  Definition reify_tyExpr : Command typ :=
+    CPattern (ls := nil) (RExact (Open.expr (A := String.string) (val := val))) (tyArr (tyArr tyString tyVal) tyVal).
 
   Definition reify_tySpec : Command typ :=
     CPattern (ls := nil) (RExact spec) tySpec.
@@ -422,7 +424,7 @@ Section ReifyJavaType.
       CFirst (reify_tyVal :: reify_tyStack :: reify_tySpec :: reify_tyAsn :: 
               reify_tyProg :: reify_tySasn :: reify_tyMethod :: reify_tyCmd :: 
               reify_tyMethodName :: reify_tyClassName :: reify_tyFieldName ::
-              reify_tyDExpr :: reify_tyVar :: nil).
+              reify_tyExpr :: reify_tyDExpr :: reify_tyVar :: nil).
 
 End ReifyJavaType.
 

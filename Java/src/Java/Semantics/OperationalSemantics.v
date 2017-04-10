@@ -22,6 +22,9 @@ Require Import Java.Logic.HeapArr.
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
 
+Require Import Compare_dec.
+Require Import RelationClasses Setoid.
+
 Import SepAlgNotations.
 
 Set Implicit Arguments.
@@ -69,8 +72,6 @@ Section Commands.
     destruct HFrame as [[H1 H2] | [H1 H2]]; [congruence|].
     destruct H3 as [u H3]. congruence.
   Qed.
-
-Require Import Compare_dec.
 
   Lemma in_list_fresh (lst : list nat) :
     exists n, ~ List.In n lst.
@@ -410,7 +411,7 @@ Require Import Compare_dec.
   | semdcall  : forall (x y : Lang.var) m es c sc 
       (HSem     : semantics c sc),
       semantics (cdcall x y m es) 
-        (call_cmd x ((fun e s => val_class (e s)) (var_expr y)) m ((E_var y) :: es) c sc)
+        (call_cmd x ((fun e s => val_class (e s)) (stack_get y)) m ((E_var y) :: es) c sc)
   | semscall  : forall (x : Lang.var) (C : class) m es c sc
       (HSem     : semantics c sc),
       semantics (cscall x C m es) (call_cmd x (open_const C) m es c sc)
@@ -502,8 +503,6 @@ End Commands.
   Notation " '{[' P ']}' c '{[' Q ']}' " := (triple P Q c) (at level 89,
     format " {[ P ]} '/' c '/' {[ Q ]} ").
 
-Require Import RelationClasses Setoid.
-
   Add Parametric Morphism : triple with signature
     lentails --> lentails ++> eq ==> lentails
     as triple_entails_m.
@@ -521,8 +520,8 @@ Open Scope open_scope.
       [prog] (fun X : Program => method_lookup X C m (Build_Method ps' c re)
         /\ length ps = length ps' /\
         (forall x, In x ps' -> ~ In x (modifies c))) 
-      //\\ {[ P //! combine ps (map var_expr ps') ]}
-         c {[ Q //! combine (cons rn ps) (cons (eval re) (map var_expr ps'))]}
+      //\\ {[ P //! combine ps (map stack_get ps') ]}
+         c {[ Q //! combine (cons rn ps) (cons (eval re) (map stack_get ps'))]}
     ).
 
   Notation " C ':.:' m |-> ps {{ P }}-{{ r , Q }} " :=
@@ -667,4 +666,42 @@ Section StructuralRules.
   Qed.
 *)
 
+Lemma unfold_method_spec (C : class) (m : String.string) 
+  (pn pn' : list Lang.var) (rn : Lang.var) (Pr : Program) P Q c re S
+  (HS : S |-- prog_eq Pr)
+  (HNoDup : NoDup (rn::pn)) 
+  (HSpec : method_lookup Pr C m {| m_params := pn'; m_body := c; m_ret := re |}) 
+  (Hlength : Datatypes.length pn = Datatypes.length pn') 
+  (Hmodify : forall x : Lang.var, In x pn' -> ~ In x (modifies c)) 
+  (Htriple : S |-- triple (Subst.apply_subst P
+          (Subst.substl_trunc (combine pn (map stack_get pn')))) 
+          (Subst.apply_subst Q
+          (Subst.substl_trunc
+            (combine (rn :: pn) (eval re :: map stack_get pn')))) c) : 
+   S |-- method_spec C m pn rn P Q.
+Proof.
+  unfold method_spec.
+  repeat (apply lforallR; intros).
+  apply landR. 
+  apply embedPropR; assumption.
+  apply (lexistsR pn').
+  apply (lexistsR c).
+  apply (lexistsR re).
+  apply landR.
+  etransitivity; [apply HS|]; apply prog_eq_to_prop.
+  repeat split; assumption.
+  assumption.
+Qed.
+
 End StructuralRules.
+
+Ltac unfold_method_spec :=
+  eapply unfold_method_spec; [
+    reflexivity |
+    solve_NoDup |
+    solve_method_lookup |
+    simpl; reflexivity |
+    simpl; intuition congruence |
+    simpl
+  ];
+  unfold Lang.var.

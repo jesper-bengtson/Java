@@ -231,6 +231,17 @@ Definition asn_match := asn_match (FVOk := TypeViewOk_java_typ).
 Definition spec_match := spec_match (FVOk := TypeViewOk_java_typ).
 Definition string_match := string_match (FVOk := TypeViewOk_base_typ).
 Definition val_match := val_match (FVOk := TypeViewOk_java_typ).
+Check val_match.
+
+Definition expr_typ (t : typ) :=
+  match t with
+  | tyArr (tyArr t1 t2) t3 => 
+    (string_match 
+       (fun _ => typ) t1
+       (val_match (fun _ => typ) t2 t3 (fun _ => t))
+       (fun _ => t))
+  | _ => t
+  end.
 
 Definition ilops : @logic_ops typ RType_typ :=
   fun t =>

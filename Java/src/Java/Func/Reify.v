@@ -29,6 +29,7 @@ Require Import Charge.Views.ILogicView.
 Require Import Charge.Views.BILogicView.
 Require Import Charge.Views.EmbedView.
 Require Import Charge.Views.SubstView.
+Require Import ChargeCore.Logics.ILEmbed.
 
 Require Import Charge.Reify.ILogicReify.
 Require Import Charge.Reify.BILogicReify.
@@ -44,6 +45,8 @@ Require Import ChargeCore.Logics.Later.
 Require Import ExtLib.Structures.Applicative.
 Require Import MirrorCore.Lib.NatView.
 
+Require Import Coq.Strings.String.
+
 Reify Declare Typed Table term_table : BinNums.positive => typ.
 
 Local Instance Applicative_Fun A : Applicative (RFun A) :=
@@ -55,7 +58,7 @@ Global Instance Reify_typ : Reify typ :=
   Reify_typ typ (reify_base_typ typ ::
                  reify_list_typ typ ::
                  reify_prod_typ typ ::
-                 reify_subst_typ typ _ Lang.var val ::
+                 reify_subst_typ typ _ String.string val ::
                  reify_java_typ typ :: nil).
 
 Global Instance Reify_java : Reify (expr typ func) :=
@@ -68,8 +71,8 @@ Global Instance Reify_java : Reify (expr typ func) :=
                                   reify_listOp typ func :: 
                                   reify_prod typ func ::
                                   reify_string typ func ::
-          	                  reify_ilogic typ func :: 
-          	                  reify_plogic typ func :: 
+          	                      reify_ilogic typ func :: 
+          	                      reify_plogic typ func :: 
                                   reify_bilogic typ func ::
                                   reify_embed typ func ::
                                   reify_subst typ func String.string val :: nil).
@@ -136,7 +139,7 @@ Goal (forall (Pr : Program) (C : class) (v : val) (x : String.string) (f : field
   reify_java_debug (5 = 5).
   reify_java_debug (exists x, x = 5).
   reify_java_debug (forall x, x = 5).
-
+  reify_java_debug (pointsto v (("x"%string):field) v).
   reify_java_debug (stack_get (val := val) x).
   reify_java_debug (pure (T := RFun (String.string -> val)) pointsto).
   reify_java_debug (Applicative.pure (T := RFun (String.string -> val)) 5).
@@ -203,8 +206,6 @@ Goal (forall (Pr : Program) (C : class) (v : val) (x : String.string) (f : field
 
   reify_java_debug (eval (E_not (E_val v))).
   reify_java_debug (pure (T := RFun (String.string -> val)) (vbool true)).
-
-Require Import ChargeCore.Logics.ILEmbed.
 
   reify_java_debug
     (@embed ((String.string -> val) -> Prop) sasn _ 

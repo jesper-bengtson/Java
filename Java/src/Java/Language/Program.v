@@ -7,11 +7,12 @@ Require Import ExtLib.Tactics.Consider.
 Require Import ExtLib.Data.Pair.
 Require Import ExtLib.Data.List.
 
+Require Import Coq.Bool.Bool.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 
 Section RelDecNoDup.
-  Require Import Coq.Bool.Bool.
 
   Context {A : Type} {RelDec_A : RelDec (@eq A)}
 	  {RelDec_Correct_A : RelDec_Correct RelDec_A}.
@@ -105,7 +106,7 @@ Qed.
 Record Program : Set := {
   p_classes: list (string * Class)
 }.
-
+  
 Instance RelDec_Program : RelDec (@eq Program) := {
   rel_dec p1 p2 := (p_classes p1) ?[ eq ] (p_classes p2)
 }.
@@ -541,3 +542,12 @@ Proof.
   exists E; split; [assumption | split; etransitivity; eassumption].
 Qed.
 *)
+ 
+ 
+Ltac solve_NoDup :=
+  repeat (apply NoDup_cons; simpl); 
+    first [intuition congruence | apply NoDup_nil].
+
+Ltac solve_method_lookup :=
+  unfold method_lookup; eexists; split; simpl; [
+    intuition congruence|]; simpl; intuition congruence. 

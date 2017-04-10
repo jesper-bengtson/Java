@@ -5,6 +5,7 @@ Require Import ExtLib.Data.Sum.
 Require Import ExtLib.Data.Positive.
 Require Import ExtLib.Data.PList.
 Require Import ExtLib.Tactics.Consider.
+Require Import ExtLib.Structures.Applicative.
 
 Require Import ChargeCore.Open.Subst.
 Require Import ChargeCore.Open.Open.
@@ -25,12 +26,16 @@ Require Import MirrorCore.CTypes.BaseType.
 Require Import MirrorCore.SymI.
 Require Import MirrorCore.Lemma.
 Require Import MirrorCore.Lambda.Expr.
+Require Import MirrorCore.Lambda.Ptrns.
 Require Import MirrorCore.Views.ViewSumN.
 Require Import MirrorCore.Views.FuncView.
+Require Import MirrorCore.Views.Ptrns.
 Require Import MirrorCore.syms.SymEnv.
 Require Import MirrorCore.syms.SymSum.
 Require Import MirrorCore.syms.SymOneOf.
 Require Import MirrorCore.Subst.FMapSubst.
+Require Import MirrorCore.Simple.
+Require Import MirrorCore.Reify.ReifyClass.
 Require Import MirrorCore.Lib.ListView.
 Require Import MirrorCore.Lib.ListOpView.
 Require Import MirrorCore.Lib.ProdView.
@@ -197,7 +202,6 @@ Qed.
 Definition set_fold_fun (x : String.string) (f : field) (P : sasn) :=
 	(liftn pointsto) (x/V) `f `null ** P.
 *)
-Require Import Coq.Strings.String.
 
 Definition java_func_symD bf :=
   match bf as bf
@@ -345,9 +349,6 @@ Section MakeJavaFunc.
   Definition fNotE : func:= f_insert pNot.
   Definition fLtE : func:= f_insert pLt.
   Definition fValEq : func:= f_insert pValEq.
-
-Require Import MirrorCore.Views.Ptrns.
-Require Import MirrorCore.Lambda.Ptrns.
 
   Definition fptrnVal {T : Type} (p : Ptrns.ptrn val T) : ptrn java_func T :=
     fun f U good bad =>
@@ -555,8 +556,6 @@ Require Import MirrorCore.Lambda.Ptrns.
 
 End MakeJavaFunc.
 
-Require Import MirrorCore.Reify.ReifyClass.
-
 Section ReifyJavaFunc.
 
   Polymorphic Definition reify_cProg : Command@{Set} (expr typ func) :=
@@ -687,8 +686,6 @@ Definition fs : @SymEnv.functions typ _ :=
 
 *)
 
-Require Import MirrorCore.Simple.
-
 Existing Instance RelDec_from_RType.
 
   Global Instance RSym_ilfunc : RSym (@ilfunc typ) :=
@@ -711,8 +708,6 @@ Existing Instance RelDec_from_RType.
 *)
   Global Existing Instance RSym_sum.
   Global Existing Instance RSymOk_sum.
-
-  Require Import ExtLib.Structures.Applicative.
 
   Local Instance Applicative_Fun A : Applicative (RFun A) :=
     { pure := fun _ x _ => x
