@@ -780,12 +780,12 @@ Fixpoint seq_skip n :=
 	  | 0 => cskip
 	  | S n => cseq cskip (seq_skip n)
 	end.
-
+(*
 Local Instance Applicative_Fun A : Applicative (RFun A) :=
 { pure := fun _ x _ => x
 ; ap := fun _ _ f x y => (f y) (x y)
 }.
-
+*)
 Definition testSkip n : Prop :=
   forall (G : spec) (P : sasn), G |-- triple P P (seq_skip n).
 
@@ -1049,7 +1049,7 @@ Definition PULL_EXISTS2 : rtac typ (expr typ func) :=
 Definition rewrite_it := 
   THEN (REPEAT 3 (INTRO typ func)) 
        (THEN (INSTANTIATE typ func)
-           (*  (RED_ENTAILS expr_typ) *) IDTAC).
+             (RED_ENTAILS expr_typ)).
 
 Theorem rewrite_it_sound : rtac_sound rewrite_it.
   admit.
@@ -1065,8 +1065,10 @@ Admitted.
 
 Transparent ILInsts.ILFun_Ops.
 
-      (*   
-Lemma test2 : forall (P : nat -> RFun (RFun string val) asn) (Q : RFun (RFun string val) asn), True.
+
+(*
+
+Lemma test2 : forall (P : nat -> RFun (string -> val) asn) (Q : RFun (string -> val) asn), True.
 intros.
 assert ((ltrue : sasn) //\\ Q //\\ (Exists n : nat, P n) |-- ltrue).
 Transparent ILInsts.ILFun_Ops.
@@ -1074,8 +1076,55 @@ intro s.
 generalize dependent s. generalize dependent Q. generalize dependent P.
 unfold Lang.var.
 run_rtac reify_java term_table rewrite_it_sound.
+run_rtac reify_java term_table REFL_sound.
+clear r0.
+Locate expr_typ.
+Print expr_typ.
+vm_compute in r2.
+unfold rewrite_it in r.
+vm_compute in r.
+match goal with
+| H := More_ _ ?g |- _ => 
+   assert (goalD_Prop nil nil g)
+end.
+Print goalD.
+
+Eval simpl in (typD (@CoreTypes.tyArr typ'
+                 (@CoreTypes.tyBase0 typ'
+                    (TSymOneOf.OneOfType.mkOneOfF typ_map O (xI xH) tString))
+                 (@CoreTypes.tyBase0 typ'
+                    (TSymOneOf.OneOfType.mkOneOfF typ_map O (xO (xO xH)) tVal)))).
+Locate RED_ENTAILS.
+Check typD.
+Print Quant._foralls.
+unfold goalD_Prop.
+Opaque goalD. simpl.
+Transparent goalD.
+unfold goalD.
 Eval vm_compute in tyVal.
 Eval vm_compute in (typ0 (F := val)).
+unfold propD.
+unfold exprD_typ0.
+unfold exprD.
+unfold Expr_expr.
+unfold Expr.Expr_expr.
+unfold lambda_exprD.
+cbv_denote_func_simul.
+unfold typ2_match.
+unfold Typ2_tyArr.
+unfold CoreTypes.Typ2_Fun.
+unfold exprT_GetVAs.
+SearchAbout Goal.
+match goal with
+| |- context [nth_error_get_hlist_nth typD ?l] =>
+  let t := eval vm_compute in (nth_error_get_hlist_nth typD l) in idtac t
+end.
+unfold nth_error_get_hlist_nth.
+match goal with 
+| |- context [func_simul ?a] => 
+  let t := eval simpl in (func_simul a) in pose t
+end.
+idtac.
 Print rtac.
 
 assert (INTRO typ func (CTop nil nil) (TopSubst (expr typ func) nil nil) (mkForall (typ2 (typ0 (F:=string)) (typ0 (F:=val))) (typ0 (F:=Prop))
@@ -1169,7 +1218,7 @@ run_rtac reify_java term_table (RED_ENTAILS_sound expr_typ).
 
 simpl.
 
-assert (ap (T := RFun stack) (@pure (RFun stack) (Applicative_Fun stack) (forall U : Type, (U -> asn) -> asn) (@lexists asn _)) P |-- Q).
+assert (ap (T := RFun stack) (@pure (RFun stack) (Applicative_RFun stack) (forall U : Type, (U -> asn) -> asn) (@lexists asn _)) P |-- Q).
 assert (lexists (fun x => P x //\\ Q) |-- Q).
 intro t.
 simpl.
@@ -1204,7 +1253,7 @@ Ltac rtac_debug :=
 
 Proof.
   run_rtac reify_java term_table rewrite_it_sound.
-Require Import MirrorCore.CTypes.CoreTypes.
+
 Eval compute in (bilops (tyArr (tyArr tyString tyVal) tyAsn)).
   unfold e in r.
   unfold rewrite_it in r.
@@ -1388,7 +1437,6 @@ Print lem_entails_refl.
 Locate Z.of_nat.
 *)
 
-
 Fixpoint mkSwapPre n : RFun (RFun string val) asn :=
 	match n with
 	  | 0   => empSP
@@ -1450,378 +1498,7 @@ Qed.
 Definition mkSwap2 n :=
 	ltrue |-- triple ltrue (mkSwapPost n) (mkSwapProg n cskip).
 
-Ltac run_rtac2 reify term_table tac_sound :=
-  lazymatch type of tac_sound with
-    | rtac_sound ?tac =>
-	  let name := fresh "e" in
-	  lazymatch goal with
-	    | |- ?P =>
-	      reify_aux reify_java term_table P name; clear name
-	  end
-	| _ => idtac tac_sound "is not a soudness theorem."
-  end.
 
-Ltac charge2 := run_rtac2 reify_java term_table runTac_sound; intros.
-
-Lemma test_swap2 : mkSwap 20.
-Proof.
-  unfold mkSwap, mkSwapPre, mkSwapPost, mkSwapProg, mkSwapPostAux, mkRead, mkWrite, mkWriteAux.
-  Opaque pure ap.
-  simpl.
-
-(* GREGORY : charge runs the complete tactic, charge2 runs only reification *)
-  Time charge.
-
-Time Admitted.
-
-
-
-
-
-
-(*
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-End blurb.
-
-Global Instance EmptyEnv : Environment := {
-  java_env := SymEnv.from_list nil
-}.
-
-
-Definition ASSUMPTION : rtac typ (expr typ func) :=
-  EASSUMPTION (fun _ _ _ _ x y s => if x ?[ eq ] y then Some s else None).
-
-Lemma ASSUMPTION_sound : rtac_sound ASSUMPTION.
-Proof.
-  admit.
-Qed.
-
-Ltac rtac_derive_soundness :=
-  repeat first [ eapply IDTAC_sound
-               | eapply ASSUMPTION_sound
-               | eapply FAIL_sound
-               | eapply INSTANTIATE_sound
-               | eapply INTRO_sound
-               | eapply FIRST_sound ; Forall_rtac_derive_soundness
-               | eapply SOLVE_sound ; rtac_derive_soundness
-               | eapply THEN_sound ;
-                 [ rtac_derive_soundness
-                 | rtacK_derive_soundness ]
-               | eapply TRY_sound ; rtac_derive_soundness
-               | eapply REPEAT_sound ; rtac_derive_soundness
-               | eapply AT_GOAL_sound ; [ intros ; rtac_derive_soundness ]
-               | eapply APPLY_sound ; [ simpl ] (* TODO(gmalecha): Needs to change *)
-               | eapply EAPPLY_sound ; [ simpl ]  (* TODO(gmalecha): Needs to change *)
-               ]
-with rtacK_derive_soundness :=
-  first [ solve [eauto]
-        | eapply runOnGoals_sound ; rtac_derive_soundness
-        ]
-with Forall_rtac_derive_soundness :=
-  repeat first [
-                 eapply Forall_nil
-               | eapply Forall_cons ;
-                 [ try rtac_derive_soundness
-                 | try Forall_rtac_derive_soundness ] ].
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Lemma LTrue : True.
-Proof.
-  apply I.
-Qed.
-
-Definition true_lemma : lemma typ (expr typ func) (expr typ func).
-reify_lemma reify_java LTrue.
-Defined.
-Print true_lemma.
-(*
-true_lemma =
-{| vars := nil; premises := nil;
-  concl := Inj (inl (inl (inl (inl (inl (inl (inl (inr (ilf_true tyProp))))))))) |}
-     : lemma typ (expr typ func) (expr typ func)
-*)
-Lemma true_lemma_sound :
-	lemmaD (exprD'_typ0 (T:=Prop)) nil nil true_lemma.
-Proof.
-  compute.
-  apply LTrue.
-Qed.
-
-Definition AUTO := APPLY typ func true_lemma.
-
-Lemma AUTO_sound : rtac_sound AUTO.
-Proof.
-  admit.
-Qed.
-
-Lemma test_true : True.
-Proof.
-  run_rtac reify_java term_table AUTO_sound.
-Qed.
-
-Print test_true.
-
-
-
-
-(*
-
-test_true =
-let tbl := FMapPositive.PositiveMap.Leaf (SymEnv.function RType_typ) in
-let e := mkTrue tyProp in
-run_rtac_Solved AUTO (TopSubst (expr typ func) nil nil) e AUTO_sound
-  (eq_refl<:run_tac AUTO (GGoal (mkTrue tyProp)) = Solved (TopSubst (expr typ func) nil nil))
-     : True
-
-*)
-
-
-
-
-
-
-
-
-
-
-
-Lemma andI (P Q : Prop) (HP : P) (HQ : Q) : P /\ Q.
-Proof.
-  tauto.
-Qed.
-
-Definition andI_lemma : lemma typ (expr typ func) (expr typ func).
-Proof.
-  reify_lemma reify_java andI.
-Defined.
-Print andI_lemma.
-Lemma andI_lemma_sound :
-	lemmaD (exprD'_typ0 (T:=Prop)) nil nil andI_lemma.
-Proof.
-  compute. intros. apply andI. assumption. assumption.
-Qed.
-
-Definition AUTO' :=
-  THEN (REPEAT 10 (INTRO typ func))
-    (FIRST (THEN (APPLY typ func andI_lemma) ASSUMPTION ::
-      (APPLY typ func true_lemma) :: ASSUMPTION :: nil)).
-
-Lemma AUTO'_sound : rtac_sound AUTO'.
-Proof.
-  unfold AUTO'.
-  rtac_derive_soundness.
-  admit.
-  admit.
-Qed.
-
-Lemma test_and : forall (P Q R : Prop), Q -> P -> R -> P /\ Q.
-Proof.
-  run_rtac reify_java term_table AUTO'_sound.
-Qed.
-
-Print test_and.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Lemma orI1 (P Q : Prop) (HP : P) : P \/ Q.
-Proof.
-  tauto.
-Qed.
-
-Lemma orI2 (P Q : Prop) (HQ : Q) : P \/ Q.
-Proof.
-  tauto.
-Qed.
-
-Definition orI1_lemma : lemma typ (expr typ func) (expr typ func).
-Proof.
-  reify_lemma reify_java orI1.
-Defined.
-
-Definition orI2_lemma : lemma typ (expr typ func) (expr typ func).
-Proof.
-  reify_lemma reify_java orI2.
-Defined.
-
-Lemma orI1_lemma_sound :
-	lemmaD (exprD'_typ0 (T:=Prop)) nil nil orI1_lemma.
-Proof.
-  compute. intros. apply orI1. assumption.
-Qed.
-
-Lemma orI2_lemma_sound :
-	lemmaD (exprD'_typ0 (T:=Prop)) nil nil orI1_lemma.
-Proof.
-  compute. intros. apply orI1. assumption.
-Qed.
-
-Definition AUTO'' :=
-  REC 20
-    (fun rec => THEN (REPEAT 10 (INTRO typ func))
-      (FIRST
-        (THEN (APPLY typ func andI_lemma) rec ::
-        (THEN (APPLY typ func orI1_lemma) rec) ::
-        (THEN (APPLY typ func orI2_lemma) rec) ::
-        (APPLY typ func true_lemma) :: ASSUMPTION :: nil)))
-    FAIL.
-
-Lemma AUTO''_sound : rtac_sound AUTO''.
-Proof.
-  unfold AUTO''.
-  (* rtac_derive_soundness. *)
-  admit.
-Qed.
-
-Lemma test_and2 : forall (P Q R T : Prop),
-	 Q -> P -> R -> (P /\ Q /\ R) \/
-	    (Q /\ T /\ (R /\ R) /\ (P /\ Q) /\ Q).
-Proof.
-  run_rtac reify_java term_table AUTO''_sound.
-Qed.
-(*
-Ltac run_rtac reify term_table tac_sound :=
-  match type of tac_sound with
-    | rtac_sound ?tac =>
-	  let name := fresh "e" in
-	  match goal with
-	    | |- ?P =>
-	      reify_aux reify term_table P name;
-	      let t := eval vm_compute in (typeof_expr nil nil name) in
-	      let goal := eval unfold name in name in
-	      match t with
-	        | Some ?t =>
-	          let goal_result := constr:(run_tac tac (GGoal name)) in
-	          let result := eval vm_compute in goal_result in
-	          match result with
-	            | More_ ?s ?g =>
-	              cut (goalD_Prop nil nil g); [
-	                let goal_resultV := g in
-	               (* change (goalD_Prop nil nil goal_resultV -> exprD_Prop nil nil name);*)
-	                exact_no_check (@run_rtac_More _ tac _ _ _ tac_sound
-	                	(@eq_refl (Result (CTop nil nil)) (More_ s goal_resultV) <:
-	                	   run_tac tac (GGoal goal) = (More_ s goal_resultV)))
-	                | cbv_denote
-	              ]
-	            | Solved ?s =>
-	              exact_no_check (@run_rtac_Solved _ tac s name tac_sound
-	                (@eq_refl (Result (CTop nil nil)) (Solved s) <: run_tac tac (GGoal goal) = Solved s))
-	            | Fail => idtac "Tactic" tac "failed."
-	            | _ => idtac "Error: run_rtac could not resolve the result from the tactic :" tac
-	          end
-	        | None => idtac "expression " goal "is ill typed" t
-	      end
-	  end
-	| _ => idtac tac_sound "is not a soudness theorem."
-  end.
-  *)
-Require Import Charge.Tactics.Rtac.PullQuant.
-
-Lemma PULL_EXISTSL_sound : rtac_sound (THEN (REPEAT 10 (INTRO typ func)) (PULL_EXISTSL typ func ilops)).
-Proof.
-  admit.
-Qed.
-
-Lemma test_pull_quant_left  (P : sasn) (Q : nat -> sasn) :
-  P //\\ (Exists x : nat, Q x) |-- P.
-Proof.
-  run_rtac reify_java term_table PULL_EXISTSL_sound.
-
-  Print func.
-*)
  
+
  End blurb.
- 

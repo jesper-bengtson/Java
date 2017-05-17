@@ -1,6 +1,7 @@
 Require Import ChargeCore.Logics.ILogic.
 Require Import ChargeCore.Logics.BILogic.
 Require Import ChargeCore.Logics.ILEmbed.
+Require Import ChargeCore.Logics.Later.
 Require Import ChargeCore.Open.Stack.
 
 Require Import Java.Language.Lang.
@@ -24,12 +25,12 @@ Require Import MirrorCore.Lambda.ExprDsimul.
 Require Import ChargeCore.Open.OpenILogic.
 
 Open Scope string.
-
+(*
 Local Instance Applicative_Fun : Applicative (RFun (String.string -> val)) := 
 { pure := fun _ x _ => x
 ; ap := fun _ _ f x y => (f y) (x y)
 }.
-
+*)
 (* Swap represents type Swap *)
 Module Swap.
 Definition x : field := "x".
@@ -119,6 +120,15 @@ Proof.
   unfold_method_spec.
   revert t.
   run_rtac reify_java term_table substTac2_sound.
+  unfold Lang.var.
+  clear tbl e r r0.
+  unfold stack.
+  unfold Stack.stack.
+  unfold Lang.var.
+  fold (@fst val val).
+  fold (@snd val val).
+  simpl.
+  Time run_rtac reify_java term_table runTac_sound.
 Qed.
 
 (* swap_void correctness lemma *)

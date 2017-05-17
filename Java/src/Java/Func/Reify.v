@@ -48,12 +48,12 @@ Require Import MirrorCore.Lib.NatView.
 Require Import Coq.Strings.String.
 
 Reify Declare Typed Table term_table : BinNums.positive => typ.
-
+(*
 Local Instance Applicative_Fun A : Applicative (RFun A) :=
 { pure := fun _ x _ => x
 ; ap := fun _ _ f x y => (f y) (x y)
 }.
-
+*)
 Global Instance Reify_typ : Reify typ :=
   Reify_typ typ (reify_base_typ typ ::
                  reify_list_typ typ ::

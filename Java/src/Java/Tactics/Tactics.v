@@ -253,7 +253,7 @@ Ltac cbv_denote :=
         TypesI.Typ1_App
         TypesI.Typ2_App
         TypesI.typD 
-        TypesI.RFun 
+  (*      TypesI.RFun *)
         typ2_match typ2 typ2_cast
         typ1_match typ1 typ1_cast
         typ0_match typ0 typ0_cast
@@ -605,7 +605,7 @@ Ltac cbv_denote :=
 
 	(* JavaFunc *)
         
-        JavaFunc.Applicative_Fun        
+       (* JavaFunc.Applicative_Fun  *)      
         JavaFunc.RSym_ilfunc JavaFunc.RSym_bilfunc (*JavaFunc.RSym_embed_func*)
         ilops bilops eops is_pure func func_map RSym_JavaFunc typeof_java_func java_func_eq
         java_func_symD RelDec_java_func typeof_ilfunc
@@ -632,8 +632,8 @@ Ltac cbv_denote :=
         
         Nat.add
         Nat.pred
-        snd
-        fst
+ (*       snd
+        fst*)
         not
         amap_substD
         substD
@@ -820,7 +820,7 @@ Ltac cbv_denote_tac a :=
         TypesI.Typ1_App
         TypesI.Typ2_App
         TypesI.typD 
-        TypesI.RFun 
+ (*       TypesI.RFun *)
         typ2_match typ2 typ2_cast
         typ1_match typ1 typ1_cast
         typ0_match typ0 typ0_cast
@@ -1174,7 +1174,7 @@ Ltac cbv_denote_tac a :=
 
 	(* JavaFunc *)
         
-        JavaFunc.Applicative_Fun        
+  (*      JavaFunc.Applicative_Fun        *)
         JavaFunc.RSym_ilfunc JavaFunc.RSym_bilfunc (*JavaFunc.RSym_embed_func*)
         ilops bilops eops is_pure func func_map RSym_JavaFunc typeof_java_func java_func_eq
         java_func_symD RelDec_java_func typeof_ilfunc
@@ -1201,8 +1201,8 @@ Ltac cbv_denote_tac a :=
         
         Nat.add
         Nat.pred
-        snd
-        fst
+   (*     snd
+        fst*)
         not
         amap_substD
         substD
@@ -1418,6 +1418,14 @@ Ltac cbv_denote_typeof_sym :=
     let r := cbv_denote_tac (typeof_sym a) in 
     idtac a r;
       progress change (typeof_sym a) with r; cbv beta iota delta [nothing]
+  end.
+
+Ltac cbv_denote_func_simul :=
+  match goal with
+  | |- context [func_simul ?a] =>
+    let r := cbv_denote_tac (func_simul a) in 
+    idtac a r;
+      progress change (func_simul a) with r; cbv beta iota delta [nothing]
   end.
 
 Ltac cbv_denote_symD :=

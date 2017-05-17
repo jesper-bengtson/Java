@@ -17,6 +17,7 @@ Require Import Charge.Views.SubstView.
 Require Import Charge.Views.EmbedView.
 Require Import Charge.Patterns.EmbedPattern.
 Require Import Charge.Patterns.ILogicPattern.
+Require Import Charge.Tactics.BILNormalize.
 
 Require Import MirrorCore.TypesI.
 Require Import MirrorCore.CTypes.CoreTypes.
@@ -45,6 +46,8 @@ Require Import MirrorCore.Lib.NatView.
 Require Import MirrorCore.Lib.BoolView.
 Require Import MirrorCore.Lib.StringView.
 Require Import MirrorCore.UnifyI.
+Require Import MirrorCore.VariablesI.
+Require Import MirrorCore.Lambda.ExprVariables.
 
 Require Import Java.Logic.AssertionLogic.
 Require Import Java.Logic.SpecLogic.
@@ -709,7 +712,7 @@ Existing Instance RelDec_from_RType.
   Global Existing Instance RSym_sum.
   Global Existing Instance RSymOk_sum.
 
-  Local Instance Applicative_Fun A : Applicative (RFun A) :=
+  Global Instance Applicative_RFun A : Applicative (RFun A) :=
     { pure := fun _ x _ => x
       ; ap := fun _ _ f x y => (f y) (x y)
     }.
@@ -786,9 +789,6 @@ Next Obligation.
 
   Global Instance Expr_expr : ExprI.Expr _ (expr typ func) := @Expr_expr typ func _ _ _.
   Global Instance Expr_ok : @ExprI.ExprOk typ RType_typ (expr typ func) Expr_expr := @ExprOk_expr _ _ _ _ _ _ _ _.
-
-  Require Import MirrorCore.VariablesI.
-  Require Import MirrorCore.Lambda.ExprVariables.
 
   Global Instance ExprVar_expr : ExprVar (expr typ func) := _.
   Global Instance ExprVarOk_expr : ExprVarOk ExprVar_expr := _.
@@ -884,8 +884,6 @@ Definition ptrn_tySasn := ptrn_tyArr ptrn_tyStack ptrn_tyAsn.
                           end)
                        (ptrnEmbed get ignore)))*)
          false.
-
-Require Import Charge.Tactics.BILNormalize.
 
 (*
   Definition is_equality : expr typ func -> bool :=

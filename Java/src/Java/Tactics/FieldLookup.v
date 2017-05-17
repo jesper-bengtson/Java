@@ -117,6 +117,6 @@ Proof.
 Qed.
 
 
-*)
-
 End FieldLookup.
+
+*)

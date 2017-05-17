@@ -12,6 +12,7 @@ Require Import MirrorCore.CTypes.ProdType.
 Require Import MirrorCore.CTypes.BaseType.
 Require Import MirrorCore.CTypes.TSymOneOf.
 Require Import MirrorCore.Views.FuncView.
+Require Import MirrorCore.Views.TypeView.
 Require Import MirrorCore.Views.View.
 Require Import MirrorCore.Views.ViewSumN.
 Require Import MirrorCore.Lib.StringView.
@@ -107,8 +108,6 @@ eapply PartialView_trans.
 eapply TypeView_sym0.
 apply TypeView_java_typ'.
 Defined.
-
-Require Import MirrorCore.Views.TypeView.
 
 Arguments PartialViewOk_prod {_ _ _ _ _ _ _ _} _ _ : clear implicits.
 
